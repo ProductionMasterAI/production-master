@@ -1,0 +1,25 @@
+{
+  "name": "production-master",
+  "version": "0.1.0",
+  "private": true,
+  "description": "IDE thin client for the Production Master hosted incident-investigation service.",
+  "license": "MIT",
+  "author": "Tamir Cohen <tamircohen2468@gmail.com>",
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "bash scripts/run-workspaces.sh build",
+    "lint": "bash scripts/run-workspaces.sh lint",
+    "test": "vitest run",
+    "test:workspaces": "bash scripts/run-workspaces.sh test",
+    "clean": "rm -rf coverage dist"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.4"
+  }
+}

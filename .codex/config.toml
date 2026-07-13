@@ -1,0 +1,9 @@
+# Codex platform registration stub.
+#
+# The Production Master thin client registers with Codex through this file once the
+# client packages land (see packages/ and the README install section). Until then this
+# stub only marks the repo as Codex-aware; there is no MCP server entry to configure yet.
+#
+# [mcp_servers.production-master]
+# command = "npx"
+# args = ["-y", "@production-master/cli", "mcp"]

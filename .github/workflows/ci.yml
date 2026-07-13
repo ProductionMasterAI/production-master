@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  CI:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build --if-present
+      - run: npm test --if-present
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan working tree for common credential shapes
+        run: |
+          set -euo pipefail
+          # High-signal credential shapes: AWS access keys, GitHub PATs, Slack
+          # tokens, Google API keys, private-key PEM headers, and generic
+          # bearer/secret assignments. Keep this conservative to stay reliable.
+          patterns='AKIA[0-9A-Z]{16}'
+          patterns="$patterns"'|gh[pousr]_[0-9A-Za-z]{36,}'
+          patterns="$patterns"'|xox[baprs]-[0-9A-Za-z-]{10,}'
+          patterns="$patterns"'|AIza[0-9A-Za-z_-]{35}'
+          patterns="$patterns"'|-----BEGIN[[:space:]][A-Z ]*PRIVATE KEY-----'
+          patterns="$patterns"'|(secret|token|password|passwd|api[_-]?key)[[:space:]]*[:=][[:space:]]*["'\''][0-9A-Za-z/+_-]{20,}["'\'']'
+          if git grep -nIE "$patterns" -- ':!.github/workflows/ci.yml'; then
+            echo "::error::secret-scan: potential credential found (above)"
+            exit 1
+          fi
+          echo "secret-scan: clean"
+
+  ip-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Guard against employer / internal identifiers
+        run: |
+          set -euo pipefail
+          # Forbidden identifiers must never land in this public repo. The regex
+          # fragments are deliberately broken with single-char classes (e.g.
+          # b[o]okings) so this workflow file does not match its own scan.
+          forbidden='b[o]okings|f[a]lcon|P[M]EVAL|ProductionMaster[A]I/dev'
+          forbidden="$forbidden"'|pm[-]server|Design B[o]ok|TamirC[o]hen28|a[c]me'
+          if git grep -nIE "$forbidden" -- ':!CODEOWNERS' ':!LICENSE'; then
+            echo "::error::ip-guard: forbidden identifier found (above)"
+            exit 1
+          fi
+          echo "ip-guard: clean"
+      - name: No LLM SDK dependencies
+        run: |
+          set -euo pipefail
+          # Product code must depend on no LLM vendor SDK directly. Scan manifests
+          # and source for imports/deps of the common providers.
+          sdk='@anthropic-ai/|@ai-sdk/|litellm|langchain'
+          sdk="$sdk"'|["'\'']openai["'\'']|[[:space:]]openai[[:space:]]*[:@]'
+          if git grep -nIE "$sdk" -- '*package.json' '*.ts' '*.tsx' '*.js' '*.mjs' '*.cjs'; then
+            echo "::error::no-llm-sdk: direct LLM SDK reference found (above)"
+            exit 1
+          fi
+          echo "no-llm-sdk: clean"

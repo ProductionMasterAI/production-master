@@ -1,0 +1,22 @@
+{
+  "last_reviewed": "2026-07-13",
+  "targets": {
+    "claude_code": {
+      "validated_against": "pending",
+      "latest_known": "pending",
+      "notes": "Thin client not yet populated; validate on the first adapter release."
+    },
+    "cursor": {
+      "validated_against": "pending",
+      "latest_known": "pending"
+    },
+    "codex": {
+      "validated_against": "pending",
+      "latest_known": "pending"
+    },
+    "opencode": {
+      "validated_against": "pending",
+      "latest_known": "pending"
+    }
+  }
+}

@@ -1,0 +1,90 @@
+name: Gemini PR review (pilot)
+
+# Self-owned PR reviewer, PILOT. Replaces the retired GitHub Copilot review whose
+# free-tier quota is permanently exhausted at our PR volume. Calls Vertex AI Gemini
+# 2.5 Pro through a keyless Workload Identity Federation token (billed to GCP credits
+# — no new subscription, no stored key). Same WIF pattern as the service pilot.
+#
+# PUBLIC REPO HARDENING: this repo is public, so (a) the job runs ONLY on the
+# GitHub-hosted `ubuntu-latest` runner — never the org's self-hosted runners, which a
+# fork PR could otherwise execute code on — and (b) the `if` guard below runs the job
+# only for same-repo PRs, so a fork PR never reaches the WIF token or GITHUB_TOKEN.
+# The trigger is `pull_request` (never `pull_request_target`), so a fork PR's job runs
+# with a read-only token and no secrets even if it somehow ran.
+#
+# NON-GATING: the review job never fails a PR — scripts/gemini-review.mjs turns any
+# auth/API error into a ::warning:: and exits 0. It posts exactly one PR review.
+#
+# Trigger scope (deliberately simple for the pilot): reviews on `opened` and
+# `ready_for_review` always; on `synchronize` (new pushes) only when the PR carries
+# the `re-review` label, so ordinary iteration doesn't spend a model call per push.
+# `workflow_dispatch` (with a pr number) allows an on-demand run — repo write access
+# is required to dispatch it.
+
+on:
+  pull_request:
+    types: [opened, ready_for_review, synchronize]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: PR number to review
+        required: true
+        type: string
+
+# Least privilege: read the code, write the PR review, mint the OIDC token for WIF.
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write
+
+# One review in flight per PR; a newer push supersedes an in-progress run.
+concurrency:
+  group: gemini-review-${{ github.event.pull_request.number || github.event.inputs.pr }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    name: Gemini review
+    # Public repo: GitHub-hosted runner only. Never a self-hosted / PM_RUNNER_LABELS runner.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Guard: dispatch always allowed (repo write access required); otherwise same-repo
+    # PRs only (fork PRs can't get the OIDC token anyway, and must never reach it),
+    # never drafts, and on `synchronize` only when explicitly asked via the
+    # `re-review` label.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      ( github.event.pull_request.head.repo.full_name == github.repository &&
+        github.event.pull_request.draft == false &&
+        ( github.event.action != 'synchronize' ||
+          contains(github.event.pull_request.labels.*.name, 're-review') ) )
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+
+      # Keyless GCP auth → ~1h OAuth access token for Vertex AI. No stored key; the
+      # token is masked in logs by the action. Same provider/service account the
+      # service pilot uses. If this repo isn't yet allowed by the provider's attribute
+      # condition, this step fails loudly and the review is simply skipped downstream.
+      - name: Authenticate to GCP (WIF, keyless) for Vertex AI
+        id: gcp-auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/837511873790/locations/global/workloadIdentityPools/github/providers/github-oidc
+          service_account: pm-llm-vertex@production-master-llm.iam.gserviceaccount.com
+          token_format: access_token
+
+      - name: Run Gemini review
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.inputs.pr }}
+          VERTEX_TOKEN: ${{ steps.gcp-auth.outputs.access_token }}
+        run: node scripts/gemini-review.mjs

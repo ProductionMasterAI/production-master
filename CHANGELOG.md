@@ -8,11 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
 - Client packages under `packages/*` (populated via subsequent PRs).
+- Gemini PR reviewer (replaces Copilot reviews): a non-gating
+  `.github/workflows/gemini-review.yml` + `scripts/gemini-review.mjs` that posts a
+  single automated PR review from Vertex AI Gemini 2.5 Pro, authenticated keylessly
+  via Workload Identity Federation (GCP credits — no stored key, no new secret). Any
+  auth/API error becomes a workflow warning and exits 0, so it can never fail a PR.
+  Public-repo hardened: runs only on `ubuntu-latest` (never self-hosted) and only for
+  same-repo PRs, so a fork PR never reaches the WIF token or repo secrets.
 
 ## [0.1.0] - 2026-07-13
 
 ### Added
+
 - Initial repository scaffold: README, documentation tree, contributing guide, and CI.
 - Documented the thin-client-over-hosted-service architecture ([ADR-001](docs/engineering/decisions/ADR-001-initial-architecture.md)).
 - Empty npm workspaces layout (`packages/*`) ready to be populated.

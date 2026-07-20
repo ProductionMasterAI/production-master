@@ -38,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Initial repository scaffold: README, documentation tree, contributing guide, and CI.
-- Documented the thin-client-over-hosted-service architecture ([ADR-001](docs/engineering/decisions/ADR-001-initial-architecture.md)).
+- Documented the thin-client-over-hosted-service architecture.
 - Empty npm workspaces layout (`packages/*`) ready to be populated.
 
 [Unreleased]: https://github.com/ProductionMasterAI/production-master/compare/v0.1.0...HEAD

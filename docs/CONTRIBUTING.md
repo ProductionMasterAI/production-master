@@ -1,12 +1,42 @@
 # Contributing
 
-Thanks for your interest in improving **production-master**. This is the thin client for the Production Master hosted service — contributions here touch auth, transport, streaming, and per-IDE rendering, never investigation logic (that lives on the service).
+Thanks for your interest in improving **production-master**. This is the thin client for the Production Master hosted service — contributions here touch auth, transport, streaming, and per-IDE rendering, never investigation logic (that runs in the hosted service).
+
+## Contribution scope
+
+Keep changes on the thin-client side. To keep the repo publish-safe and host-neutral:
+
+- The plugin is a **thin client** — investigation logic runs in the hosted service, not here.
+- PRs adding provider/model SDKs, pipeline or agent logic, or secrets will be declined.
+- The core stays host-neutral — host-specific behavior lives in the per-IDE adapter packages.
+- CI runs on GitHub-hosted runners only.
+- CI's `ip-guard` and secret-scan jobs enforce these and will fail the build on a violation.
 
 ## Ground rules
 
-- **Scope**: keep changes on the thin-client side. No model/provider SDKs, no analysis logic, no service-side behavior — CI's `ip-guard` job enforces this and will fail the build if disallowed content lands.
 - **One concern per PR**: small, reviewable changes merge fastest.
-- **Green CI required**: every check must pass before merge, including lint, typecheck, tests, and `ip-guard`.
+- **Green CI required**: every check must pass before merge, including lint, typecheck, tests, secret-scan, and `ip-guard`.
+
+## Development setup
+
+**Prerequisites:** Node.js 22 (pinned in [`.nvmrc`](../.nvmrc)), npm (ships with Node; the repo uses npm workspaces under `packages/*`), git, and a GitHub account.
+
+```bash
+# clone your fork
+git clone https://github.com/<your-username>/production-master.git
+cd production-master
+
+nvm use          # pin the Node version from .nvmrc (Node 22)
+npm ci           # clean, lockfile-faithful install
+
+npm run build    # build all workspaces
+npm test         # run the test suite
+npm run lint     # lint (CI runs with max-warnings 0)
+```
+
+Run all three checks before opening a PR — CI runs the same set plus `ip-guard`, and fails on any lint warning.
+
+**Versioning:** the project follows SemVer; record every user-facing change in [CHANGELOG.md](../CHANGELOG.md) under `## [Unreleased]` as part of your PR.
 
 ## Workflow
 
@@ -16,7 +46,7 @@ Thanks for your interest in improving **production-master**. This is the thin cl
    - `fix/<short-description>` for bug fixes
    - `docs/<short-description>` for documentation-only changes
    - `chore/<short-description>` for tooling and housekeeping
-3. **Develop** — see [getting started](engineering/guides/getting-started.md) for setup (`nvm use`, `npm ci`, `npm run build`, `npm test`).
+3. **Develop** — see the development setup above.
 4. **Commit** using [Conventional Commits](https://www.conventionalcommits.org/) (see below).
 5. **Open a PR** against `main`, fill in the description, and wait for CI.
 

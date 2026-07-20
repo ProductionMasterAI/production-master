@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Codex adapter now runnable**: `packages/adapter-codex` ships a `dist/cli.js`
+  binary (mirroring `adapter-claude-code`'s CLI) with `bin` wired in `package.json`.
+  It supports direct dispatch (`login`/`investigate`/`connect`/`update`/`logout`)
+  plus a persistent `mcp` subcommand — a newline-delimited JSON-RPC/stdio MCP tool
+  server (`initialize`/`tools/list`/`tools/call`) that forwards every call into the
+  same `runtime.update()` path direct dispatch uses. `.codex/config.toml`'s
+  `[mcp_servers.production-master]` block is uncommented and points at it.
 - **Thin-client runtime** ported into `packages/*` (AD-7 single-path). `plugin-core`
   is the host-neutral core — `createPluginRuntime` composition root, device-code
   (RFC 8628) auth + OS-keychain token store, MCP session/tool surface over the

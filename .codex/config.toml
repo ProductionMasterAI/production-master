@@ -1,18 +1,23 @@
 # Codex platform registration — Production Master thin client.
 #
-# Claude Code is wired end-to-end today (see .claude-plugin/plugin.json + commands/,
-# backed by packages/adapter-claude-code). The Codex host adapter
-# (packages/adapter-codex) currently ships the HostAdapter only; its runnable entry
-# point lands in a follow-up, at which point the registration below is uncommented.
+# packages/adapter-codex ships a runnable dist/cli.js. Codex spawns it once as a
+# persistent process and speaks newline-delimited JSON-RPC 2.0 (MCP: initialize,
+# tools/list, tools/call) over its stdio — not the request/response CLI dispatch
+# Claude Code's slash commands use. The `mcp` argument selects that mode; every
+# tools/call is forwarded into the same runtime.update() the CLI's direct `update`
+# subcommand uses, so mutation gating and session scoping are never duplicated.
+#
+# A user still runs `node packages/adapter-codex/dist/cli.js login` once beforehand
+# — `login`/`investigate`/`connect` stream a run and are not exposed as MCP tools.
 #
 # The thin client authenticates with device-code login and talks to the hosted
 # service over HTTPS + SSE. Configure the service endpoint with PM_SERVICE_URL
 # (default https://api.productionmaster.ai). Secrets are ${ENV} references only —
 # never literals.
-#
-# [mcp_servers.production-master]
-# command = "node"
-# args = ["packages/adapter-codex/dist/cli.js", "mcp"]
-#
-# [mcp_servers.production-master.env]
-# PM_SERVICE_URL = "${PM_SERVICE_URL:-https://api.productionmaster.ai}"
+
+[mcp_servers.production-master]
+command = "node"
+args = ["packages/adapter-codex/dist/cli.js", "mcp"]
+
+[mcp_servers.production-master.env]
+PM_SERVICE_URL = "${PM_SERVICE_URL:-https://api.productionmaster.ai}"

@@ -9,7 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Client packages under `packages/*` (populated via subsequent PRs).
+- **Thin-client runtime** ported into `packages/*` (AD-7 single-path). `plugin-core`
+  is the host-neutral core — `createPluginRuntime` composition root, device-code
+  (RFC 8628) auth + OS-keychain token store, MCP session/tool surface over the
+  service's Streamable-HTTP gateway, SSE event stream, projection fold → `PanelView`
+  rendering, and the `RemoteServiceRunner` streaming engine. Exactly one runtime path
+  (no local/inline mode); imports no LLM/provider SDK.
+- **Per-IDE adapters** as `packages/adapter-{claude-code,cursor,codex,opencode}`, each
+  a thin `HostAdapter` over the core. Claude Code additionally ships a runnable CLI
+  and is wired end-to-end.
+- **Claude Code install layer**: `.claude-plugin/plugin.json` manifest and `commands/`
+  slash commands (`/login`, `/investigate`, `/connect`, `/update`, `/logout`) that exec
+  the built thin-client binary. Cursor/Codex/OpenCode ship config stubs
+  (`.cursor/mcp.json`, `.codex/config.toml`, `opencode.json`) pending their runnable
+  entry points.
+- TypeScript project references so `npm run build` compiles the core before the
+  adapters that depend on it.
 - Gemini PR reviewer (replaces Copilot reviews): a non-gating
   `.github/workflows/gemini-review.yml` + `scripts/gemini-review.mjs` that posts a
   single automated PR review from Vertex AI Gemini 2.5 Pro, authenticated keylessly

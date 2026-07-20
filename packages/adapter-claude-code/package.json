@@ -1,0 +1,28 @@
+{
+  "name": "@production-master/adapter-claude-code",
+  "version": "0.0.0-local",
+  "description": "Claude Code thin host adapter over @production-master/plugin-core — renders the statusline/side-panel projection and gates mutations via a modal. Imports NO LLM/provider SDK.",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "production-master": "./dist/cli.js"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@production-master/plugin-core": "0.0.0-local"
+  },
+  "license": "MIT"
+}

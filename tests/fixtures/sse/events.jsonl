@@ -1,0 +1,11 @@
+{"eventId":"01","investigationId":"inv_1","type":"investigation.created","timestamp":"2026-06-12T10:00:00Z","sequence":1,"schemaVersion":"investigation.events.v1","payload":{"title":"Checkout 500s"}}
+{"eventId":"02","investigationId":"inv_1","type":"investigation.status_changed","timestamp":"2026-06-12T10:00:01Z","sequence":2,"schemaVersion":"investigation.events.v1","payload":{"status":"running"}}
+{"eventId":"03","investigationId":"inv_1","type":"phase.started","timestamp":"2026-06-12T10:00:02Z","sequence":3,"schemaVersion":"investigation.events.v1","payload":{"phaseId":"gather","label":"Gather"}}
+{"eventId":"04","investigationId":"inv_1","type":"agent.invoked","timestamp":"2026-06-12T10:00:03Z","sequence":4,"schemaVersion":"investigation.events.v1","payload":{"agentId":"production-analyzer","invocationId":"a1"}}
+{"eventId":"05","investigationId":"inv_1","type":"agent.tool_call.completed","timestamp":"2026-06-12T10:00:04Z","sequence":5,"schemaVersion":"investigation.events.v1","payload":{"invocationId":"a1"}}
+{"eventId":"06","investigationId":"inv_1","type":"cost.consumed","timestamp":"2026-06-12T10:00:05Z","sequence":6,"schemaVersion":"investigation.events.v1","payload":{"agentId":"production-analyzer","invocationId":"a1","costUsd":0.12}}
+{"eventId":"07","investigationId":"inv_1","type":"agent.completed","timestamp":"2026-06-12T10:00:06Z","sequence":7,"schemaVersion":"investigation.events.v1","payload":{"invocationId":"a1"}}
+{"eventId":"08","investigationId":"inv_1","type":"phase.completed","timestamp":"2026-06-12T10:00:07Z","sequence":8,"schemaVersion":"investigation.events.v1","payload":{"phaseId":"gather"}}
+{"eventId":"09","investigationId":"inv_1","type":"action.proposed","timestamp":"2026-06-12T10:00:08Z","sequence":9,"schemaVersion":"investigation.events.v1","payload":{"actionId":"act1","kind":"post_slack_message","summary":"Notify #incidents"}}
+{"eventId":"10","investigationId":"inv_1","type":"cost.consumed","timestamp":"2026-06-12T10:00:09Z","sequence":10,"schemaVersion":"investigation.events.v1","payload":{"agentId":"documenter","invocationId":"a2","costUsd":0.03}}
+{"eventId":"11","investigationId":"inv_1","type":"investigation.completed","timestamp":"2026-06-12T10:00:10Z","sequence":11,"schemaVersion":"investigation.events.v1","payload":{"reportUri":"https://svc.example/reports/inv_1.md"}}

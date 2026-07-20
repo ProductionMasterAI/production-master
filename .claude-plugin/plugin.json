@@ -1,0 +1,19 @@
+{
+  "name": "production-master",
+  "version": "0.1.0",
+  "description": "Thin client for the Production Master hosted incident-investigation service — device-code login, trigger a run, stream live progress, and approve/reject proposed actions from inside Claude Code. No investigation logic runs locally.",
+  "author": {
+    "name": "ProductionMasterAI",
+    "url": "https://github.com/ProductionMasterAI"
+  },
+  "homepage": "https://github.com/ProductionMasterAI/production-master#readme",
+  "repository": "https://github.com/ProductionMasterAI/production-master",
+  "license": "MIT",
+  "keywords": [
+    "observability",
+    "debugging",
+    "incident-response",
+    "thin-client",
+    "sse"
+  ]
+}

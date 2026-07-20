@@ -1,0 +1,4 @@
+{
+  "$comment": "Cursor registration for the Production Master thin client. Claude Code is wired end-to-end today (see .claude-plugin/plugin.json + commands/, backed by packages/adapter-claude-code). The Cursor host adapter (packages/adapter-cursor) currently ships the HostAdapter only; its runnable entry lands in a follow-up, when the empty mcpServers below is populated. The client uses device-code login and talks to the hosted service over HTTPS + SSE; set PM_SERVICE_URL (default https://api.productionmaster.ai). Secrets are ${ENV} references only, never literals.",
+  "mcpServers": {}
+}

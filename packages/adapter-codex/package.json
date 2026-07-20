@@ -1,0 +1,27 @@
+{
+  "name": "@production-master/adapter-codex",
+  "version": "0.0.0-local",
+  "description": "Codex thin host adapter over @production-master/plugin-core — renders the investigation panel projection and gates mutations. Imports NO LLM/provider SDK.",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@production-master/plugin-core": "0.0.0-local"
+  },
+  "license": "MIT"
+}

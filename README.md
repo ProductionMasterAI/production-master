@@ -38,59 +38,31 @@ The investigation itself runs entirely on the hosted service. This repository is
 
 ## Quick Start
 
-> **Status:** the client packages under [`packages/`](packages/) are being populated via PRs. The install steps below describe the registration pattern each IDE uses; the concrete manifest for your editor lands with those PRs. See [CHANGELOG](CHANGELOG.md).
+Across every editor the flow is the same: **register the client → log in with a device code → start an investigation.** Point the client at your service with `PM_SERVICE_URL` (default `https://api.productionmaster.ai`).
 
-Across every editor the flow is the same: **register the client → log in with a device code → start an investigation.**
+Build the client first (workspaces compile the host-neutral core and each adapter):
+
+```bash
+nvm use && npm ci && npm run build
+```
 
 ### Claude Code
 
-Install as a plugin, then log in:
+Claude Code is wired end-to-end. Install the plugin (`.claude-plugin/plugin.json` + [`commands/`](commands/), backed by [`packages/adapter-claude-code`](packages/adapter-claude-code)), then use the slash commands:
 
 ```
 /plugin install production-master
 /login
+/investigate PROJ-1234
 ```
 
-### Cursor
+`/connect <id>`, `/update <id> <tool> [jsonArgs]`, and `/logout` are also available. Each command execs the built thin-client binary; nothing about the investigation runs locally.
 
-Register the client as an MCP server in `.cursor/mcp.json`:
+### Cursor · Codex · OpenCode
 
-```jsonc
-{
-  "mcpServers": {
-    "production-master": {
-      "command": "npx",
-      "args": ["-y", "@production-master/client"]
-    }
-  }
-}
-```
+> **Status:** these host adapters ([`packages/adapter-cursor`](packages/adapter-cursor), [`packages/adapter-codex`](packages/adapter-codex), [`packages/adapter-opencode`](packages/adapter-opencode)) currently ship the `HostAdapter` layer; their runnable registration entry lands in a follow-up. The config stubs — [`.cursor/mcp.json`](.cursor/mcp.json), [`.codex/config.toml`](.codex/config.toml), [`opencode.json`](opencode.json) — mark each repo as target-aware and document the registration shape. Secrets are `${ENV}` references only, never literals.
 
-### Codex
-
-Register the client in `.codex/config.toml`:
-
-```toml
-[mcp_servers.production-master]
-command = "npx"
-args = ["-y", "@production-master/client"]
-```
-
-### OpenCode
-
-Register the client in `opencode.json`:
-
-```jsonc
-{
-  "mcp": {
-    "production-master": {
-      "command": ["npx", "-y", "@production-master/client"]
-    }
-  }
-}
-```
-
-After registering, run the login command to authenticate against the hosted service, then start your first investigation. Full walkthrough: [docs/user/quick-start.md](docs/user/quick-start.md).
+Full walkthrough: [docs/user/quick-start.md](docs/user/quick-start.md).
 
 ## Architecture
 

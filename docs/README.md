@@ -12,21 +12,13 @@ Start with the [project README](../README.md) for the elevator pitch and install
 | [Usage](user/usage.md) | You know the basics and want the common workflows (start, connect, approve/reject) |
 | [Troubleshooting](user/troubleshooting.md) | Login fails, the service URL is wrong, or the editor doesn't see the client |
 | [Command reference](user/reference/commands.md) | You want the full list of thin-client commands |
-
-## Engineering docs
-
-| Doc | Read it when |
-|-----|--------------|
-| [Architecture overview](engineering/architecture/overview.md) | You want to understand the thin-client components and data flow |
-| [ADR-001 — Thin client over hosted service](engineering/decisions/ADR-001-initial-architecture.md) | You want the rationale behind the client/service split |
-| [Getting started (dev)](engineering/guides/getting-started.md) | You're setting up the repo to contribute |
-| [Build & release](engineering/build-and-release/README.md) | You want the build, test, and release process |
+| [Platform support](user/platform-support.md) | You want to know which editors and versions the client is validated against |
 
 ## Project docs
 
 | Doc | Purpose |
 |-----|---------|
-| [Contributing](CONTRIBUTING.md) | Branching, commits, and PR process |
+| [Contributing](CONTRIBUTING.md) | Development setup, branching, commits, and PR process |
 | [Changelog](../CHANGELOG.md) | Release history |
 
 ## Scope reminder

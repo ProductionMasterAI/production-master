@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help install update uninstall build test lint dev clean agent\:check
+.PHONY: help install update uninstall build test lint dev clean
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_:\\-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -30,6 +30,3 @@ dev: ## Start development mode
 clean: ## Remove build artifacts and caches
 	npm run clean
 	rm -rf node_modules/.cache
-
-agent\:check: ## Verify AI-agent adapters reference AGENTS.md
-	bash scripts/check-agent-drift.sh

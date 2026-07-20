@@ -19,20 +19,15 @@ Never `git push --force` (or `-f`) to `main`. All changes land through a pull re
 Do not modify anything under `.github/workflows/` without an explicit review on the PR.
 Workflow edits are a supply-chain surface and require a second set of eyes.
 
-## 4. PUBLIC-REPO IP BOUNDARY (most important)
+## 4. PUBLIC-REPO SCOPE BOUNDARY (most important)
 
 This repo is **public** and contains **only the thin client** — the code that talks to
-the hosted service over its public HTTP interface. It must **never** contain:
-
-- server-side pipeline / investigation logic,
-- agent prompts or prompt templates,
-- evaluation fixtures, golden datasets, or scoring harnesses,
-- any LLM / model-provider SDK import (no provider client libraries of any kind).
-
-All intelligence lives behind the hosted service's API and stays private. CI runs an
-`ip-guard` check plus a no-LLM-SDK import check; adding any of the above fails the
-build. If a feature seems to need one of these, it belongs in the private service repo,
-not here.
+the hosted service over its public HTTP interface. It must **never** contain pipeline or
+agent logic, or any LLM / model-provider SDK import (no provider client libraries of any
+kind). The client never calls a model directly; it calls the hosted service. CI runs an
+`ip-guard` check plus a no-LLM-SDK import check; adding any of the above fails the build.
+If a feature seems to need one of these, it is on the wrong side of the boundary — it
+belongs in the hosted service, not here.
 
 ## 5. GitHub-hosted runners ONLY
 

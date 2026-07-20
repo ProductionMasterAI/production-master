@@ -80,7 +80,7 @@ flowchart LR
     S -- "live progress + report (SSE)" --> C
 ```
 
-The client owns four concerns: **auth** (device-code login + token storage), **MCP transport** (exposing thin-client commands to the editor), **streaming** (consuming SSE and rendering progress), and **render adapters** (per-IDE presentation). It owns none of the analysis. See [docs/engineering/architecture/overview.md](docs/engineering/architecture/overview.md).
+The client owns four concerns: **auth** (device-code login + token storage), **MCP transport** (exposing thin-client commands to the editor), **streaming** (consuming SSE and rendering progress), and **render adapters** (per-IDE presentation). It owns none of the analysis.
 
 ## Documentation
 
@@ -90,8 +90,7 @@ The client owns four concerns: **auth** (device-code login + token storage), **M
 | [Usage](docs/user/usage.md) | Common workflows — start, connect, approve/reject |
 | [Commands](docs/user/reference/commands.md) | Thin-client command reference |
 | [Troubleshooting](docs/user/troubleshooting.md) | Auth, service URL, and MCP registration issues |
-| [Architecture](docs/engineering/architecture/overview.md) | Thin-client components and data flow |
-| [ADR-001](docs/engineering/decisions/ADR-001-initial-architecture.md) | Thin client over hosted service |
+| [Platform support](docs/user/platform-support.md) | Editors and versions the client is validated against |
 | [Contributing](docs/CONTRIBUTING.md) | How to contribute |
 | [Changelog](CHANGELOG.md) | Release history |
 

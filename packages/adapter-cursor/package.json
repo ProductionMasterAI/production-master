@@ -1,0 +1,27 @@
+{
+  "name": "@production-master/adapter-cursor",
+  "version": "0.0.0-local",
+  "description": "Cursor thin host adapter over @production-master/plugin-core — registers the scoped MCP server, renders the side-panel projection, and gates mutations. Imports NO LLM/provider SDK.",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@production-master/plugin-core": "0.0.0-local"
+  },
+  "license": "MIT"
+}

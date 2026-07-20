@@ -1,0 +1,109 @@
+openapi: 3.1.0
+info:
+  title: Production Master Edge API
+  version: 1.5.0
+  description: |
+    REST surface for investigations (runs). v1.5 adds MCP session minting,
+    modes, fork/branch, comments list, and trigger provenance fields.
+servers:
+  - url: /v1
+paths:
+  /runs:
+    post:
+      summary: Create investigation run
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [source]
+              properties:
+                source:
+                  oneOf:
+                    - type: object
+                      required: [kind, ticket]
+                      properties:
+                        kind: { const: jira }
+                        ticket: { type: string }
+                    - type: object
+                      required: [kind, description]
+                      properties:
+                        kind: { const: free-form }
+                        description: { type: string }
+                mode:
+                  type: string
+                  enum: [deep, triage, fast]
+                  default: deep
+                service: { type: string }
+                pipeline: { type: string }
+                visibility: { type: object }
+      responses:
+        '202':
+          description: Accepted
+    get:
+      summary: List runs
+  /runs/counts:
+    get:
+      summary: Run status counts
+  /runs/{id}:
+    get:
+      summary: Run detail projection
+  /runs/{id}/events:
+    get:
+      summary: Paginated event log
+    post:
+      summary: Append user event (evidence, correction, comment)
+  /runs/{id}/comments:
+    get:
+      summary: Chronological comments (v1.5)
+  /runs/{id}/snapshots:
+    post:
+      summary: Create named snapshot (v1.5)
+    get:
+      summary: List snapshots (v1.5)
+  /runs/{id}/fork:
+    post:
+      summary: Fork daughter investigation from snapshot (v1.5)
+  /runs/{id}/branches:
+    get:
+      summary: List branch lineage (v1.5)
+  /runs/{id}/rerun:
+    post:
+      summary: Rerun investigation
+  /runs/{id}/rerun-from-step:
+    post:
+      summary: Rerun from pipeline step
+  /runs/{id}/stream:
+    get:
+      summary: SSE event stream
+  /mcp/sessions:
+    post:
+      summary: Mint scoped MCP session (v1.5)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [investigationIds]
+              properties:
+                investigationIds:
+                  type: array
+                  items: { type: string }
+                scopes:
+                  type: array
+                  items: { type: string, enum: [read, mutate] }
+                ttlSeconds: { type: integer }
+      responses:
+        '201':
+          description: Session created
+  /me/tokens:
+    get:
+      summary: List API tokens for authenticated user
+    post:
+      summary: Create API token
+  /triggers/pagerduty:
+    post:
+      summary: PagerDuty webhook (edge-triggers)
+  /triggers/oncall:
+    post:
+      summary: Example OnCall webhook (v1.5, edge-triggers)

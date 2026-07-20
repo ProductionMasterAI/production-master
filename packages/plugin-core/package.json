@@ -1,0 +1,28 @@
+{
+  "name": "@production-master/plugin-core",
+  "version": "0.0.0-local",
+  "description": "Host-neutral thin-client core for the Production Master multi-IDE plugin (service client, device-code auth, MCP session scoping, SSE event stream, projection renderers). Imports NO LLM/provider SDK \u2014 enforced by CI.",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/fixtures.d.ts",
+      "import": "./dist/testing/fixtures.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "license": "MIT"
+}

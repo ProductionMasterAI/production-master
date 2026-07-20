@@ -20,6 +20,8 @@
     "clean": "rm -rf coverage dist"
   },
   "devDependencies": {
+    "@types/node": "^22.15.0",
+    "typescript": "^5.9.2",
     "vitest": "^3.2.4"
   }
 }

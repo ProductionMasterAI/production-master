@@ -15,7 +15,7 @@ Keep changes on the thin-client side. To keep the repo publish-safe and host-neu
 ## Ground rules
 
 - **One concern per PR**: small, reviewable changes merge fastest.
-- **Green CI required**: every check must pass before merge, including lint, typecheck, tests, secret-scan, and `ip-guard`.
+- **Green CI required**: every check must pass before merge, including lint, typecheck, tests, the [coverage gate](#test-coverage-gate), secret-scan, and `ip-guard`.
 
 ## Development setup
 
@@ -35,6 +35,22 @@ npm run lint     # lint (CI runs with max-warnings 0)
 ```
 
 Run all three checks before opening a PR — CI runs the same set plus `ip-guard`, and fails on any lint warning.
+
+### Test coverage gate
+
+Tests run under [vitest](https://vitest.dev) v8 coverage, and CI **fails on a coverage regression**:
+
+```bash
+npm run test:coverage   # runs the suite and enforces the thresholds
+```
+
+The policy is a **rise-only ratchet**. Thresholds in [`vitest.config.ts`](../vitest.config.ts) are set a few points below the current measured coverage — high enough to catch regressions and coverage erosion (the thin per-IDE adapters are the main watch area), low enough that no large backfill is needed. Rules:
+
+- **Never lower a threshold** to make a red build pass — add or fix tests instead.
+- **When coverage climbs, raise the floors** so the gate keeps ratcheting upward.
+- The denominator counts all workspace source under `packages/*/src`. Excluded: test files, `__fixtures__/`, package entry barrels (`index.ts`), and type-only modules (`types.ts`, the host-adapter seam) — none carry executable logic to cover.
+
+Coverage reports (text summary in the console; HTML + `lcov` under `coverage/`, which is git-ignored) are produced on every `test:coverage` run.
 
 **Versioning:** the project follows SemVer; record every user-facing change in [CHANGELOG.md](../CHANGELOG.md) under `## [Unreleased]` as part of your PR.
 

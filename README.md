@@ -9,10 +9,10 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Claude%20Code-pending-lightgrey" alt="Claude Code: validation pending" />
-  <img src="https://img.shields.io/badge/Cursor-pending-lightgrey" alt="Cursor: validation pending" />
-  <img src="https://img.shields.io/badge/Codex-pending-lightgrey" alt="Codex: validation pending" />
-  <img src="https://img.shields.io/badge/OpenCode-pending-lightgrey" alt="OpenCode: validation pending" />
+  <img src="https://img.shields.io/badge/Claude%20Code-wired-2ea44f" alt="Claude Code: wired end-to-end" />
+  <img src="https://img.shields.io/badge/Cursor-runnable-1f6feb" alt="Cursor: adapter runnable" />
+  <img src="https://img.shields.io/badge/Codex-runnable-1f6feb" alt="Codex: adapter runnable" />
+  <img src="https://img.shields.io/badge/OpenCode-runnable-1f6feb" alt="OpenCode: adapter runnable" />
 </p>
 
 ---
@@ -32,7 +32,7 @@ The investigation itself runs entirely on the hosted service. This repository is
 
 ## Prerequisites
 
-- **Node.js 22** (see [`.nvmrc`](.nvmrc) once packages land)
+- **Node.js 22** (pinned in [`.nvmrc`](.nvmrc))
 - **An account on the Production Master hosted service** — the client authenticates to it via device-code login.
 - One of the supported editors: Claude Code, Cursor, Codex, or OpenCode.
 

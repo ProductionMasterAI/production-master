@@ -16,6 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   server (`initialize`/`tools/list`/`tools/call`) that forwards every call into the
   same `runtime.update()` path direct dispatch uses. `.codex/config.toml`'s
   `[mcp_servers.production-master]` block is uncommented and points at it.
+- **Cursor and OpenCode adapters now runnable**: `packages/adapter-cursor` and
+  `packages/adapter-opencode` each ship a `dist/cli.js` binary (mirroring the Codex
+  adapter) with `bin` wired in `package.json` — direct dispatch plus the persistent
+  `mcp` JSON-RPC/stdio server. Their registration files are populated to spawn it:
+  `.cursor/mcp.json`'s `mcpServers.production-master` and `opencode.json`'s `mcp`
+  map (a `type: "local"` entry). All four IDE adapters now have a runnable entry point.
 - **Thin-client runtime** ported into `packages/*` (AD-7 single-path). `plugin-core`
   is the host-neutral core — `createPluginRuntime` composition root, device-code
   (RFC 8628) auth + OS-keychain token store, MCP session/tool surface over the
@@ -27,9 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and is wired end-to-end.
 - **Claude Code install layer**: `.claude-plugin/plugin.json` manifest and `commands/`
   slash commands (`/login`, `/investigate`, `/connect`, `/update`, `/logout`) that exec
-  the built thin-client binary. Cursor/Codex/OpenCode ship config stubs
-  (`.cursor/mcp.json`, `.codex/config.toml`, `opencode.json`) pending their runnable
-  entry points.
+  the built thin-client binary. Cursor/Codex/OpenCode register through their own config
+  files (`.cursor/mcp.json`, `.codex/config.toml`, `opencode.json`), which spawn each
+  adapter's `mcp` server.
 - TypeScript project references so `npm run build` compiles the core before the
   adapters that depend on it.
 - Gemini PR reviewer (replaces Copilot reviews): a non-gating

@@ -60,7 +60,15 @@ Claude Code is wired end-to-end. Install the plugin (`.claude-plugin/plugin.json
 
 ### Cursor · Codex · OpenCode
 
-> **Status:** these host adapters ([`packages/adapter-cursor`](packages/adapter-cursor), [`packages/adapter-codex`](packages/adapter-codex), [`packages/adapter-opencode`](packages/adapter-opencode)) currently ship the `HostAdapter` layer; their runnable registration entry lands in a follow-up. The config stubs — [`.cursor/mcp.json`](.cursor/mcp.json), [`.codex/config.toml`](.codex/config.toml), [`opencode.json`](opencode.json) — mark each repo as target-aware and document the registration shape. Secrets are `${ENV}` references only, never literals.
+Each of these editors registers the client as an MCP server that it spawns from the built binary. After `npm run build`, the config file in this repo points the editor at the client's `mcp` entry point:
+
+| Editor | Registration file | Backed by |
+|--------|-------------------|-----------|
+| Cursor | [`.cursor/mcp.json`](.cursor/mcp.json) | [`packages/adapter-cursor`](packages/adapter-cursor) |
+| Codex | [`.codex/config.toml`](.codex/config.toml) | [`packages/adapter-codex`](packages/adapter-codex) |
+| OpenCode | [`opencode.json`](opencode.json) | [`packages/adapter-opencode`](packages/adapter-opencode) |
+
+Log in once with `node packages/adapter-<editor>/dist/cli.js login`, then start investigations from the editor's own agent — it calls the client's investigation tools over MCP. Point the client at your service with `PM_SERVICE_URL` (default `https://api.productionmaster.ai`); secrets are `${ENV}` references only, never literals.
 
 Full walkthrough: [docs/user/quick-start.md](docs/user/quick-start.md).
 

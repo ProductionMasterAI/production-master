@@ -9,12 +9,19 @@ The editor and agent platforms this client is validated against.
 | Codex | pending | pending |
 | OpenCode | pending | pending |
 
-All targets are `pending` while the client packages are still landing. As each host
-adapter ships, its entry is updated with the platform version it was tested against.
+All four adapter packages now ship a runnable `dist/cli.js`, so each client is
+usable today. The `Validated against` / `Latest known` columns stay `pending`
+because they track testing against a specific released editor version — a separate
+axis from the adapter code landing, and still pending after it.
 
-**Codex** — `adapter-codex` now ships a runnable `dist/cli.js`: direct dispatch
-(`login`/`investigate`/`connect`/`update`/`logout`, the same shape Claude Code's CLI
-uses) plus a persistent `mcp` subcommand that `.codex/config.toml`'s
-`[mcp_servers.production-master]` block spawns as a JSON-RPC/stdio MCP tool server.
-The "validated against" column above still tracks real Codex CLI version testing,
-which is separate from — and still pending after — this code landing.
+**Runnable status (all four adapters).** Each adapter ships direct dispatch
+(`login`/`investigate`/`connect`/`update`/`logout`, the same CLI shape across
+adapters) and a persistent `mcp` subcommand — a JSON-RPC/stdio MCP tool server —
+wired into that editor's native registration:
+
+| Adapter | Registration file | `mcp` entry point |
+|---|---|---|
+| `adapter-claude-code` | `.claude-plugin/plugin.json` + `commands/` | wired end-to-end (slash commands) |
+| `adapter-cursor` | `.cursor/mcp.json` → `mcpServers.production-master` | `dist/cli.js mcp` |
+| `adapter-codex` | `.codex/config.toml` → `[mcp_servers.production-master]` | `dist/cli.js mcp` |
+| `adapter-opencode` | `opencode.json` → `mcp.production-master` | `dist/cli.js mcp` |

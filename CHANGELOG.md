@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Docs: adapter status corrected to runnable.** README status badges now read
+  `wired` (Claude Code) and `runnable` (Cursor / Codex / OpenCode) instead of the
+  stale `pending`, and `docs/user/platform-support.md` states that all four adapters
+  ship a runnable `dist/cli.js` today — while keeping the `Validated against`
+  columns `pending`, since editor-version validation is a separate, still-pending
+  axis. Removed the stale "once packages land" note from the README prerequisites.
+
 ### Added
 
 - **Codex adapter now runnable**: `packages/adapter-codex` ships a `dist/cli.js`

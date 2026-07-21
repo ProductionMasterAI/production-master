@@ -18,6 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **CI test-coverage gate.** The suite now runs under vitest v8 coverage
+  (`npm run test:coverage`) and the `CI` job fails on a threshold breach. Initial
+  rise-only floors sit just below the measured baseline — statements/lines 78%,
+  branches 68%, functions 84% — so the gate catches regressions and coverage
+  erosion (notably in the thin per-IDE adapters) without a backfill. Type/index
+  barrels, fixtures, and test files are excluded from the denominator. Policy is
+  documented in [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md).
 - **Codex adapter now runnable**: `packages/adapter-codex` ships a `dist/cli.js`
   binary (mirroring `adapter-claude-code`'s CLI) with `bin` wired in `package.json`.
   It supports direct dispatch (`login`/`investigate`/`connect`/`update`/`logout`)

@@ -1,5 +1,14 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "$comment": "OpenCode registration for the Production Master thin client. Claude Code is wired end-to-end today (see .claude-plugin/plugin.json + commands/, backed by packages/adapter-claude-code). The OpenCode host adapter (packages/adapter-opencode) currently ships the HostAdapter only; its runnable entry lands in a follow-up, when the empty mcp map below is populated. The client uses device-code login and talks to the hosted service over HTTPS + SSE; set PM_SERVICE_URL (default https://api.productionmaster.ai). Secrets are ${ENV} references only, never literals.",
-  "mcp": {}
+  "$comment": "OpenCode registration for the Production Master thin client. packages/adapter-opencode ships a runnable dist/cli.js. OpenCode spawns it once as a persistent local MCP server and speaks newline-delimited JSON-RPC 2.0 (MCP: initialize, tools/list, tools/call) over its stdio — not the request/response CLI dispatch Claude Code's slash commands use. The `mcp` argument selects that mode; every tools/call is forwarded into the same runtime.update() the CLI's direct `update` subcommand uses, so mutation gating and session scoping are never duplicated. A user still runs `node packages/adapter-opencode/dist/cli.js login` once beforehand — login/investigate/connect stream a run and are not exposed as MCP tools. The thin client authenticates with device-code login and talks to the hosted service over HTTPS + SSE; set PM_SERVICE_URL (default https://api.productionmaster.ai). Secrets are ${ENV} references only, never literals.",
+  "mcp": {
+    "production-master": {
+      "type": "local",
+      "command": ["node", "packages/adapter-opencode/dist/cli.js", "mcp"],
+      "enabled": true,
+      "environment": {
+        "PM_SERVICE_URL": "{env:PM_SERVICE_URL}"
+      }
+    }
+  }
 }

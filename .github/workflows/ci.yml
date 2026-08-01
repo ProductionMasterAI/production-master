@@ -54,16 +54,46 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+      # The denylist is an organisation secret, never a literal in this file.
+      # A guard that exists to keep internal identifiers out of a public repo
+      # cannot hold those identifiers in a world-readable workflow: the regex
+      # was self-evading (one-char classes) so the scan would not match itself,
+      # which stops a grep and nothing else — anyone reading the file read the
+      # list. A secret rather than a repository variable, because Actions masks
+      # a secret's value in the run log and a public repo's logs are public.
+      #
+      # Update the list (org-scoped, covers both public repos):
+      #   gh secret set IP_GUARD_DENYLIST --org ProductionMasterAI \
+      #     --visibility selected --repos production-master,production-master-mcp
+      # The value is one POSIX ERE alternation, e.g. 'alpha|beta/gamma|two words'.
       - name: Guard against employer / internal identifiers
+        env:
+          DENYLIST: ${{ secrets.IP_GUARD_DENYLIST }}
+          IS_FORK: ${{ github.event.pull_request.head.repo.fork }}
         run: |
           set -euo pipefail
-          # Forbidden identifiers must never land in this public repo. The regex
-          # fragments are deliberately broken with single-char classes (e.g.
-          # b[o]okings) so this workflow file does not match its own scan.
-          forbidden='b[o]okings|f[a]lcon|P[M]EVAL|ProductionMaster[A]I/dev'
-          forbidden="$forbidden"'|pm[-]server|Design B[o]ok|TamirC[o]hen28|a[c]me'
-          if git grep -nIE "$forbidden" -- ':!CODEOWNERS' ':!LICENSE'; then
-            echo "::error::ip-guard: forbidden identifier found (above)"
+          if [ -z "${DENYLIST}" ]; then
+            if [ "${IS_FORK}" = "true" ]; then
+              # GitHub withholds every secret AND every configuration variable
+              # from a fork's pull request, so no in-repo scheme can supply the
+              # list here without publishing it. The same tree is scanned by the
+              # push-to-main run, and main requires a review before any merge,
+              # so a forbidden identifier still cannot reach main unscanned.
+              echo "::notice::ip-guard: denylist unavailable to a fork pull request; enforced on merge to main"
+              exit 0
+            fi
+            echo "::error::ip-guard: IP_GUARD_DENYLIST is unset — the guard cannot run"
+            exit 1
+          fi
+          # Report file:line only. Quoting the matched line into a public run
+          # log would republish the identifier this job exists to keep unshipped.
+          # Collected rather than piped straight into `if`: git grep exits 1 on
+          # a clean tree, and reading that through a pipe makes the verdict turn
+          # on pipefail rather than on whether anything matched.
+          hits="$(git grep -nIE "${DENYLIST}" -- ':!CODEOWNERS' ':!LICENSE' | cut -d: -f1,2 || true)"
+          if [ -n "$hits" ]; then
+            printf '%s\n' "$hits"
+            echo "::error::ip-guard: forbidden identifier found at the locations above"
             exit 1
           fi
           echo "ip-guard: clean"

@@ -70,6 +70,10 @@ jobs:
         env:
           DENYLIST: ${{ secrets.IP_GUARD_DENYLIST }}
           IS_FORK: ${{ github.event.pull_request.head.repo.fork }}
+          # github.actor, not the pull request author: GitHub gates the separate
+          # Dependabot secret store on the actor, and the actor stays
+          # dependabot[bot] across a re-run (github.triggering_actor does not).
+          ACTOR: ${{ github.actor }}
         run: |
           set -euo pipefail
           if [ -z "${DENYLIST}" ]; then
@@ -80,6 +84,20 @@ jobs:
               # push-to-main run, and main requires a review before any merge,
               # so a forbidden identifier still cannot reach main unscanned.
               echo "::notice::ip-guard: denylist unavailable to a fork pull request; enforced on merge to main"
+              exit 0
+            fi
+            if [ "${ACTOR}" = "dependabot[bot]" ]; then
+              # The same structural situation on a same-repo branch: a Dependabot
+              # run reads a *separate* secret store, so an Actions secret is
+              # withheld from it by GitHub's design and no in-repo scheme can
+              # supply the list here either. Mirroring the denylist into the
+              # Dependabot store would spread the internal identifiers over a
+              # second store for no real gain. The argument above still holds:
+              # the push-to-main run scans the same tree and main requires a
+              # review before any merge, so a forbidden identifier cannot reach
+              # main unscanned — and a Dependabot pull request only ever touches
+              # manifests, lockfiles or action pins.
+              echo "::notice::ip-guard: denylist unavailable to a Dependabot pull request; enforced on merge to main"
               exit 0
             fi
             echo "::error::ip-guard: IP_GUARD_DENYLIST is unset — the guard cannot run"

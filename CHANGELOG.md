@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`.claude-code-version` — tracked Claude Code target release (2.1.220).** New
+  root file recording the latest Claude Code release this repo targets, so
+  version-support updates are diffable and automatable. `docs/user/platform-support.md`
+  now mirrors it in the Claude Code `Latest known` column and links to the file.
+  Reviewed the Claude Code 2.0.0 → 2.1.220 changelog for plugin-facing changes:
+  the plugin manifest (`.claude-plugin/plugin.json`) and command frontmatter
+  (`allowed-tools`, `argument-hint`) remain valid, and the repo relies on no
+  removed or deprecated features. `Validated against` stays `pending` — editor-version
+  validation remains a separate axis.
+
 ### Changed
 
 - **Docs: adapter status corrected to runnable.** README status badges now read

@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Troubleshooting: sandboxed-command network failures (Claude Code 2.1.219).**
+  New "Sandboxed commands" section in `docs/user/troubleshooting.md`: with
+  `sandbox.network.strictAllowlist` enabled, sandboxed Bash commands fail on
+  non-allowlisted hosts *without prompting*, which surfaces as bare connection
+  errors when the thin client calls the hosted service. Documents allowlisting
+  `api.productionmaster.ai` (or the custom `PM_SERVICE_URL` host).
 - **`.claude-code-version` — tracked Claude Code target release (2.1.220).** New
   root file recording the latest Claude Code release this repo targets, so
   version-support updates are diffable and automatable. `docs/user/platform-support.md`

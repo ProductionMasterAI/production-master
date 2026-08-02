@@ -1,6 +1,6 @@
 # Troubleshooting
 
-If something isn't working, find your symptom below. Most issues fall into one of three buckets: **auth**, **service URL**, or **MCP registration**.
+If something isn't working, find your symptom below. Most issues fall into one of four buckets: **auth**, **service URL**, **MCP registration**, or **sandboxed commands**.
 
 ## Auth failures
 
@@ -43,6 +43,23 @@ Common mistakes:
 - Trailing slash or a path segment on the URL — use the bare origin (`https://host`), no trailing `/`.
 - `http://` instead of `https://` — the service requires TLS.
 - Logging in *before* setting the URL — the token is bound to the service you authenticated against; set the URL first.
+
+## Sandboxed commands (Claude Code)
+
+### Investigations fail with connection errors only inside Claude Code
+
+The slash commands run the thin client through the Bash tool, so they are subject
+to Claude Code's command sandbox and its network egress rules. Since Claude Code
+2.1.219, the `sandbox.network.strictAllowlist` setting makes sandboxed commands
+**fail on non-allowlisted hosts without ever prompting** — so under a strict
+allowlist the client can't reach the service and you see plain connection
+errors/timeouts with no permission dialog.
+
+Fix: add the service host to your sandbox network allowlist in Claude Code
+settings — `api.productionmaster.ai` by default, or the host from your custom
+`PM_SERVICE_URL` if your organization runs the service elsewhere. The device-code
+login flow opens a browser out-of-band and is not affected; only the CLI's HTTPS
+calls (trigger, stream, approve/reject) need the allowlist entry.
 
 ## MCP registration issues
 

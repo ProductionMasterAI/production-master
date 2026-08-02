@@ -4,15 +4,17 @@ The editor and agent platforms this client is validated against.
 
 | Platform | Validated against | Latest known |
 |---|---|---|
-| Claude Code | pending | pending |
+| Claude Code | pending | 2.1.220 |
 | Cursor | pending | pending |
 | Codex | pending | pending |
 | OpenCode | pending | pending |
 
 All four adapter packages now ship a runnable `dist/cli.js`, so each client is
-usable today. The `Validated against` / `Latest known` columns stay `pending`
-because they track testing against a specific released editor version — a separate
-axis from the adapter code landing, and still pending after it.
+usable today. The `Validated against` columns stay `pending` because they track
+testing against a specific released editor version — a separate axis from the
+adapter code landing, and still pending after it. The Claude Code release this
+repo currently targets is tracked in [`.claude-code-version`](../../.claude-code-version)
+at the repo root and mirrored in the `Latest known` column above.
 
 **Runnable status (all four adapters).** Each adapter ships direct dispatch
 (`login`/`investigate`/`connect`/`update`/`logout`, the same CLI shape across

@@ -61,6 +61,21 @@ settings — `api.productionmaster.ai` by default, or the host from your custom
 login flow opens a browser out-of-band and is not affected; only the CLI's HTTPS
 calls (trigger, stream, approve/reject) need the allowlist entry.
 
+Two related notes for Claude Code 2.1.221+:
+
+- **TLS errors on large sandboxed uploads are fixed in 2.1.221.** If attaching a
+  large context bundle to a run failed with TLS errors through the sandbox proxy
+  (rather than the connection errors above), update Claude Code before changing
+  any allowlist settings — that failure mode was a sandbox-proxy bug, not a
+  configuration problem.
+- **Headless/CI token files can be masked instead of denied.** The client's
+  interactive login stores tokens in the OS keychain, but headless setups that
+  seed `PM_ACCESS_TOKEN` from a credentials file can use 2.1.221's
+  `mode: "mask"` for sandbox credential files (Linux/WSL): sandboxed commands
+  read a sentinel copy while the sandbox proxy substitutes the real value on
+  egress, so the token never appears in command output or the transcript. On
+  macOS, file masking falls back to `deny`.
+
 ## MCP registration issues
 
 ### The editor doesn't show the client's commands
@@ -69,7 +84,7 @@ The client didn't register. Check, in order:
 
 1. **Config file location** — the manifest must be where the editor looks: `.cursor/mcp.json` (Cursor), `.codex/config.toml` (Codex), `opencode.json` (OpenCode). Claude Code registers via `/plugin install`, not a file.
 2. **Valid syntax** — a JSON/TOML syntax error silently drops the entry. Validate the file.
-3. **Reload** — most editors read MCP config at startup; fully reload or restart after editing.
+3. **Reload** — most editors read MCP config at startup; fully reload or restart after editing. (Claude Code 2.1.221+ activates plugins installed with `/plugin install` immediately when safe — no reload step.)
 4. **`npx` reachable** — the client launches via `npx`; make sure Node.js 22 is installed and `npx` is on `PATH`.
 
 ### The client registers but fails to start

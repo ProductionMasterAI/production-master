@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`CONTRIBUTING.md`.** Contributor guide covering scope (what belongs in
+  this repository and what belongs upstream on the hosted service), local
+  setup, the pre-push gates, the three required CI jobs, and PR/licensing
+  expectations. Completes the standard open-source file set alongside
+  `README`, `LICENSE`, `SECURITY`, `CODE_OF_CONDUCT`, and `CHANGELOG`.
 - **Troubleshooting: sandboxed-command network failures (Claude Code 2.1.219).**
   New "Sandboxed commands" section in `docs/user/troubleshooting.md`: with
   `sandbox.network.strictAllowlist` enabled, sandboxed Bash commands fail on

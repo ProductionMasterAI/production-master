@@ -9,13 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Claude Code target bumped to 2.1.221** (from 2.1.220) in `.claude-code-version`
+- **Claude Code target bumped to 2.1.222** (from 2.1.220) in `.claude-code-version`
   and `docs/user/platform-support.md`. Docs updated for the 2.1.221 delta:
   troubleshooting notes that TLS errors on large sandboxed uploads through the
   sandbox proxy are fixed (update, don't re-configure), documents `mode: "mask"`
   credential-file masking for headless setups that seed `PM_ACCESS_TOKEN` from a
   file (Linux/WSL), and the quick-start/MCP-registration reload guidance reflects
   that `/plugin install` activates plugins immediately when safe on 2.1.221+.
+  The 2.1.222 delta was reviewed and is fix-only from this plugin's perspective
+  (worktree/hook/permission hardening, `/usage` MCP attribution); the plugin
+  manifest, command frontmatter, and documented flows need no changes, and the
+  repo references no removed features (`ultraplan` removal does not affect it).
 
 ### Added
 

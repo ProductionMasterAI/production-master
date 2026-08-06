@@ -61,7 +61,7 @@ settings — `api.productionmaster.ai` by default, or the host from your custom
 login flow opens a browser out-of-band and is not affected; only the CLI's HTTPS
 calls (trigger, stream, approve/reject) need the allowlist entry.
 
-Two related notes for Claude Code 2.1.221+:
+Three related notes for recent Claude Code versions:
 
 - **TLS errors on large sandboxed uploads are fixed in 2.1.221.** If attaching a
   large context bundle to a run failed with TLS errors through the sandbox proxy
@@ -75,6 +75,11 @@ Two related notes for Claude Code 2.1.221+:
   read a sentinel copy while the sandbox proxy substitutes the real value on
   egress, so the token never appears in command output or the transcript. On
   macOS, file masking falls back to `deny`.
+- **Sandboxed commands failing to start at all on Linux are fixed in 2.1.223.**
+  If every sandboxed command errored immediately (never reaching the network)
+  and your sandbox settings have `sandbox.filesystem.denyWrite` covering the
+  working directory, that was a Claude Code bug fixed in 2.1.223 — update
+  rather than loosening the deny rule.
 
 ## MCP registration issues
 

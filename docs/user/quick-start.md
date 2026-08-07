@@ -55,7 +55,8 @@ Add to `opencode.json`:
 }
 ```
 
-Reload your editor so it picks up the new client.
+Reload your editor so it picks up the new client. (On Claude Code 2.1.221+,
+`/plugin install` activates the plugin immediately when safe — no reload needed.)
 
 ## 2. Log in
 

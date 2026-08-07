@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Claude Code target bumped to 2.1.223** (from 2.1.222) in `.claude-code-version`
+  and `docs/user/platform-support.md`. The 2.1.223 delta is fix-only from this
+  plugin's perspective — its permission-hardening (Bash permission bypass,
+  invisible-Unicode prompt spoofing) and workflow-sandbox fixes land host-side
+  and need no client change; the `/review` → `/code-review` consolidation is
+  unreferenced here. One user-facing note added: troubleshooting's sandbox
+  section now records that sandboxed commands failing to start on Linux when
+  `sandbox.filesystem.denyWrite` covers the working directory is a bug fixed in
+  2.1.223 (update, don't loosen the deny rule) — the third failure mode in that
+  section with a version answer rather than a configuration answer.
+
+- **Claude Code target bumped to 2.1.222** (from 2.1.220) in `.claude-code-version`
+  and `docs/user/platform-support.md`. Docs updated for the 2.1.221 delta:
+  troubleshooting notes that TLS errors on large sandboxed uploads through the
+  sandbox proxy are fixed (update, don't re-configure), documents `mode: "mask"`
+  credential-file masking for headless setups that seed `PM_ACCESS_TOKEN` from a
+  file (Linux/WSL), and the quick-start/MCP-registration reload guidance reflects
+  that `/plugin install` activates plugins immediately when safe on 2.1.221+.
+  The 2.1.222 delta was reviewed and is fix-only from this plugin's perspective
+  (worktree/hook/permission hardening, `/usage` MCP attribution); the plugin
+  manifest, command frontmatter, and documented flows need no changes, and the
+  repo references no removed features (`ultraplan` removal does not affect it).
+
 ### Added
 
 - **Troubleshooting: sandboxed-command network failures (Claude Code 2.1.219).**

@@ -9,6 +9,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Claude Code target bumped to 2.1.224** (from 2.1.223) in `.claude-code-version`
+  and `docs/user/platform-support.md`. Doc updates for the 2.1.224 delta, all in
+  existing sections: troubleshooting's strict-allowlist note records that from
+  2.1.224 sandbox violation details appear in Bash tool results (the denied host
+  or file is named instead of a bare connection error); the credential-file
+  masking bullet notes 2.1.224's structured masking options
+  (`extract`/`onExtractNoMatch`, and `decode: "jwt"` with `maskClaims` for JWT
+  credentials), which require `network.tlsTerminate` and are honored only from
+  user, managed, or `--settings` settings; a new sandbox note records that
+  filesystem deny entries written with a trailing slash (e.g. `denyRead:
+  "~/.pm-credentials/"`) were silently bypassable on Linux/macOS before 2.1.224 (update,
+  then keep the entries as written); MCP-registration troubleshooting notes
+  2.1.224's fix for plugin install records silently corrupting when the same
+  plugin is installed in multiple projects, and its fix for MCP tools that
+  connect mid-turn being deferred for tool search without their names announced;
+  and the quick-start Claude Code section and README mention the new `archive`
+  plugin source (zip over HTTPS, optional SHA-256 pinning) as an install channel
+  for environments without git or npm. The rest of the delta (self-hosted
+  runners, cross-session `SendMessage`/`ListAgents`,
+  `crossSessionInbound`/`dialogExpiry`, the removed 200-subagent-per-session
+  cap, Remote Control, Bedrock, and paste/UI changes) is host-side, unreferenced
+  in this repo, and needs no client change; this repo's `.claude/settings.json`
+  carries no sandbox filesystem deny entries, so the trailing-slash fix requires
+  no config change here.
+
 - **Claude Code target bumped to 2.1.223** (from 2.1.222) in `.claude-code-version`
   and `docs/user/platform-support.md`. The 2.1.223 delta is fix-only from this
   plugin's perspective — its permission-hardening (Bash permission bypass,

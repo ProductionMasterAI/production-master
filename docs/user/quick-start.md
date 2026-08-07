@@ -16,6 +16,15 @@ Pick your editor. Each registers the same thin client through its native mechani
 /plugin install production-master
 ```
 
+> **No git or npm on the machine?** Claude Code 2.1.224+ also supports an
+> `archive` plugin source: the plugin is installed from a zip fetched over
+> HTTPS, with optional SHA-256 pinning of the archive — no git clone and no
+> npm involved in the install itself. If you install this client that way,
+> point the archive source at a zip that already contains the built `dist/`
+> output (a release archive built with `npm run build`): the slash commands
+> exec the built thin-client binary, and an archive install performs no build
+> step. Node.js 22 is still required at runtime.
+
 ### Cursor
 
 Add to `.cursor/mcp.json` in your project (or your global Cursor config):

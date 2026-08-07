@@ -58,6 +58,8 @@ Claude Code is wired end-to-end. Install the plugin (`.claude-plugin/plugin.json
 
 `/connect <id>`, `/update <id> <tool> [jsonArgs]`, and `/logout` are also available. Each command execs the built thin-client binary; nothing about the investigation runs locally.
 
+On Claude Code 2.1.224+, the plugin can also be installed from an `archive` source — a zip fetched over HTTPS, with optional SHA-256 pinning — for machines without git or npm; see the note in the [quick start](docs/user/quick-start.md#claude-code).
+
 ### Cursor · Codex · OpenCode
 
 Each of these editors registers the client as an MCP server that it spawns from the built binary. After `npm run build`, the config file in this repo points the editor at the client's `mcp` entry point:

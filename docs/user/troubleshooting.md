@@ -53,7 +53,10 @@ to Claude Code's command sandbox and its network egress rules. Since Claude Code
 2.1.219, the `sandbox.network.strictAllowlist` setting makes sandboxed commands
 **fail on non-allowlisted hosts without ever prompting** — so under a strict
 allowlist the client can't reach the service and you see plain connection
-errors/timeouts with no permission dialog.
+errors/timeouts with no permission dialog. On Claude Code 2.1.224+ this is
+easier to diagnose: sandbox violation details now appear in the Bash tool
+result, so the denied host is named instead of surfacing as a bare connection
+error — older versions show only the bare error.
 
 Fix: add the service host to your sandbox network allowlist in Claude Code
 settings — `api.productionmaster.ai` by default, or the host from your custom
@@ -61,7 +64,7 @@ settings — `api.productionmaster.ai` by default, or the host from your custom
 login flow opens a browser out-of-band and is not affected; only the CLI's HTTPS
 calls (trigger, stream, approve/reject) need the allowlist entry.
 
-Three related notes for recent Claude Code versions:
+Related notes for recent Claude Code versions:
 
 - **TLS errors on large sandboxed uploads are fixed in 2.1.221.** If attaching a
   large context bundle to a run failed with TLS errors through the sandbox proxy
@@ -74,7 +77,19 @@ Three related notes for recent Claude Code versions:
   `mode: "mask"` for sandbox credential files (Linux/WSL): sandboxed commands
   read a sentinel copy while the sandbox proxy substitutes the real value on
   egress, so the token never appears in command output or the transcript. On
-  macOS, file masking falls back to `deny`.
+  macOS, file masking falls back to `deny`. Claude Code 2.1.224 extends
+  masking with options for structured values — `extract` (with
+  `onExtractNoMatch`) for structured env values, and `decode: "jwt"` with
+  `maskClaims` for JWT-aware masking, useful when the seeded credential is a
+  JWT rather than an opaque token. These options need `network.tlsTerminate`
+  and are honored only from user, managed, or `--settings` settings — not
+  from a project's checked-in settings.
+- **Trailing-slash sandbox deny entries were bypassable before 2.1.224.** If
+  you protect the credentials file that seeds `PM_ACCESS_TOKEN` (or any other
+  secret) with a sandbox filesystem deny entry written with a trailing slash
+  (e.g. `denyRead: "~/.pm-credentials/"`), that entry was silently bypassable
+  on Linux and macOS before 2.1.224. Update Claude Code and keep the deny
+  entries as written — no rewrite of the entries is required.
 - **Sandboxed commands failing to start at all on Linux are fixed in 2.1.223.**
   If every sandboxed command errored immediately (never reaching the network)
   and your sandbox settings have `sandbox.filesystem.denyWrite` covering the
@@ -91,6 +106,20 @@ The client didn't register. Check, in order:
 2. **Valid syntax** — a JSON/TOML syntax error silently drops the entry. Validate the file.
 3. **Reload** — most editors read MCP config at startup; fully reload or restart after editing. (Claude Code 2.1.221+ activates plugins installed with `/plugin install` immediately when safe — no reload step.)
 4. **`npx` reachable** — the client launches via `npx`; make sure Node.js 22 is installed and `npx` is on `PATH`.
+
+Two related Claude Code notes:
+
+- **Plugin installed in more than one project?** Before 2.1.224, installing the
+  same plugin in multiple projects could silently corrupt its install records.
+  If this client's slash commands disappeared after you installed the plugin in
+  a second project, update to Claude Code 2.1.224+ and reinstall once — the fix
+  stops the corruption at the source.
+- **MCP tools connecting mid-turn.** If you register the client as an MCP
+  server in Claude Code (rather than via `/plugin install`) and it connects
+  mid-conversation, versions before 2.1.224 could defer its tools for tool
+  search without announcing their names — the agent wouldn't see or use the
+  tools for the rest of that turn. Fixed in 2.1.224; on older versions, sending
+  the next message makes the tools visible.
 
 ### The client registers but fails to start
 

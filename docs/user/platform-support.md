@@ -27,6 +27,13 @@ install the same server without hand-editing JSON. Optional Google Workspace
 marketplace plugins (2026-08-03) are unrelated to this thin client and are not
 required for investigations.
 
+**Cursor working tips.** Use a **side chat** (`/side`, `/btw`, 3.11) to debug MCP
+registration or compare adapter shapes without interrupting an in-flight
+investigation. **Cursor Automations** (3.8, `/automate`) can watch **Workflow run
+completed** on this repo's CI and open a fix PR; enable computer use when you want
+a demo artifact attached. Prefer **Balance** Auto / Cursor Router mode for routine
+adapter work.
+
 **Runnable status (all four adapters).** Each adapter ships direct dispatch
 (`login`/`investigate`/`connect`/`update`/`logout`, the same CLI shape across
 adapters) and a persistent `mcp` subcommand — a JSON-RPC/stdio MCP tool server —

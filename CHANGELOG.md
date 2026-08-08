@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Team MCP marketplace distribution (3.10+), and that Google Workspace plugins
   (2026-08-03) are optional and unrelated to this thin client. Quick Start's Cursor
   section points at Customize + the Team MCP path.
+- **Cursor working tips** — side chats (3.11) for MCP debugging without interrupting
+  an investigation; Cursor Automations (3.8, `/automate`) for **Workflow run
+  completed** CI triage; Balance Auto / Cursor Router for routine adapter work.
 - **Claude Code target bumped to 2.1.224** (from 2.1.223) in `.claude-code-version`
   and `docs/user/platform-support.md`. Doc updates for the 2.1.224 delta, all in
   existing sections: troubleshooting's strict-allowlist note records that from

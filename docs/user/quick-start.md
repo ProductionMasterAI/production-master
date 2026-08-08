@@ -45,6 +45,10 @@ the same entry from Cursor's **Customize** page (plugins / skills / MCPs, 3.9+):
 > under Dashboard → Integrations & MCP and distribute it through a team marketplace,
 > so members install Production Master without hand-editing `mcp.json`. See
 > [Platform support](platform-support.md).
+>
+> **Debugging tip (3.11):** open a side chat (`/side` / `/btw`) to inspect MCP
+> connectivity while the main agent keeps investigating. For always-on CI triage,
+> create a Cursor Automation (`/automate`, 3.8) on **Workflow run completed**.
 
 ### Codex
 

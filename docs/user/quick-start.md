@@ -27,7 +27,8 @@ Pick your editor. Each registers the same thin client through its native mechani
 
 ### Cursor
 
-Add to `.cursor/mcp.json` in your project (or your global Cursor config):
+Add to `.cursor/mcp.json` in your project (or your global Cursor config), or manage
+the same entry from Cursor's **Customize** page (plugins / skills / MCPs, 3.9+):
 
 ```jsonc
 {
@@ -39,6 +40,11 @@ Add to `.cursor/mcp.json` in your project (or your global Cursor config):
   }
 }
 ```
+
+> **Teams / Enterprise (Cursor 3.10+):** admins can publish an approved Team MCP once
+> under Dashboard → Integrations & MCP and distribute it through a team marketplace,
+> so members install Production Master without hand-editing `mcp.json`. See
+> [Platform support](platform-support.md).
 
 ### Codex
 

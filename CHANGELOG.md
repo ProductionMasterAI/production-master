@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Cursor target pinned to 3.11** (changelog covered through **2026-08-03**) via
+  new root [`.cursor-version`](.cursor-version). `docs/user/platform-support.md`
+  moves Cursor out of `pending` and documents Customize-page MCP management (3.9+),
+  Team MCP marketplace distribution (3.10+), and that Google Workspace plugins
+  (2026-08-03) are optional and unrelated to this thin client. Quick Start's Cursor
+  section points at Customize + the Team MCP path.
 - **Claude Code target bumped to 2.1.224** (from 2.1.223) in `.claude-code-version`
   and `docs/user/platform-support.md`. Doc updates for the 2.1.224 delta, all in
   existing sections: troubleshooting's strict-allowlist note records that from

@@ -6,14 +6,16 @@ The editor and agent platforms this client is validated against.
 |---|---|---|
 | Claude Code | pending | 2.1.224 |
 | Cursor | pending | pending |
-| Codex | 0.147.0 | 0.147.0 |
+| Codex | pending | 0.147.0 |
 | OpenCode | pending | pending |
 
 All four adapter packages now ship a runnable `dist/cli.js`, so each client is
-usable today. Codex is validated against **0.147.0** by reviewing that release's
-compatibility delta against the existing adapter, `.codex/config.toml`, and MCP
-registration. The other `Validated against` entries remain `pending` because
-those targets are maintained independently. The Claude Code release this repo
+usable today. The Codex release this repo targets is **0.147.0**: its compatibility
+delta was reviewed against the existing adapter, `.codex/config.toml`, and MCP
+registration, and nothing in it requires a client change. That is a documentation
+review, not a host test — `Validated against` stays `pending` for Codex, as it does
+for every platform, because running the adapter end-to-end against a released host
+is a separate axis that no target has cleared yet. The Claude Code release this repo
 currently targets is tracked in [`.claude-code-version`](../../.claude-code-version);
 Codex is tracked in [`.codex-version`](../../.codex-version).
 

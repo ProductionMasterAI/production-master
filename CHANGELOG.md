@@ -23,6 +23,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Claude Code target bumped to 2.1.226** (from 2.1.224) in `.claude-code-version`
+  and `docs/user/platform-support.md`. The 2.1.225 + 2.1.226 delta is fix-only from
+  this plugin's perspective: 2.1.226 ships only "bug fixes and reliability
+  improvements", and 2.1.225's one client-relevant fix — a transient 401 replacing a
+  long-lived `CLAUDE_CODE_OAUTH_TOKEN` with a short-lived stored-login token,
+  breaking headless sessions until restart — is now covered in troubleshooting's
+  headless notes, since in a CI job that triggers investigations it presented as the
+  run's auth "going bad" mid-flight and read like a `PM_ACCESS_TOKEN` problem. The
+  rest of the 2.1.225 delta (gateway spend-limit warnings, a `claude agents`
+  workspace-trust prompt, macOS MCP-OAuth keychain 401 bursts, Remote Control and
+  cross-session messaging fixes) is host-side, touches no flow this client
+  documents, and needs no client change; the sandbox guidance and adapter
+  registration files are unaffected.
+
 - **Claude Code target bumped to 2.1.224** (from 2.1.223) in `.claude-code-version`
   and `docs/user/platform-support.md`. Doc updates for the 2.1.224 delta, all in
   existing sections: troubleshooting's strict-allowlist note records that from

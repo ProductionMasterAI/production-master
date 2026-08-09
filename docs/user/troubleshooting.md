@@ -84,6 +84,19 @@ Related notes for recent Claude Code versions:
   JWT rather than an opaque token. These options need `network.tlsTerminate`
   and are honored only from user, managed, or `--settings` settings — not
   from a project's checked-in settings.
+- **Headless sessions no longer lose their long-lived login to a transient 401
+  (fixed in 2.1.225).** Before 2.1.225, a transient 401 during a headless run
+  could replace a long-lived `CLAUDE_CODE_OAUTH_TOKEN` with a stored login's
+  short-lived token, after which every request failed until the session was
+  restarted. In a CI job that triggers investigations, this looked like the
+  whole run's auth "going bad" mid-flight. Updating Claude Code rules this bug
+  out, but **it does not rule out the Production Master credential**, which
+  produces the same shape: a token supplied via `--token` / `PM_ACCESS_TOKEN` is
+  seeded with no refresh token and a far-future local expiry, so the client never
+  refreshes it and a genuinely expired or revoked token first surfaces as a
+  service-side 401 part-way through the run. Distinguish by what fails: if
+  non-Production-Master requests are also 401ing, it is the host bug (update); if
+  only calls to the service fail, re-issue the token and re-seed it.
 - **Trailing-slash sandbox deny entries were bypassable before 2.1.224.** If
   you protect the credentials file that seeds `PM_ACCESS_TOKEN` (or any other
   secret) with a sandbox filesystem deny entry written with a trailing slash

@@ -89,8 +89,14 @@ Related notes for recent Claude Code versions:
   could replace a long-lived `CLAUDE_CODE_OAUTH_TOKEN` with a stored login's
   short-lived token, after which every request failed until the session was
   restarted. In a CI job that triggers investigations, this looked like the
-  whole run's auth "going bad" mid-flight — if you see that pattern on an older
-  version, update Claude Code; it was never a `PM_ACCESS_TOKEN` problem.
+  whole run's auth "going bad" mid-flight. Updating Claude Code rules this bug
+  out, but **it does not rule out the Production Master credential**, which
+  produces the same shape: a token supplied via `--token` / `PM_ACCESS_TOKEN` is
+  seeded with no refresh token and a far-future local expiry, so the client never
+  refreshes it and a genuinely expired or revoked token first surfaces as a
+  service-side 401 part-way through the run. Distinguish by what fails: if
+  non-Production-Master requests are also 401ing, it is the host bug (update); if
+  only calls to the service fail, re-issue the token and re-seed it.
 - **Trailing-slash sandbox deny entries were bypassable before 2.1.224.** If
   you protect the credentials file that seeds `PM_ACCESS_TOKEN` (or any other
   secret) with a sandbox filesystem deny entry written with a trailing slash

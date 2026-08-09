@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Python SDK (`sdk/python`) — a pure-stdlib thin client for scripting and CI.**
+  `Client.start_investigation` → `stream_events` (SSE with `Last-Event-ID` resume)
+  → `get_report`, plus the same RFC 8628 device-code login the editors use.
+  Zero runtime dependencies, so `pip install` pulls nothing third-party. It is a
+  thin client like every other surface: it marshals requests, attaches a stable
+  `Idempotency-Key` on mutations, and maps errors — no analysis logic, no LLM SDK.
+  The projection reducer is pinned against the TypeScript one by
+  `tests/fixtures/sse/expected-projection.json`, asserted from both languages, so
+  the two cannot silently diverge. CI gains a `python-sdk` job (3.9 and 3.13) and
+  the `no-llm-sdk` guard — previously scanning only JS/TS file types — now covers
+  Python source and Python manifests. Publishing is wired but dormant:
+  `.github/workflows/publish-python.yml` fires on a `python-v*` tag and uses PyPI
+  Trusted Publishing (OIDC), so no long-lived `PYPI_API_TOKEN` is stored here.
+- **`PM_SERVICE_URL` is honoured by the Python SDK**, matching every editor
+  registration in this repo: explicit `service_url=` beats the variable, which
+  beats the built-in default.
+
 - **`.codex-version` — tracked Codex target release (0.147.0).** New root file
   recording the latest Codex release this repo targets, mirroring
   `.claude-code-version`, so version-support updates are diffable and automatable.

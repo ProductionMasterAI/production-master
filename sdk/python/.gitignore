@@ -1,0 +1,10 @@
+# Python SDK build artifacts
+dist/
+build/
+*.egg-info/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+.coverage
+.coverage.*

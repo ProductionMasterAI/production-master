@@ -126,4 +126,48 @@ jobs:
             echo "::error::no-llm-sdk: direct LLM SDK reference found (above)"
             exit 1
           fi
+          # The pattern above is written for JS/TS syntax and its pathspec lists
+          # only JS/TS file types, so it goes blind the moment a second language
+          # lands in the repo. Python source and its manifests get their own
+          # pass: an import-anchored form for source, and a dependency-string
+          # form for pyproject/requirements, where a provider is named but never
+          # imported in the tree.
+          pysrc='^[[:space:]]*(import|from)[[:space:]]+'
+          pysrc="$pysrc"'(anthropic|openai|litellm|langchain[._a-z]*|cohere|mistralai|google\.generativeai|vertexai)([[:space:].]|$)'
+          pysrc="$pysrc"'|bedrock-runtime|bedrock_runtime'
+          if git grep -nIE "$pysrc" -- '*.py'; then
+            echo "::error::no-llm-sdk: direct LLM SDK reference in Python source (above)"
+            exit 1
+          fi
+          pydep='["'\''](anthropic|openai|litellm|langchain[a-z-]*|cohere|mistralai|google-generativeai)([[:space:]]*[><=~!].*)?["'\'']'
+          if git grep -nIE "$pydep" -- '*pyproject.toml' '*requirements*.txt' '*setup.cfg'; then
+            echo "::error::no-llm-sdk: LLM SDK named as a Python dependency (above)"
+            exit 1
+          fi
           echo "no-llm-sdk: clean"
+
+  python-sdk:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The floor declared in sdk/python/pyproject.toml, and a current
+        # release. The SDK is pure-stdlib at runtime, so these two bracket
+        # every version it claims to support.
+        python-version: ['3.9', '3.13']
+    defaults:
+      run:
+        working-directory: sdk/python
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install --upgrade pip
+      # Test-only dependencies. The package itself declares no runtime deps and
+      # is deliberately installed from the working tree, not from an index.
+      - run: pip install pytest pytest-cov
+      - run: pip install -e .
+      # addopts in pyproject.toml carries --cov-fail-under=80, so a coverage
+      # regression fails this job without a separate threshold step here.
+      - run: python -m pytest

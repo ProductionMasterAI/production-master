@@ -23,6 +23,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Cursor target pinned to 3.11** (changelog covered through **2026-08-03**) via
+  new root [`.cursor-version`](.cursor-version). The 3.11 delta was reviewed against
+  the existing adapter and the `.cursor/mcp.json` registration shape and needs no
+  client change, so `docs/user/platform-support.md` records 3.11 under
+  `Latest known` while Cursor's `Validated against` stays `pending` — that column
+  tracks an end-to-end test against a released host, which no platform has cleared.
+  The same doc now covers Customize-page MCP management (3.9+), Team MCP
+  marketplace distribution (3.10+), and that Google Workspace plugins (2026-08-03)
+  are optional and unrelated to this thin client. Quick Start's Cursor section
+  points at Customize + the Team MCP path.
+- **Cursor working tips** — side chats (3.11) for MCP debugging without interrupting
+  an investigation; Cursor Automations (3.8, `/automate`) for **Workflow run
+  completed** CI triage; Balance Auto / Cursor Router for routine adapter work.
 - **Claude Code target bumped to 2.1.226** (from 2.1.224) in `.claude-code-version`
   and `docs/user/platform-support.md`. The 2.1.225 + 2.1.226 delta is fix-only from
   this plugin's perspective: 2.1.226 ships only "bug fixes and reliability

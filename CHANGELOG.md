@@ -7,17 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`.codex-version` — tracked Codex target release (0.147.0).** New root file
+  recording the latest Codex release this repo targets, mirroring
+  `.claude-code-version`, so version-support updates are diffable and automatable.
+  `docs/user/platform-support.md` mirrors it in the Codex `Latest known` column and
+  links to the file. Reviewed the 0.147.0 compatibility delta against the existing
+  adapter, `.codex/config.toml`, and MCP registration: no client change is required.
+  Codex 0.147.0 adds an opt-in MCP 2026-07-28 protocol, which the stdio server
+  intentionally does not adopt yet — advertising the newer protocol string alone
+  would be unsafe without paginated discovery, multi-round requests, and
+  non-blocking startup. `Validated against` stays `pending`: a compatibility review
+  is not an end-to-end host test, and host-version validation remains a separate axis.
+
 ### Changed
 
 - **Cursor target pinned to 3.11** (changelog covered through **2026-08-03**) via
-  new root [`.cursor-version`](.cursor-version). `docs/user/platform-support.md`
-  moves Cursor out of `pending` and documents Customize-page MCP management (3.9+),
-  Team MCP marketplace distribution (3.10+), and that Google Workspace plugins
-  (2026-08-03) are optional and unrelated to this thin client. Quick Start's Cursor
-  section points at Customize + the Team MCP path.
+  new root [`.cursor-version`](.cursor-version). The 3.11 delta was reviewed against
+  the existing adapter and the `.cursor/mcp.json` registration shape and needs no
+  client change, so `docs/user/platform-support.md` records 3.11 under
+  `Latest known` while Cursor's `Validated against` stays `pending` — that column
+  tracks an end-to-end test against a released host, which no platform has cleared.
+  The same doc now covers Customize-page MCP management (3.9+), Team MCP
+  marketplace distribution (3.10+), and that Google Workspace plugins (2026-08-03)
+  are optional and unrelated to this thin client. Quick Start's Cursor section
+  points at Customize + the Team MCP path.
 - **Cursor working tips** — side chats (3.11) for MCP debugging without interrupting
   an investigation; Cursor Automations (3.8, `/automate`) for **Workflow run
   completed** CI triage; Balance Auto / Cursor Router for routine adapter work.
+- **Claude Code target bumped to 2.1.226** (from 2.1.224) in `.claude-code-version`
+  and `docs/user/platform-support.md`. The 2.1.225 + 2.1.226 delta is fix-only from
+  this plugin's perspective: 2.1.226 ships only "bug fixes and reliability
+  improvements", and 2.1.225's one client-relevant fix — a transient 401 replacing a
+  long-lived `CLAUDE_CODE_OAUTH_TOKEN` with a short-lived stored-login token,
+  breaking headless sessions until restart — is now covered in troubleshooting's
+  headless notes, since in a CI job that triggers investigations it presented as the
+  run's auth "going bad" mid-flight and read like a `PM_ACCESS_TOKEN` problem. The
+  rest of the 2.1.225 delta (gateway spend-limit warnings, a `claude agents`
+  workspace-trust prompt, macOS MCP-OAuth keychain 401 bursts, Remote Control and
+  cross-session messaging fixes) is host-side, touches no flow this client
+  documents, and needs no client change; the sandbox guidance and adapter
+  registration files are unaffected.
+
 - **Claude Code target bumped to 2.1.224** (from 2.1.223) in `.claude-code-version`
   and `docs/user/platform-support.md`. Doc updates for the 2.1.224 delta, all in
   existing sections: troubleshooting's strict-allowlist note records that from

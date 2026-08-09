@@ -4,19 +4,29 @@ The editor and agent platforms this client is validated against.
 
 | Platform | Validated against | Latest known |
 |---|---|---|
-| Claude Code | pending | 2.1.224 |
-| Cursor | 3.11 | 3.11 (+ changelog 2026-08-03) |
-| Codex | pending | pending |
+| Claude Code | pending | 2.1.226 |
+| Cursor | pending | 3.11 (+ changelog 2026-08-03) |
+| Codex | pending | 0.147.0 |
 | OpenCode | pending | pending |
 
-Root pin for Cursor: [`.cursor-version`](../../.cursor-version).
-
 All four adapter packages now ship a runnable `dist/cli.js`, so each client is
-usable today. Claude Code / Codex / OpenCode `Validated against` columns stay
-`pending` because they track testing against a specific released editor version —
-a separate axis from the adapter code landing. The Claude Code release this
-repo currently targets is tracked in [`.claude-code-version`](../../.claude-code-version)
-at the repo root and mirrored in the `Latest known` column above.
+usable today. The Codex release this repo targets is **0.147.0** and the Cursor
+release is **3.11** (changelog covered through 2026-08-03): for each, the
+compatibility delta was reviewed against the existing adapter and its registration
+shape (`.codex/config.toml` for Codex, `.cursor/mcp.json` for Cursor), and nothing
+in either requires a client change. That is a documentation review, not a host
+test — `Validated against` stays `pending` for both, as it does for every platform,
+because running the adapter end-to-end against a released host is a separate axis
+that no target has cleared yet. The tracked pins live at the repo root:
+[`.claude-code-version`](../../.claude-code-version),
+[`.codex-version`](../../.codex-version), and
+[`.cursor-version`](../../.cursor-version).
+
+Codex 0.147.0 adds an opt-in MCP 2026-07-28 protocol. Production Master's current
+stdio server intentionally continues to advertise its older supported MCP
+protocol; changing only the protocol string would be unsafe. A future SDK-backed
+upgrade should adopt the newer protocol when paginated discovery, multi-round
+requests, and non-blocking startup can be implemented and tested together.
 
 **Cursor notes (3.11 → 2026-08-03).** Registration remains `.cursor/mcp.json` →
 `mcpServers.production-master` (see [Quick Start](quick-start.md)). Cursor 3.9+'s

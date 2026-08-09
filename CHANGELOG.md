@@ -35,7 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   points at Customize + the Team MCP path.
 - **Cursor working tips** — side chats (3.11) for MCP debugging without interrupting
   an investigation; Cursor Automations (3.8, `/automate`) for **Workflow run
-  completed** CI triage; Balance Auto / Cursor Router for routine adapter work.
+  completed** CI triage; Balance Auto / Cursor Router for routine adapter work;
+  Inbox **multi-PR sessions** (2026-07-29) when one chat opens several PRs.
 - **Claude Code target bumped to 2.1.226** (from 2.1.224) in `.claude-code-version`
   and `docs/user/platform-support.md`. The 2.1.225 + 2.1.226 delta is fix-only from
   this plugin's perspective: 2.1.226 ships only "bug fixes and reliability

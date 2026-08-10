@@ -1,0 +1,53 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "production-master"
+dynamic = ["version"]
+description = "Thin Python SDK for Production Master: start_investigation -> stream_events -> get_report over the same BFF as every surface."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Production Master" }]
+keywords = ["production-master", "incident", "investigation", "sdk", "sse"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+# Pure-stdlib runtime: NO third-party runtime dependencies (keeps pip install
+# fast and CI hermetic).
+dependencies = []
+
+[project.optional-dependencies]
+test = ["pytest>=7.0", "pytest-cov>=4"]
+dev = ["pytest>=7.0", "pytest-cov>=4", "build>=1.0"]
+
+[project.urls]
+Homepage = "https://github.com/ProductionMasterAI/production-master"
+Issues = "https://github.com/ProductionMasterAI/production-master/issues"
+Source = "https://github.com/ProductionMasterAI/production-master/tree/main/sdk/python"
+
+[tool.hatch.version]
+path = "production_master/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["production_master"]
+
+[tool.hatch.build.targets.sdist]
+include = ["production_master", "tests", "examples", "README.md", "pyproject.toml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# --cov-fail-under is a hard floor set at current coverage minus 1 point, so
+# ordinary jitter cannot fail the build but a real regression can. Coverage is
+# a merge gate here, and the floor ratchets one way: raise it when coverage
+# rises, never lower it to make a red build green. Measured 2026-08-09: 81.66%.
+addopts = "-q --cov=production_master --cov-report=term-missing --cov-fail-under=80"

@@ -1,0 +1,79 @@
+name: Publish Python SDK
+
+# The plugin's own releases use bare `v*` tags (see release.yml). The Python SDK
+# versions independently, so it gets its own prefix — `v1.2.3` must not publish
+# a package and `python-v1.2.3` must not cut a plugin release.
+on:
+  push:
+    tags:
+      - 'python-v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    # ubuntu-latest, never the self-hosted fleet: this repo is public and
+    # accepts third-party pull requests, so a self-hosted runner here would let
+    # a fork execute arbitrary code on the owner's hardware.
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      # The whole point of Trusted Publishing: GitHub mints a short-lived OIDC
+      # token that PyPI exchanges for a scoped, single-use upload token. No
+      # long-lived PYPI_API_TOKEN is stored in this repo, so there is no
+      # credential here to leak or rotate.
+      #
+      # ONE-TIME SETUP, owner-side, before the first tag: on PyPI, register a
+      # trusted publisher for the project with
+      #   owner        ProductionMasterAI
+      #   repository   production-master
+      #   workflow     publish-python.yml
+      #   environment  pypi
+      # Until that exists the upload step fails closed with an auth error — it
+      # cannot silently publish under some other credential.
+      id-token: write
+    defaults:
+      run:
+        working-directory: sdk/python
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      # Publish only what CI proved. The gate below re-runs the suite against
+      # the exact tagged tree rather than trusting a green run on some earlier
+      # commit, because a tag can point anywhere.
+      - run: python -m pip install --upgrade pip build twine
+      - run: pip install pytest pytest-cov
+      - run: pip install -e .
+      - run: python -m pytest
+
+      - name: Tag must match the packaged version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          # workflow_dispatch has no tag to check against; the guard applies to
+          # the tag-triggered path, which is the one that publishes by accident.
+          if [ "${GITHUB_EVENT_NAME}" != "push" ]; then
+            echo "not a tag push — skipping tag/version equality check"
+            exit 0
+          fi
+          pkg="$(python -c 'import production_master; print(production_master.__version__)')"
+          want="${TAG#python-v}"
+          if [ "$pkg" != "$want" ]; then
+            echo "::error::tag ${TAG} implies version ${want} but the package declares ${pkg}"
+            exit 1
+          fi
+          echo "version ${pkg} matches tag ${TAG}"
+
+      - run: python -m build
+      - run: python -m twine check dist/*
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: sdk/python/dist

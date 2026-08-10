@@ -74,6 +74,27 @@ Log in once with `node packages/adapter-<editor>/dist/cli.js login`, then start 
 
 Full walkthrough: [docs/user/quick-start.md](docs/user/quick-start.md).
 
+### Python
+
+For scripting and CI — a pure-stdlib SDK that speaks the same BFF as the
+editors, with no third-party runtime dependencies:
+
+```bash
+pip install "git+https://github.com/ProductionMasterAI/production-master.git@main#subdirectory=sdk/python"
+```
+
+```python
+from production_master import Client
+
+client = Client()                       # honours PM_SERVICE_URL
+inv = client.start_investigation({"ticket": "ACME-123"})
+for event in inv.stream_events():       # SSE with Last-Event-ID resume
+    print(event.sequence, event.type)
+print(inv.get_report(format="json"))
+```
+
+Full reference: [`sdk/python/README.md`](sdk/python/README.md).
+
 ## Architecture
 
 The client is a thin transport-and-render layer. All investigation logic lives on the hosted service; the client talks to it over HTTPS (control) and SSE (streaming).
@@ -101,6 +122,7 @@ The client owns four concerns: **auth** (device-code login + token storage), **M
 | [Commands](docs/user/reference/commands.md) | Thin-client command reference |
 | [Troubleshooting](docs/user/troubleshooting.md) | Auth, service URL, and MCP registration issues |
 | [Platform support](docs/user/platform-support.md) | Editors and versions the client is validated against |
+| [Python SDK](sdk/python/README.md) | Scripting/CI client — install, auth, streaming, publishing |
 | [Contributing](docs/CONTRIBUTING.md) | How to contribute |
 | [Changelog](CHANGELOG.md) | Release history |
 

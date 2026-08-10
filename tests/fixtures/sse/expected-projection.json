@@ -1,0 +1,12 @@
+{
+  "status": "completed",
+  "title": "Checkout 500s",
+  "reportUri": "https://svc.example/reports/inv_1.md",
+  "costUsd": 0.15,
+  "stepCount": 1,
+  "stepsCompleted": 1,
+  "agentCount": 1,
+  "agentsCompleted": 1,
+  "pendingActionCount": 1,
+  "logCount": 2
+}

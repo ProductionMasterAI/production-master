@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **Canonical API host is now `api.productionmaster.dev`, not
+  `api.productionmaster.ai` (dev#468).** Every editor registration, slash
+  command, and doc in this repo defaulted `PM_SERVICE_URL` to
+  `https://api.productionmaster.ai` — a hostname whose apex, `productionmaster.ai`,
+  is **not registered by us and is available to buy**. Anyone who registered it
+  would receive the bearer token of every user who never set `PM_SERVICE_URL`.
+  The default now points at a subdomain of `productionmaster.dev`, which we do
+  own, so the name cannot be claimed by a third party. A second unregistered
+  vanity host, `mcp.productionmaster.ai`, was found in the BFF test fixture and
+  moved the same way. The 2.1.219 troubleshooting note that told users to
+  allowlist the old hostname was corrected in place rather than left standing,
+  since following it would firewall-allow a domain we do not control.
+  **Note:** `api.productionmaster.dev` has no DNS record yet, so the default is
+  inert until one is added — the same as before this change, but no longer
+  hijackable. The Python SDK's `DEFAULT_SERVICE_URL` deliberately stays on the
+  service's Vercel origin, which resolves today; it flips once the vanity host
+  serves the BFF.
+
 ### Added
 
 - **Python SDK (`sdk/python`) — a pure-stdlib thin client for scripting and CI.**
@@ -123,7 +143,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `sandbox.network.strictAllowlist` enabled, sandboxed Bash commands fail on
   non-allowlisted hosts *without prompting*, which surfaces as bare connection
   errors when the thin client calls the hosted service. Documents allowlisting
-  `api.productionmaster.ai` (or the custom `PM_SERVICE_URL` host).
+  `api.productionmaster.dev` (or the custom `PM_SERVICE_URL` host).
 - **`.claude-code-version` — tracked Claude Code target release (2.1.220).** New
   root file recording the latest Claude Code release this repo targets, so
   version-support updates are diffable and automatable. `docs/user/platform-support.md`

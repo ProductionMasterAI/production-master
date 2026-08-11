@@ -16,6 +16,6 @@ set -euo pipefail
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(pwd)}"
 CLI="${PLUGIN_ROOT}/packages/adapter-claude-code/dist/cli.js"
 [ -f "$CLI" ] || CLI="${PLUGIN_ROOT}/dist/cli.js"
-export PM_SERVICE_URL="${PM_SERVICE_URL:-https://api.productionmaster.ai}"
+export PM_SERVICE_URL="${PM_SERVICE_URL:-https://api.productionmaster.dev}"
 node "$CLI" investigate --input "$ARGUMENTS"
 ```

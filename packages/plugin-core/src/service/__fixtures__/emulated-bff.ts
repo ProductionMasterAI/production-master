@@ -91,7 +91,7 @@ export class EmulatedBff {
     this.investigationId = opts.investigationId ?? "inv_emulated";
     this.actionId = opts.actionId ?? "act_emulated";
     const id = this.investigationId;
-    const reportUri = `https://api.productionmaster.ai/v1/runs/${id}/report`;
+    const reportUri = `https://api.productionmaster.dev/v1/runs/${id}/report`;
 
     this.run = {
       investigationId: id,
@@ -128,7 +128,7 @@ export class EmulatedBff {
     this.register("POST", "/v1/mcp/sessions", "/v1/mcp/sessions", () => ({
       status: 201,
       body: {
-        endpoint: `https://mcp.productionmaster.ai/v1/mcp/${id}`,
+        endpoint: `https://mcp.productionmaster.dev/v1/mcp/${id}`,
         audience: "pm-mcp",
         sessionJwt: `session-jwt-${id}`,
         ttlSeconds: 300,

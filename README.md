@@ -38,7 +38,7 @@ The investigation itself runs entirely on the hosted service. This repository is
 
 ## Quick Start
 
-Across every editor the flow is the same: **register the client → log in with a device code → start an investigation.** Point the client at your service with `PM_SERVICE_URL` (default `https://api.productionmaster.ai`).
+Across every editor the flow is the same: **register the client → log in with a device code → start an investigation.** Point the client at your service with `PM_SERVICE_URL` (default `https://api.productionmaster.dev`).
 
 Build the client first (workspaces compile the host-neutral core and each adapter):
 
@@ -70,7 +70,7 @@ Each of these editors registers the client as an MCP server that it spawns from 
 | Codex | [`.codex/config.toml`](.codex/config.toml) | [`packages/adapter-codex`](packages/adapter-codex) |
 | OpenCode | [`opencode.json`](opencode.json) | [`packages/adapter-opencode`](packages/adapter-opencode) |
 
-Log in once with `node packages/adapter-<editor>/dist/cli.js login`, then start investigations from the editor's own agent — it calls the client's investigation tools over MCP. Point the client at your service with `PM_SERVICE_URL` (default `https://api.productionmaster.ai`); secrets are `${ENV}` references only, never literals.
+Log in once with `node packages/adapter-<editor>/dist/cli.js login`, then start investigations from the editor's own agent — it calls the client's investigation tools over MCP. Point the client at your service with `PM_SERVICE_URL` (default `https://api.productionmaster.dev`); secrets are `${ENV}` references only, never literals.
 
 Full walkthrough: [docs/user/quick-start.md](docs/user/quick-start.md).
 

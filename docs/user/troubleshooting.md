@@ -59,7 +59,7 @@ result, so the denied host is named instead of surfacing as a bare connection
 error — older versions show only the bare error.
 
 Fix: add the service host to your sandbox network allowlist in Claude Code
-settings — `api.productionmaster.ai` by default, or the host from your custom
+settings — `api.productionmaster.dev` by default, or the host from your custom
 `PM_SERVICE_URL` if your organization runs the service elsewhere. The device-code
 login flow opens a browser out-of-band and is not affected; only the CLI's HTTPS
 calls (trigger, stream, approve/reject) need the allowlist entry.

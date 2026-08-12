@@ -11,7 +11,7 @@ The editor and agent platforms this client is validated against.
 
 All four adapter packages now ship a runnable `dist/cli.js`, so each client is
 usable today. The Codex release this repo targets is **0.147.0** and the Cursor
-release is **3.11** (changelog covered through 2026-08-03; desktop CLI observed at **3.15.6**): for each, the
+release is **3.11** (changelog covered through 2026-08-03; desktop CLI observed at **3.15.19**): for each, the
 compatibility delta was reviewed against the existing adapter and its registration
 shape (`.codex/config.toml` for Codex, `.cursor/mcp.json` for Cursor), and nothing
 in either requires a client change. That is a documentation review, not a host
@@ -37,7 +37,7 @@ install the same server without hand-editing JSON. Optional Google Workspace
 marketplace plugins (2026-08-03) are unrelated to this thin client and are not
 required for investigations.
 
-**Cursor working tips.** Desktop CLI may report **3.15.6** while the public feature
+**Cursor working tips.** Desktop CLI may report **3.15.19** while the public feature
 changelog stays on **3.11** — this repo pins the feature/date in `.cursor-version`
 and records `desktop_cli` separately. Cursor also loads the open
 [Agent Plugins](https://agent-plugins.org) standard alongside `.cursor-plugin`
@@ -45,7 +45,7 @@ manifests. The desktop/CLI `workspaceOpen` hook can return `pluginPaths` for
 workspace-specific plugins (not available on Cloud Agents). Use a **side chat**
 (`/side`, `/btw`, 3.11) to debug MCP registration or compare adapter shapes without
 interrupting an in-flight investigation. **Cursor Automations** (3.8, `/automate`)
-can watch **Workflow run completed** on this repo's CI and open a fix PR; enable
+can **delete memory files** from the UI (or when prompted) and can watch **Workflow run completed** on this repo's CI and open a fix PR; enable
 computer use when you want a demo artifact attached. Prefer **Balance** Auto /
 Cursor Router mode for routine adapter work. **Inbox multi-PR sessions
 (2026-07-29):** when one chat opens several adapter/docs PRs, open every PR from

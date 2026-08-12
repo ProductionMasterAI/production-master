@@ -46,7 +46,7 @@ the same entry from Cursor's **Customize** page (plugins / skills / MCPs, 3.9+):
 > so members install Production Master without hand-editing `mcp.json`. See
 > [Platform support](platform-support.md).
 >
-> **Desktop note:** feature pin **3.11** / **2026-08-03**; desktop CLI observed **3.15.6**. Optional desktop `workspaceOpen` hook can load workspace plugin paths. **Debugging tip (3.11):** open a side chat (`/side` / `/btw`) to inspect MCP
+> **Desktop note:** feature pin **3.11** / **2026-08-03**; desktop CLI observed **3.15.19**. Optional desktop `workspaceOpen` hook can load workspace plugin paths. **Debugging tip (3.11):** open a side chat (`/side` / `/btw`) to inspect MCP
 > connectivity while the main agent keeps investigating. For always-on CI triage,
 > create a Cursor Automation (`/automate`, 3.8) on **Workflow run completed**.
 

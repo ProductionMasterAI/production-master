@@ -74,6 +74,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an investigation; Cursor Automations (3.8, `/automate`) for **Workflow run
   completed** CI triage; Balance Auto / Cursor Router for routine adapter work;
   Inbox **multi-PR sessions** (2026-07-29) when one chat opens several PRs.
+- **Claude Code target bumped to 2.1.228** (from 2.1.226) in `.claude-code-version`
+  and `docs/user/platform-support.md`. The 2.1.227 + 2.1.228 delta is fix-only from
+  this plugin's perspective. The one entry naming a surface this repo actually runs —
+  2.1.227 fixes every Bash command failing under `claude-code-action` when
+  `allowed_non_write_users` is set on GitHub-hosted runners — does not affect
+  `.github/workflows/claude.yml`, which runs on GitHub-hosted runners but gates by
+  author association and never sets that input, so no workflow change is needed.
+  2.1.227's slash-command menu polish (selection highlight, bolded matches,
+  emoji/accented names keep their glyphs) is host UI that this plugin's
+  `/login`/`/investigate`/`/connect`/`/update`/`/logout` commands simply inherit. The
+  rest of the delta (self-hosted-runner and Remote Control fixes, cross-session
+  messaging display, Vertex AI credential fail-fast, a Write-tool rule change for
+  newer models, compaction-progress UI) is host-side, touches no flow this client
+  documents, and needs no client change; the sandbox guidance and adapter
+  registration files are unaffected.
+
 - **Claude Code target bumped to 2.1.226** (from 2.1.224) in `.claude-code-version`
   and `docs/user/platform-support.md`. The 2.1.225 + 2.1.226 delta is fix-only from
   this plugin's perspective: 2.1.226 ships only "bug fixes and reliability

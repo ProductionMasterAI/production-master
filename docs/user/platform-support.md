@@ -5,13 +5,13 @@ The editor and agent platforms this client is validated against.
 | Platform | Validated against | Latest known |
 |---|---|---|
 | Claude Code | pending | 2.1.231 |
-| Cursor | pending | 3.11 (+ changelog 2026-08-03) |
+| Cursor | pending | 3.11 (+ changelog 2026-08-13) |
 | Codex | pending | 0.147.0 |
 | OpenCode | pending | pending |
 
 All four adapter packages now ship a runnable `dist/cli.js`, so each client is
 usable today. The Codex release this repo targets is **0.147.0** and the Cursor
-release is **3.11** (changelog covered through 2026-08-03; desktop CLI observed at **3.15.19**): for each, the
+release is **3.11** (changelog covered through 2026-08-13; desktop CLI observed at **3.15.19**): for each, the
 compatibility delta was reviewed against the existing adapter and its registration
 shape (`.codex/config.toml` for Codex, `.cursor/mcp.json` for Cursor), and nothing
 in either requires a client change. That is a documentation review, not a host
@@ -41,18 +41,22 @@ rest of the 2.1.229 + 2.1.231 delta is host-side and needs no client change:
 both releases' MCP OAuth fixes concern OAuth-flow MCP servers, while this
 client's device-code + bearer design never touches MCP OAuth.
 
-**Cursor notes (3.11 → 2026-08-03).** Registration remains `.cursor/mcp.json` →
+**Cursor notes (3.11 → 2026-08-13).** Registration remains `.cursor/mcp.json` →
 `mcpServers.production-master` (see [Quick Start](quick-start.md)). Cursor 3.9+'s
 Customize page is the preferred place to manage that MCP entry alongside plugins,
 skills, and hooks. Team admins on 3.10+ can also distribute an approved MCP via
 **Team MCPs in team marketplaces** (Dashboard → Integrations & MCP) so members
 install the same server without hand-editing JSON. Optional Google Workspace
 marketplace plugins (2026-08-03) are unrelated to this thin client and are not
-required for investigations.
+required for investigations. **Cloud Agent Builds (2026-08-13):** when validating
+adapters in Cloud Agents, prefer an environment with Builds enabled so sessions
+boot from a warm install snapshot; put durable deps in `install` and fresh services
+in `start` ([announcement](https://cursor.com/blog/builds)).
 
 **Cursor working tips.** Desktop CLI may report **3.15.19** while the public feature
 changelog stays on **3.11** — this repo pins the feature/date in `.cursor-version`
-and records `desktop_cli` separately. Cursor also loads the open
+and records `desktop_cli` separately. Newest covered changelog date is **2026-08-13**
+(Cloud Agent Builds). Cursor also loads the open
 [Agent Plugins](https://agent-plugins.org) standard alongside `.cursor-plugin`
 manifests. The desktop/CLI `workspaceOpen` hook can return `pluginPaths` for
 workspace-specific plugins (not available on Cloud Agents). Use a **side chat**

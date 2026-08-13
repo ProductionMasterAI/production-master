@@ -4,7 +4,7 @@ The editor and agent platforms this client is validated against.
 
 | Platform | Validated against | Latest known |
 |---|---|---|
-| Claude Code | pending | 2.1.228 |
+| Claude Code | pending | 2.1.231 |
 | Cursor | pending | 3.11 (+ changelog 2026-08-03) |
 | Codex | pending | 0.147.0 |
 | OpenCode | pending | pending |
@@ -27,6 +27,19 @@ stdio server intentionally continues to advertise its older supported MCP
 protocol; changing only the protocol string would be unsafe. A future SDK-backed
 upgrade should adopt the newer protocol when paginated discovery, multi-round
 requests, and non-blocking startup can be implemented and tested together.
+
+**Claude Code notes (2.1.229 → 2.1.231).** Registration remains
+`.claude-plugin/plugin.json` + `commands/` (see the table below). Since Claude
+Code 2.1.229, plugin marketplaces also support **`command` sources**: a local
+command prints the plugin directory, the result is re-resolved each session and
+applied without a restart, and `mode: "link"` uses the directory in place. For
+contributors hacking on `adapter-claude-code`, that is the cleanest local-dev
+install — register the dev checkout through a command-source marketplace entry
+and each new session picks up the checkout as it stands (the slash commands
+still exec the built `dist/cli.js`, so run `npm run build` after edits). The
+rest of the 2.1.229 + 2.1.231 delta is host-side and needs no client change:
+both releases' MCP OAuth fixes concern OAuth-flow MCP servers, while this
+client's device-code + bearer design never touches MCP OAuth.
 
 **Cursor notes (3.11 → 2026-08-03).** Registration remains `.cursor/mcp.json` →
 `mcpServers.production-master` (see [Quick Start](quick-start.md)). Cursor 3.9+'s

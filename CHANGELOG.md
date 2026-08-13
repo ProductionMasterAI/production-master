@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Cursor CLI Aug 11 tip.** Platform support notes sticky skills and CLI installed-plugin hooks (debugging only).
 - **Cursor currency (changelog through 2026-08-13 — Cloud Agent Builds).** `.cursor-version` keeps feature **3.11** / desktop CLI **3.15.19** and advances `changelog_date` to **2026-08-13**. Platform support + Quick Start document Cloud Agent Builds (warm install snapshots; enable on the environment Builds tab). Also covers Agent Plugins standard support, desktop `workspaceOpen` (`pluginPaths`), and Automations memory-file delete.
 
 ### Security

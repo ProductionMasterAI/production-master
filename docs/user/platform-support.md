@@ -53,7 +53,7 @@ adapters in Cloud Agents, prefer an environment with Builds enabled so sessions
 boot from a warm install snapshot; put durable deps in `install` and fresh services
 in `start` ([announcement](https://cursor.com/blog/builds)).
 
-**Cursor working tips.** Desktop CLI may report **3.15.19** while the public feature
+**Cursor working tips.** Cursor CLI **Aug 11** adds sticky skills (Option+Enter) and runs hooks from installed plugins once a Cursor-native hooks bundle exists — irrelevant to this thin-client adapter beyond local CLI debugging.  Desktop CLI may report **3.15.19** while the public feature
 changelog stays on **3.11** — this repo pins the feature/date in `.cursor-version`
 and records `desktop_cli` separately. Newest covered changelog date is **2026-08-13**
 (Cloud Agent Builds). Cursor also loads the open

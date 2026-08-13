@@ -7,9 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-- **Cursor currency (desktop 3.15.19; Automations memory-file delete noted).** `.cursor-version` keeps feature **3.11** / changelog **2026-08-03** and records `desktop_cli: 3.15.19`. Docs note Agent Plugins standard support and the desktop `workspaceOpen` hook (`pluginPaths`).
+### Added
 
+- **`pmctl` operator CLI (dev#268).** New `packages/pmctl` workspace package — a
+  standalone thin-client binary (`login`, `start`, `status`, `report`, `events`,
+  `approve`, `reject`) over the same BFF and `@production-master/plugin-core` as every
+  editor adapter, for scripting and CI use outside an IDE. Ported from the archived
+  personal prototype, with the entry-point detection fixed to compare realpaths so the
+  binary works when invoked through its real npm-installed symlink (the original
+  string comparison silently produced a no-op CLI in that case).
+
+### Changed
+
+- **Cursor currency (desktop 3.15.19; Automations memory-file delete noted).** `.cursor-version` keeps feature **3.11** / changelog **2026-08-03** and records `desktop_cli: 3.15.19`. Docs note Agent Plugins standard support and the desktop `workspaceOpen` hook (`pluginPaths`).
 
 ### Security
 
@@ -138,7 +148,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   credentials), which require `network.tlsTerminate` and are honored only from
   user, managed, or `--settings` settings; a new sandbox note records that
   filesystem deny entries written with a trailing slash (e.g. `denyRead:
-  "~/.pm-credentials/"`) were silently bypassable on Linux/macOS before 2.1.224 (update,
+"~/.pm-credentials/"`) were silently bypassable on Linux/macOS before 2.1.224 (update,
   then keep the entries as written); MCP-registration troubleshooting notes
   2.1.224's fix for plugin install records silently corrupting when the same
   plugin is installed in multiple projects, and its fix for MCP tools that
@@ -181,7 +191,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Troubleshooting: sandboxed-command network failures (Claude Code 2.1.219).**
   New "Sandboxed commands" section in `docs/user/troubleshooting.md`: with
   `sandbox.network.strictAllowlist` enabled, sandboxed Bash commands fail on
-  non-allowlisted hosts *without prompting*, which surfaces as bare connection
+  non-allowlisted hosts _without prompting_, which surfaces as bare connection
   errors when the thin client calls the hosted service. Documents allowlisting
   `api.productionmaster.dev` (or the custom `PM_SERVICE_URL` host).
 - **`.claude-code-version` — tracked Claude Code target release (2.1.220).** New

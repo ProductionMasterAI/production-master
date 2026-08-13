@@ -64,13 +64,31 @@ On Claude Code 2.1.224+, the plugin can also be installed from an `archive` sour
 
 Each of these editors registers the client as an MCP server that it spawns from the built binary. After `npm run build`, the config file in this repo points the editor at the client's `mcp` entry point:
 
-| Editor | Registration file | Backed by |
-|--------|-------------------|-----------|
-| Cursor | [`.cursor/mcp.json`](.cursor/mcp.json) | [`packages/adapter-cursor`](packages/adapter-cursor) |
-| Codex | [`.codex/config.toml`](.codex/config.toml) | [`packages/adapter-codex`](packages/adapter-codex) |
-| OpenCode | [`opencode.json`](opencode.json) | [`packages/adapter-opencode`](packages/adapter-opencode) |
+| Editor   | Registration file                          | Backed by                                                |
+| -------- | ------------------------------------------ | -------------------------------------------------------- |
+| Cursor   | [`.cursor/mcp.json`](.cursor/mcp.json)     | [`packages/adapter-cursor`](packages/adapter-cursor)     |
+| Codex    | [`.codex/config.toml`](.codex/config.toml) | [`packages/adapter-codex`](packages/adapter-codex)       |
+| OpenCode | [`opencode.json`](opencode.json)           | [`packages/adapter-opencode`](packages/adapter-opencode) |
 
 Log in once with `node packages/adapter-<editor>/dist/cli.js login`, then start investigations from the editor's own agent — it calls the client's investigation tools over MCP. Point the client at your service with `PM_SERVICE_URL` (default `https://api.productionmaster.dev`); secrets are `${ENV}` references only, never literals.
+
+### pmctl (operator CLI)
+
+For scripting and CI, [`packages/pmctl`](packages/pmctl) is a standalone `pmctl` binary — the
+same thin client over the same BFF, without an editor. After `npm run build`:
+
+```bash
+node packages/pmctl/dist/cli.js login
+node packages/pmctl/dist/cli.js start PROJ-1234 --title "..." --mode standard
+node packages/pmctl/dist/cli.js status <run-id>
+node packages/pmctl/dist/cli.js events <run-id> --follow
+node packages/pmctl/dist/cli.js report <run-id> --format md
+```
+
+Run `node packages/pmctl/dist/cli.js --help` for the full command and flag reference. `--output json`
+emits a versioned envelope (`{schema:"pmctl/v1", ok, data?, error?}`) for scripting; auth, transport,
+and streaming are all reused from `@production-master/plugin-core` — `pmctl` implements no HTTP, auth,
+or SSE of its own, and imports no LLM/provider SDK.
 
 Full walkthrough: [docs/user/quick-start.md](docs/user/quick-start.md).
 
@@ -115,16 +133,16 @@ The client owns four concerns: **auth** (device-code login + token storage), **M
 
 ## Documentation
 
-| Doc | Purpose |
-|-----|---------|
-| [Quick Start](docs/user/quick-start.md) | Install, log in, run your first investigation |
-| [Usage](docs/user/usage.md) | Common workflows — start, connect, approve/reject |
-| [Commands](docs/user/reference/commands.md) | Thin-client command reference |
-| [Troubleshooting](docs/user/troubleshooting.md) | Auth, service URL, and MCP registration issues |
-| [Platform support](docs/user/platform-support.md) | Editors and versions the client is validated against |
-| [Python SDK](sdk/python/README.md) | Scripting/CI client — install, auth, streaming, publishing |
-| [Contributing](docs/CONTRIBUTING.md) | How to contribute |
-| [Changelog](CHANGELOG.md) | Release history |
+| Doc                                               | Purpose                                                    |
+| ------------------------------------------------- | ---------------------------------------------------------- |
+| [Quick Start](docs/user/quick-start.md)           | Install, log in, run your first investigation              |
+| [Usage](docs/user/usage.md)                       | Common workflows — start, connect, approve/reject          |
+| [Commands](docs/user/reference/commands.md)       | Thin-client command reference                              |
+| [Troubleshooting](docs/user/troubleshooting.md)   | Auth, service URL, and MCP registration issues             |
+| [Platform support](docs/user/platform-support.md) | Editors and versions the client is validated against       |
+| [Python SDK](sdk/python/README.md)                | Scripting/CI client — install, auth, streaming, publishing |
+| [Contributing](docs/CONTRIBUTING.md)              | How to contribute                                          |
+| [Changelog](CHANGELOG.md)                         | Release history                                            |
 
 ## License
 

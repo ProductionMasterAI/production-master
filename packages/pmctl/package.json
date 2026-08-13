@@ -1,0 +1,30 @@
+{
+  "name": "@production-master/pmctl",
+  "version": "0.0.0-local",
+  "description": "pmctl — operator CLI for Production Master over the same BFF as every IDE surface. Reuses @production-master/plugin-core (ServiceClient, device-code auth, token store, SSE event stream). Imports NO LLM/provider SDK.",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "pmctl": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@production-master/plugin-core": "0.0.0-local"
+  },
+  "license": "MIT"
+}

@@ -11,6 +11,7 @@
  * dispatch → map any error to a stable exit code + envelope.
  */
 import { realpathSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import {
   ServiceClient,
   NodeHttpTransport,
@@ -124,15 +125,37 @@ async function buildDeps(
   const accountId = io.env.PM_ACCOUNT_ID ?? "default";
   const clientId = io.env.PM_CLIENT_ID ?? "pmctl";
   const tokenStore = createTokenStore();
+  const transport = new NodeHttpTransport(service);
+  const deviceAuth = new DeviceCodeAuth({
+    transport,
+    clientId,
+    scopes: SCOPES,
+  });
 
-  // Token precedence: explicit flag > env > token store.
+  // Token precedence: explicit flag > env > token store. A flag/env override
+  // is used as given (the caller owns its lifetime); a stored session is
+  // refreshed proactively when within its skew of expiry, mirroring
+  // PluginRuntime#ensureAuth, so a long-lived pmctl session doesn't start
+  // failing with exit 3 the moment the access token ages out even though a
+  // valid refresh token is sitting right next to it in the store.
   let token = strFlag(parsed, "token") ?? io.env.PM_ACCESS_TOKEN;
   if (!token) {
-    const stored = await tokenStore.load(accountId).catch(() => undefined);
+    let stored = await tokenStore.load(accountId).catch(() => undefined);
+    if (stored && deviceAuth.needsRefresh(stored)) {
+      try {
+        stored = await deviceAuth.refresh(stored.refreshToken);
+        await tokenStore.save(accountId, stored);
+      } catch {
+        // Refresh token itself expired/revoked, or the service is
+        // unreachable — fall through with the stale access token. The
+        // service will 401 it and classifyError maps that to AuthError,
+        // which tells the user to `pmctl login` again rather than failing
+        // silently here.
+      }
+    }
     token = stored?.accessToken;
   }
 
-  const transport = new NodeHttpTransport(service);
   const idempotencyKey = strFlag(parsed, "idempotency-key");
   const client = new ServiceClient({
     transport,
@@ -152,7 +175,7 @@ async function buildDeps(
     streamUrlFor: (id) =>
       new URL(`/v1/runs/${encodeURIComponent(id)}/stream`, service).toString(),
     streamHeaders,
-    deviceAuth: new DeviceCodeAuth({ transport, clientId, scopes: SCOPES }),
+    deviceAuth,
     tokenStore,
     accountId,
   };
@@ -200,13 +223,17 @@ export async function runCli(argv: string[], io: Io): Promise<number> {
 }
 
 /* c8 ignore start — process wiring, exercised via the bin not unit tests. */
-// Compare realpaths, not raw strings: when invoked through an npm bin symlink
-// (npm link / npm install -g / a workspace dependency's node_modules/.bin —
-// i.e. every real install of this CLI), Node resolves import.meta.url to the
-// symlink's target while process.argv[1] stays the symlink path, so a literal
-// string comparison silently mismatches and the CLI would exit 0 with no
-// output. realpathSync resolves both sides through the symlink first.
-function resolveMainPath(p: string): string | undefined {
+// Compare filesystem paths, not URL strings: when invoked through an npm bin
+// symlink (npm link / npm install -g / a workspace dependency's
+// node_modules/.bin — i.e. every real install of this CLI), Node resolves
+// import.meta.url to the symlink's target while process.argv[1] stays the
+// symlink path, so a naive `file://${...}` string comparison mismatches and
+// the CLI silently exits 0 with no output. Comparing realpathSync'd
+// filesystem paths (via fileURLToPath, not a hand-built file:// string) also
+// avoids Windows path-shape and escaping mismatches (`C:\...` vs
+// `file:///C:/...`, spaces/percent-encoding) that a literal `file://` prefix
+// would still get wrong even after resolving the symlink.
+function resolveRealPath(p: string): string | undefined {
   try {
     return realpathSync(p);
   } catch {
@@ -216,7 +243,8 @@ function resolveMainPath(p: string): string | undefined {
 const isMain =
   typeof process !== "undefined" &&
   process.argv[1] !== undefined &&
-  import.meta.url === `file://${resolveMainPath(process.argv[1])}`;
+  resolveRealPath(fileURLToPath(import.meta.url)) ===
+    resolveRealPath(process.argv[1]);
 
 if (isMain) {
   const io: Io = {

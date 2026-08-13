@@ -65,12 +65,21 @@ export function boolFlag(parsed: ParsedArgs, ...names: string[]): boolean {
 }
 
 /**
- * Read a flag as a finite number, or undefined when absent / boolean-only.
- * Throws a UsageError (exit 2) when present but not a finite number.
+ * Read a flag as a finite number, or undefined when absent entirely.
+ * Throws a UsageError (exit 2) when present but not a finite number —
+ * including a value-less presence like `--max-usd` with no value (e.g. from
+ * an unset shell variable expanding to nothing, or a negative value like
+ * `--max-usd -1` that parseArgs reads as a flag boundary rather than a
+ * value). Silently treating either as "absent" would let a malformed budget
+ * flag fall through to the caller's default, launching an uncapped run while
+ * the user believes they set a cap.
  */
 export function numFlag(parsed: ParsedArgs, name: string): number | undefined {
   const v = parsed.flags[name];
-  if (v === undefined || typeof v === "boolean") return undefined;
+  if (v === undefined) return undefined;
+  if (v === true) {
+    throw new UsageError(`--${name} requires a numeric value (got none)`);
+  }
   const n = Number(v);
   if (!Number.isFinite(n)) {
     throw new UsageError(`--${name} must be a number (got "${v}")`);

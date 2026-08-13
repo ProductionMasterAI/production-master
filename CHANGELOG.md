@@ -78,6 +78,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an investigation; Cursor Automations (3.8, `/automate`) for **Workflow run
   completed** CI triage; Balance Auto / Cursor Router for routine adapter work;
   Inbox **multi-PR sessions** (2026-07-29) when one chat opens several PRs.
+- **Claude Code target bumped to 2.1.231** (from 2.1.228) in `.claude-code-version`
+  and `docs/user/platform-support.md`. The 2.1.229 + 2.1.231 delta (no 2.1.230 entry
+  was published) is fix-heavy from this plugin's perspective, with one adoptable
+  capability: **plugin marketplace `command` sources** (2.1.229) — a local command
+  prints the plugin directory, re-resolved each session and applied without a
+  restart, with `mode: "link"` using the directory in place. Documented in
+  `platform-support.md` as the recommended local-dev install for
+  `adapter-claude-code` contributors (a linked dev checkout replaces the
+  reinstall-after-every-edit loop; the built `dist/cli.js` is still required).
+  Reviewed and not applicable: both releases' MCP OAuth fixes (127.0.0.1 redirect
+  URIs, pre-registered OAuth clients) concern OAuth-flow MCP servers — this
+  client's device-code + bearer design never touches MCP OAuth; the 2.1.231
+  `/install-github-app` review-workflow fix does not affect
+  `.github/workflows/claude.yml`, which is the mention-gated workflow, not the
+  generated review workflow; and the `/commit-push-pr` change (dangerous git/gh
+  flags no longer auto-approved) plus SSE keepalives on Vertex/Bedrock gateway
+  streaming are host-side. Nothing in the delta touches the adapter registration
+  shapes or the SSE streaming contract this client implements against the
+  Production Master service.
+
+- **Claude Code target bumped to 2.1.228** (from 2.1.226) in `.claude-code-version`
+  and `docs/user/platform-support.md`. The 2.1.227 + 2.1.228 delta is fix-only from
+  this plugin's perspective. The one entry naming a surface this repo actually runs —
+  2.1.227 fixes every Bash command failing under `claude-code-action` when
+  `allowed_non_write_users` is set on GitHub-hosted runners — does not affect
+  `.github/workflows/claude.yml`, which runs on GitHub-hosted runners but gates by
+  author association and never sets that input, so no workflow change is needed.
+  2.1.227's slash-command menu polish (selection highlight, bolded matches,
+  emoji/accented names keep their glyphs) is host UI that this plugin's
+  `/login`/`/investigate`/`/connect`/`/update`/`/logout` commands simply inherit. The
+  rest of the delta (self-hosted-runner and Remote Control fixes, cross-session
+  messaging display, Vertex AI credential fail-fast, a Write-tool rule change for
+  newer models, compaction-progress UI) is host-side, touches no flow this client
+  documents, and needs no client change; the sandbox guidance and adapter
+  registration files are unaffected.
+
 - **Claude Code target bumped to 2.1.226** (from 2.1.224) in `.claude-code-version`
   and `docs/user/platform-support.md`. The 2.1.225 + 2.1.226 delta is fix-only from
   this plugin's perspective: 2.1.226 ships only "bug fixes and reliability

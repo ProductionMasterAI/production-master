@@ -75,7 +75,10 @@ Add to `opencode.json`:
 ```
 
 Reload your editor so it picks up the new client. (On Claude Code 2.1.221+,
-`/plugin install` activates the plugin immediately when safe — no reload needed.)
+`/plugin install` activates the plugin immediately when safe — no reload needed.
+On 2.1.232+, `/plugin install production-master@<marketplace>` also refreshes
+the marketplace first, so a version published minutes ago installs without a
+manual `/plugin marketplace update`.)
 
 ## 2. Log in
 

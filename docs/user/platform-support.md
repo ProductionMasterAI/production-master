@@ -49,11 +49,18 @@ skills, and hooks. Team admins on 3.10+ can also distribute an approved MCP via
 install the same server without hand-editing JSON. Optional Google Workspace
 marketplace plugins (2026-08-03) are unrelated to this thin client and are not
 required for investigations. **Cloud Agent Builds (2026-08-13):** when validating
-adapters in Cloud Agents, prefer an environment with Builds enabled so sessions
-boot from a warm install snapshot; put durable deps in `install` and fresh services
-in `start` ([announcement](https://cursor.com/blog/builds)).
+adapters in Cloud Agents, **enable Builds now** (default for all environments from
+**2026-08-17**) so sessions boot from a warm install snapshot (~hourly refresh).
+Put durable deps in `install` and fresh services in `start`; use **team/environment
+secrets** for private-registry install credentials (user secrets are not available
+during Builds). Tune the dashboard git-staleness threshold
+([announcement](https://cursor.com/blog/builds)).
 
-**Cursor working tips.** Cursor CLI **Aug 11** adds sticky skills (Option+Enter) and runs hooks from installed plugins once a Cursor-native hooks bundle exists — irrelevant to this thin-client adapter beyond local CLI debugging.  Desktop CLI may report **3.15.19** while the public feature
+**Cursor working tips.** Cursor CLI **Aug 11** adds sticky skills (Option+Enter),
+steer-while-running (Enter queues guidance; Enter again interrupts), optional
+durable `/goal` (gated), and runs hooks from installed plugins once a Cursor-native
+hooks bundle exists — irrelevant to this thin-client adapter beyond local CLI
+debugging.  Desktop CLI may report **3.15.19** while the public feature
 changelog stays on **3.11** — this repo pins the feature/date in `.cursor-version`
 and records `desktop_cli` separately. Newest covered changelog date is **2026-08-13**
 (Cloud Agent Builds). Cursor also loads the open

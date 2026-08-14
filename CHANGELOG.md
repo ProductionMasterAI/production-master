@@ -88,6 +88,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an investigation; Cursor Automations (3.8, `/automate`) for **Workflow run
   completed** CI triage; Balance Auto / Cursor Router for routine adapter work;
   Inbox **multi-PR sessions** (2026-07-29) when one chat opens several PRs.
+- **Claude Code target bumped to 2.1.232** (from 2.1.231) in `.claude-code-version`
+  and `docs/user/platform-support.md`. The 2.1.232 delta needs no client change;
+  two entries improve the install story and are now documented: **`/plugin install
+  plugin@marketplace` refreshes the marketplace first** — quick-start's reload note
+  and troubleshooting's registration section carry the version-scoped behavior
+  (refresh-first on 2.1.232+, refresh-and-retry on 2.1.221–2.1.231) — and the fix
+  for a **startup race that could silently unregister a plugin marketplace**
+  (concurrent `known_marketplaces.json` writes), which troubleshooting now names
+  so a vanished marketplace reads as a host-version answer instead of a
+  registration mistake. Platform-support also notes the managed-settings aliases
+  (`allowedMarketplaces`/`additionalMarketplaces`) and GitLab-hosted marketplaces
+  (bare `gitlab.com` repo URLs) for teams distributing this plugin. Reviewed and
+  not applicable: the MCP protocol-version-probe hang fix concerns Claude Code's
+  own MCP client — this client's Claude Code path registers via `/plugin
+  install`, not MCP, and the `.cursor/mcp.json`/`.codex/config.toml`/
+  `opencode.json` registrations talk to those editors' hosts; GitLab token
+  redaction, session `@`-mentions, subagent-forking defaults, Remote Control,
+  gateway overlay validation, and sandbox `ripgrep` scoping are host-side and
+  touch neither the adapter registration shapes nor the SSE streaming contract
+  this client implements against the Production Master service.
 - **Claude Code target bumped to 2.1.231** (from 2.1.228) in `.claude-code-version`
   and `docs/user/platform-support.md`. The 2.1.229 + 2.1.231 delta (no 2.1.230 entry
   was published) is fix-heavy from this plugin's perspective, with one adoptable

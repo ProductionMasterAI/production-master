@@ -109,6 +109,23 @@ Related notes for recent Claude Code versions:
   working directory, that was a Claude Code bug fixed in 2.1.223 — update
   rather than loosening the deny rule.
 
+## Command arguments (Claude Code)
+
+### A description or payload with `$`-looking text behaves oddly
+
+Every command in `commands/` (`/login`, `/investigate`, `/connect`, `/update`)
+interpolates the argument text as `$ARGUMENTS` — both in the command's prose
+and in the Bash block that execs the CLI (`node "$CLI" investigate --input
+"$ARGUMENTS"`, and similarly for the others). Before Claude Code 2.1.233, an
+argument value that itself contained something shaped like a template marker
+— for instance an incident description pasted from another prompt, or a raw
+JSON `update` payload with an unlucky substring — could be re-expanded a
+second time instead of passed through as literal text, producing a mangled
+CLI invocation. Fixed in 2.1.233: argument values are no longer re-expanded.
+On older versions, if `/investigate` or `/update` behaves unexpectedly on a
+particular input, try rephrasing the argument to avoid `$`-prefixed tokens or
+update Claude Code.
+
 ## MCP registration issues
 
 ### The editor doesn't show the client's commands

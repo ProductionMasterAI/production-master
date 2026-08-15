@@ -4,7 +4,7 @@ The editor and agent platforms this client is validated against.
 
 | Platform | Validated against | Latest known |
 |---|---|---|
-| Claude Code | pending | 2.1.232 |
+| Claude Code | pending | 2.1.233 |
 | Cursor | pending | 3.11 (+ changelog 2026-08-03) |
 | Codex | pending | 0.147.0 |
 | OpenCode | pending | pending |
@@ -27,6 +27,30 @@ stdio server intentionally continues to advertise its older supported MCP
 protocol; changing only the protocol string would be unsafe. A future SDK-backed
 upgrade should adopt the newer protocol when paginated discovery, multi-round
 requests, and non-blocking startup can be implemented and tested together.
+
+**Claude Code notes (2.1.232 → 2.1.233).** Registration is unchanged. One
+2.1.233 fix touches this client directly: **skill/command argument
+substitution no longer re-expands argument values as template markers.**
+Every command in `commands/` (`login.md`, `investigate.md`, `connect.md`,
+`update.md`) interpolates `$ARGUMENTS` both in its prose and in the Bash
+block that execs the CLI; before 2.1.233, an argument value that itself
+looked like a template marker (for example an incident description or JSON
+payload copied from another prompt) could be re-expanded a second time
+instead of passed through literally. Fixed host-side — no command-file
+change needed, but see
+[Troubleshooting → Command arguments](troubleshooting.md#command-arguments-claude-code)
+for the versions affected. Also relevant to this repo:
+**`claude plugin validate` now checks a bare `.claude/skills` directory**
+and reports any `SKILL.md` whose frontmatter fails to parse — a free extra
+check on this repo's [`run-production-master`
+skill](../../.claude/skills/run-production-master/SKILL.md), which already
+parses cleanly. The rest of the delta is host-side and needs no client
+change: GitLab merge-request URLs in `--worktree`/`claude agents`, the
+`forward_user_identity` apps-gateway setting, opt-in Bash memory-cgroup
+limits and the WebFetch cache-TTL env var, notification-hook and idle-CPU
+fixes, the Windows NT-path and self-hosted-runner fixes, and the todo/task
+tracking tools being off by default on newer models (`CLAUDE_CODE_ENABLE_TODO_TOOLS=1`
+restores them) — this client's commands never invoke those tools.
 
 **Claude Code notes (2.1.231 → 2.1.232).** Registration is unchanged. Two
 2.1.232 entries improve this plugin's install story with no client change:

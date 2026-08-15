@@ -88,6 +88,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an investigation; Cursor Automations (3.8, `/automate`) for **Workflow run
   completed** CI triage; Balance Auto / Cursor Router for routine adapter work;
   Inbox **multi-PR sessions** (2026-07-29) when one chat opens several PRs.
+- **Claude Code target bumped to 2.1.233** (from 2.1.232) in `.claude-code-version`
+  and `docs/user/platform-support.md`. One 2.1.233 fix reaches this repo's own
+  files: every command in `commands/` interpolates `$ARGUMENTS` in both its
+  prose and its Bash block, and before 2.1.233 an argument value shaped like a
+  template marker could be re-expanded a second time instead of passed through
+  literally — troubleshooting gains a **Command arguments (Claude Code)**
+  section naming the affected commands and the fix version. Also noted:
+  **`claude plugin validate` now checks a bare `.claude/skills` directory**
+  and reports unparseable `SKILL.md` frontmatter — this repo's
+  `run-production-master` skill already parses cleanly, so no change was
+  needed, just a documentation mention. Reviewed and not applicable: GitLab
+  merge-request URLs in `--worktree`/`claude agents`, the
+  `forward_user_identity` apps-gateway setting, opt-in Bash memory-cgroup
+  limits, the WebFetch cache-TTL env var, notification-hook/idle-CPU/Windows
+  NT-path/self-hosted-runner fixes, the GitHub-app-setup-tip change for
+  GitLab/Bitbucket origins, and todo/task-tracking tools being off by default
+  on newer models (`CLAUDE_CODE_ENABLE_TODO_TOOLS=1` restores them) — none of
+  this client's commands or docs reference those tools or surfaces.
 - **Claude Code target bumped to 2.1.232** (from 2.1.231) in `.claude-code-version`
   and `docs/user/platform-support.md`. The 2.1.232 delta needs no client change;
   two entries improve the install story and are now documented: **`/plugin install

@@ -11,7 +11,7 @@ The editor and agent platforms this client is validated against.
 
 All four adapter packages now ship a runnable `dist/cli.js`, so each client is
 usable today. The Codex release this repo targets is **0.147.0** and the Cursor
-release is **3.11** (changelog covered through 2026-08-13; desktop CLI observed at **3.15.19**): for each, the
+release is **3.11** (changelog covered through 2026-08-13; desktop CLI observed at **3.16.17**): for each, the
 compatibility delta was reviewed against the existing adapter and its registration
 shape (`.codex/config.toml` for Codex, `.cursor/mcp.json` for Cursor), and nothing
 in either requires a client change. That is a documentation review, not a host
@@ -53,14 +53,14 @@ adapters in Cloud Agents, **enable Builds now** (default for all environments fr
 **2026-08-17**) so sessions boot from a warm install snapshot (~hourly refresh).
 Put durable deps in `install` and fresh services in `start`; use **team/environment
 secrets** for private-registry install credentials (user secrets are not available
-during Builds). Tune the dashboard git-staleness threshold
-([announcement](https://cursor.com/blog/builds)).
+during Builds). Recurring Builds **Skip** when nothing changed since the last completed Build (no new default-branch commits / config / secret changes) — a Skipped stream is healthy. Enable **Update stale builds** and set the **Staleness threshold** (default **24 hours**; `0` = always pull latest default-branch at agent start). Phase split: durable work in `install` (Build-time), fresh services in `start`, shared app processes in `terminals` (both at agent start). Desktop download line **3.16.17** (2026-08-14; no separate feature write-up).
+([announcement](https://cursor.com/blog/builds) · [Builds docs](https://cursor.com/docs/cloud-agent/builds)).
 
 **Cursor working tips.** Cursor CLI **Aug 11** adds sticky skills (Option+Enter),
 steer-while-running (Enter queues guidance; Enter again interrupts), optional
 durable `/goal` (gated), and runs hooks from installed plugins once a Cursor-native
 hooks bundle exists — irrelevant to this thin-client adapter beyond local CLI
-debugging.  Desktop CLI may report **3.15.19** while the public feature
+debugging.  Desktop CLI may report **3.16.17** while the public feature
 changelog stays on **3.11** — this repo pins the feature/date in `.cursor-version`
 and records `desktop_cli` separately. Newest covered changelog date is **2026-08-13**
 (Cloud Agent Builds). Cursor also loads the open

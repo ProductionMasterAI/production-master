@@ -50,7 +50,7 @@ install the same server without hand-editing JSON. Optional Google Workspace
 marketplace plugins (2026-08-03) are unrelated to this thin client and are not
 required for investigations. **Cloud Agent Builds (2026-08-13):** when validating
 adapters in Cloud Agents, **enable Builds now** (default for all environments from
-**2026-08-17**) so sessions boot from a warm install snapshot (~hourly refresh).
+**2026-08-17**). **T-1 readiness (tonight → default 2026-08-17):** confirm each Cloud environment has Builds enabled, a recent successful Build, `Update stale builds` on with a sensible Staleness threshold (default 24h), and install credentials as team/environment secrets — after the default flip, agents boot from Builds without a manual Enable step. Sessions then boot from a warm install snapshot (~hourly refresh).
 Put durable deps in `install` and fresh services in `start`; use **team/environment
 secrets** for private-registry install credentials (user secrets are not available
 during Builds). Recurring Builds **Skip** when nothing changed since the last completed Build (no new default-branch commits / config / secret changes) — a Skipped stream is healthy. Enable **Update stale builds** and set the **Staleness threshold** (default **24 hours**; `0` = always pull latest default-branch at agent start). Phase split: durable work in `install` (Build-time), fresh services in `start`, shared app processes in `terminals` (both at agent start). Desktop download line **3.16.17** (2026-08-14; no separate feature write-up).
@@ -71,7 +71,7 @@ workspace-specific plugins (not available on Cloud Agents). Use a **side chat**
 interrupting an in-flight investigation. **Cursor Automations** (3.8, `/automate`)
 can **delete memory files** from the UI (or when prompted) and can watch **Workflow run completed** on this repo's CI and open a fix PR; enable
 computer use when you want a demo artifact attached. Prefer **Balance** Auto /
-Cursor Router mode for routine adapter work. **Inbox multi-PR sessions
+Cursor Router mode for routine adapter work. **Grok 4.6 (2026-08-14):** prefer for long-running adapter validation and visual/interactive demos ([announcement](https://cursor.com/blog/grok-4-6)); Router Balance remains the default for routine work. **Inbox multi-PR sessions
 (2026-07-29):** when one chat opens several adapter/docs PRs, open every PR from
 the session — not only the last.
 

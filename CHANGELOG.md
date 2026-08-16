@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   string comparison silently produced a no-op CLI in that case).
 
 ### Changed
+- **Cursor Grok 4.6 + Builds T-1 readiness (2026-08-16).** Platform support + Quick Start document Grok 4.6 for long-running / visual adapter work and a T-1 Builds checklist before the **2026-08-17** default. Pins stay **3.11** / **2026-08-13** / desktop **3.16.17**.
 
 - **Cursor desktop 3.16.17 + Builds skipped/staleness docs.** Desktop pin **3.15.19 → 3.16.17**; docs cover Builds Skipped checks, 24h staleness default, and install/start/terminals. Feature/date pins stay **3.11** / **2026-08-13**.
 - **Cursor Builds Aug-17 readiness + CLI steer/`/goal`.** Platform support + Quick Start deepen Builds adoption (enable now ahead of **2026-08-17** default; team/environment secrets; git-staleness) and note CLI steer + durable `/goal` for local debugging. Pins stay **3.11** / **2026-08-13** / desktop **3.16.17**.

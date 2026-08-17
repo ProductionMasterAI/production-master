@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-08-17
+
+First published release. Everything below accumulated pre-release, alongside
+the initial scaffold from 2026-07-13 that never actually got tagged — `npm`
+and PyPI have returned 404 for these package names until now (dev#642).
+
+### Added
+
+- **npm and PyPI packages published for the first time (dev#642).** `private:
+true` removed from the publishable manifests; `packages/pmctl` now publishes
+  unscoped as `production-master` (`npx production-master` runs the `pmctl`
+  binary) and `packages/plugin-core` publishes as
+  `@production-master/plugin-core`, both at `0.1.0`. `sdk/python` publishes to
+  PyPI as `production-master`, also `0.1.0`. The four IDE adapter packages
+  stay `private` — they ship through their own editor's install mechanism
+  (Claude Code plugin marketplace / archive source, `.cursor/mcp.json`,
+  `.codex/config.toml`, `opencode.json`), not via `npm install`.
+
 ### Added
 
 - **`pmctl` operator CLI (dev#268).** New `packages/pmctl` workspace package — a
@@ -35,11 +53,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   moved the same way. The 2.1.219 troubleshooting note that told users to
   allowlist the old hostname was corrected in place rather than left standing,
   since following it would firewall-allow a domain we do not control.
-  **Note:** `api.productionmaster.dev` has no DNS record yet, so the default is
-  inert until one is added — the same as before this change, but no longer
-  hijackable. The Python SDK's `DEFAULT_SERVICE_URL` deliberately stays on the
-  service's Vercel origin, which resolves today; it flips once the vanity host
-  serves the BFF.
+  **Update (dev#642):** `api.productionmaster.dev` now resolves and serves the
+  BFF — the "inert until DNS lands" caveat above no longer holds. The Python
+  SDK's `DEFAULT_SERVICE_URL` has been moved off the service's raw Vercel
+  deployment origin onto this vanity host now that it is live. (Every IDE
+  adapter and `pmctl` still carry no baked-in default at all — they require
+  `PM_SERVICE_URL`/`--service` explicitly — so there is nothing to bring into
+  alignment on that side.)
 
 ### Added
 
@@ -258,14 +278,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   auth/API error becomes a workflow warning and exits 0, so it can never fail a PR.
   Public-repo hardened: runs only on `ubuntu-latest` (never self-hosted) and only for
   same-repo PRs, so a fork PR never reaches the WIF token or repo secrets.
-
-## [0.1.0] - 2026-07-13
-
-### Added
-
-- Initial repository scaffold: README, documentation tree, contributing guide, and CI.
-- Documented the thin-client-over-hosted-service architecture.
-- Empty npm workspaces layout (`packages/*`) ready to be populated.
+- Initial repository scaffold (2026-07-13): README, documentation tree,
+  contributing guide, and CI. Documented the thin-client-over-hosted-service
+  architecture. Empty npm workspaces layout (`packages/*`) ready to be
+  populated.
 
 [Unreleased]: https://github.com/ProductionMasterAI/production-master/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/ProductionMasterAI/production-master/releases/tag/v0.1.0

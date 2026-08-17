@@ -1,9 +1,8 @@
 {
   "name": "@production-master/plugin-core",
-  "version": "0.0.0-local",
+  "version": "0.1.0",
   "description": "Host-neutral thin-client core for the Production Master multi-IDE plugin (service client, device-code auth, MCP session scoping, SSE event stream, projection renderers). Imports NO LLM/provider SDK \u2014 enforced by CI.",
   "type": "module",
-  "private": true,
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -24,5 +23,15 @@
     "typecheck": "tsc -b tsconfig.json --noEmit",
     "test": "vitest run"
   },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ProductionMasterAI/production-master.git",
+    "directory": "packages/plugin-core"
+  },
+  "homepage": "https://github.com/ProductionMasterAI/production-master#readme",
+  "bugs": "https://github.com/ProductionMasterAI/production-master/issues",
   "license": "MIT"
 }

@@ -15,14 +15,16 @@
   "bin": {
     "production-master": "./dist/cli.js"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -b tsconfig.json",
     "typecheck": "tsc -b tsconfig.json --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
-    "@production-master/plugin-core": "0.0.0-local"
+    "@production-master/plugin-core": "0.1.0"
   },
   "license": "MIT"
 }

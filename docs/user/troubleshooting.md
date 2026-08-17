@@ -109,6 +109,23 @@ Related notes for recent Claude Code versions:
   working directory, that was a Claude Code bug fixed in 2.1.223 — update
   rather than loosening the deny rule.
 
+## Command arguments (Claude Code)
+
+### A description or payload with `$`-looking text behaves oddly
+
+Every command in `commands/` (`/login`, `/investigate`, `/connect`, `/update`)
+interpolates the argument text as `$ARGUMENTS` — both in the command's prose
+and in the Bash block that execs the CLI (`node "$CLI" investigate --input
+"$ARGUMENTS"`, and similarly for the others). Before Claude Code 2.1.233, an
+argument value that itself contained something shaped like a template marker
+— for instance an incident description pasted from another prompt, or a raw
+JSON `update` payload with an unlucky substring — could be re-expanded a
+second time instead of passed through as literal text, producing a mangled
+CLI invocation. Fixed in 2.1.233: argument values are no longer re-expanded.
+On older versions, if `/investigate` or `/update` behaves unexpectedly on a
+particular input, try rephrasing the argument to avoid `$`-prefixed tokens or
+update Claude Code.
+
 ## MCP registration issues
 
 ### The editor doesn't show the client's commands
@@ -133,6 +150,14 @@ Two related Claude Code notes:
   search without announcing their names — the agent wouldn't see or use the
   tools for the rest of that turn. Fixed in 2.1.224; on older versions, sending
   the next message makes the tools visible.
+- **Marketplace vanished, or a just-published version won't install.** Before
+  2.1.232, a startup race between concurrent `known_marketplaces.json` writes
+  could silently unregister a plugin marketplace — re-add it with
+  `/plugin marketplace add`. And since 2.1.232,
+  `/plugin install production-master@<marketplace>` refreshes the marketplace
+  first, so a freshly published plugin version installs without a manual
+  `/plugin marketplace update` (2.1.221–2.1.231 refresh a stale catalog and
+  retry only after a failed lookup).
 
 ### The client registers but fails to start
 

@@ -4,14 +4,14 @@ The editor and agent platforms this client is validated against.
 
 | Platform | Validated against | Latest known |
 |---|---|---|
-| Claude Code | pending | 2.1.231 |
-| Cursor | pending | 3.11 (+ changelog 2026-08-03) |
+| Claude Code | pending | 2.1.233 |
+| Cursor | pending | 3.11 (+ changelog 2026-08-13) |
 | Codex | pending | 0.147.0 |
 | OpenCode | pending | pending |
 
 All four adapter packages now ship a runnable `dist/cli.js`, so each client is
 usable today. The Codex release this repo targets is **0.147.0** and the Cursor
-release is **3.11** (changelog covered through 2026-08-03; desktop CLI observed at **3.15.19**): for each, the
+release is **3.11** (changelog covered through 2026-08-13; desktop CLI observed at **3.16.17**): for each, the
 compatibility delta was reviewed against the existing adapter and its registration
 shape (`.codex/config.toml` for Codex, `.cursor/mcp.json` for Cursor), and nothing
 in either requires a client change. That is a documentation review, not a host
@@ -28,6 +28,48 @@ protocol; changing only the protocol string would be unsafe. A future SDK-backed
 upgrade should adopt the newer protocol when paginated discovery, multi-round
 requests, and non-blocking startup can be implemented and tested together.
 
+**Claude Code notes (2.1.232 → 2.1.233).** Registration is unchanged. One
+2.1.233 fix touches this client directly: **skill/command argument
+substitution no longer re-expands argument values as template markers.**
+Every command in `commands/` (`login.md`, `investigate.md`, `connect.md`,
+`update.md`) interpolates `$ARGUMENTS` both in its prose and in the Bash
+block that execs the CLI; before 2.1.233, an argument value that itself
+looked like a template marker (for example an incident description or JSON
+payload copied from another prompt) could be re-expanded a second time
+instead of passed through literally. Fixed host-side — no command-file
+change needed, but see
+[Troubleshooting → Command arguments](troubleshooting.md#command-arguments-claude-code)
+for the versions affected. Also relevant to this repo:
+**`claude plugin validate` now checks a bare `.claude/skills` directory**
+and reports any `SKILL.md` whose frontmatter fails to parse — a free extra
+check on this repo's [`run-production-master`
+skill](../../.claude/skills/run-production-master/SKILL.md), which already
+parses cleanly. The rest of the delta is host-side and needs no client
+change: GitLab merge-request URLs in `--worktree`/`claude agents`, the
+`forward_user_identity` apps-gateway setting, opt-in Bash memory-cgroup
+limits and the WebFetch cache-TTL env var, notification-hook and idle-CPU
+fixes, the Windows NT-path and self-hosted-runner fixes, and the todo/task
+tracking tools being off by default on newer models (`CLAUDE_CODE_ENABLE_TODO_TOOLS=1`
+restores them) — this client's commands never invoke those tools.
+
+**Claude Code notes (2.1.231 → 2.1.232).** Registration is unchanged. Two
+2.1.232 entries improve this plugin's install story with no client change:
+`/plugin install production-master@<marketplace>` now **refreshes the
+marketplace first**, so a just-published plugin version installs without a
+manual `marketplace update` (quick-start and troubleshooting note the
+version-scoped behavior), and a startup race that could silently unregister a
+plugin marketplace (concurrent `known_marketplaces.json` writes) is fixed — a
+"marketplace disappeared" symptom on older versions is a host bug, not a
+registration mistake. For managed environments, `allowedMarketplaces` /
+`additionalMarketplaces` are accepted as friendlier aliases for
+`strictKnownMarketplaces` / `extraKnownMarketplaces`, and marketplaces can now
+be hosted on GitLab (bare `gitlab.com` repo URLs). The rest of the delta is
+host-side and needs no client change: session `@`-mentions and subagent
+forking defaults, GitLab token redaction, Remote Control and gateway fixes,
+and the MCP protocol-version-probe fix (this client's Claude Code path
+registers via `/plugin install`, not MCP; the other editors' MCP registrations
+talk to their own hosts, not Claude Code's MCP client).
+
 **Claude Code notes (2.1.229 → 2.1.231).** Registration remains
 `.claude-plugin/plugin.json` + `commands/` (see the table below). Since Claude
 Code 2.1.229, plugin marketplaces also support **`command` sources**: a local
@@ -41,18 +83,29 @@ rest of the 2.1.229 + 2.1.231 delta is host-side and needs no client change:
 both releases' MCP OAuth fixes concern OAuth-flow MCP servers, while this
 client's device-code + bearer design never touches MCP OAuth.
 
-**Cursor notes (3.11 → 2026-08-03).** Registration remains `.cursor/mcp.json` →
+**Cursor notes (3.11 → 2026-08-13).** Registration remains `.cursor/mcp.json` →
 `mcpServers.production-master` (see [Quick Start](quick-start.md)). Cursor 3.9+'s
 Customize page is the preferred place to manage that MCP entry alongside plugins,
 skills, and hooks. Team admins on 3.10+ can also distribute an approved MCP via
 **Team MCPs in team marketplaces** (Dashboard → Integrations & MCP) so members
 install the same server without hand-editing JSON. Optional Google Workspace
 marketplace plugins (2026-08-03) are unrelated to this thin client and are not
-required for investigations.
+required for investigations. **Cloud Agent Builds (2026-08-13):** when validating
+adapters in Cloud Agents, **enable Builds now** (default for all environments from
+**2026-08-17**). **T-1 readiness (tonight → default 2026-08-17):** confirm each Cloud environment has Builds enabled, a recent successful Build, `Update stale builds` on with a sensible Staleness threshold (default 24h), and install credentials as team/environment secrets — after the default flip, agents boot from Builds without a manual Enable step. Sessions then boot from a warm install snapshot (~hourly refresh).
+Put durable deps in `install` and fresh services in `start`; use **team/environment
+secrets** for private-registry install credentials (user secrets are not available
+during Builds). Recurring Builds **Skip** when nothing changed since the last completed Build (no new default-branch commits / config / secret changes) — a Skipped stream is healthy. Enable **Update stale builds** and set the **Staleness threshold** (default **24 hours**; `0` = always pull latest default-branch at agent start). Phase split: durable work in `install` (Build-time), fresh services in `start`, shared app processes in `terminals` (both at agent start). Desktop download line **3.16.17** (2026-08-14; no separate feature write-up).
+([announcement](https://cursor.com/blog/builds) · [Builds docs](https://cursor.com/docs/cloud-agent/builds)).
 
-**Cursor working tips.** Desktop CLI may report **3.15.19** while the public feature
+**Cursor working tips.** Cursor CLI **Aug 11** adds sticky skills (Option+Enter),
+steer-while-running (Enter queues guidance; Enter again interrupts), optional
+durable `/goal` (gated), and runs hooks from installed plugins once a Cursor-native
+hooks bundle exists — irrelevant to this thin-client adapter beyond local CLI
+debugging.  Desktop CLI may report **3.16.17** while the public feature
 changelog stays on **3.11** — this repo pins the feature/date in `.cursor-version`
-and records `desktop_cli` separately. Cursor also loads the open
+and records `desktop_cli` separately. Newest covered changelog date is **2026-08-13**
+(Cloud Agent Builds). Cursor also loads the open
 [Agent Plugins](https://agent-plugins.org) standard alongside `.cursor-plugin`
 manifests. The desktop/CLI `workspaceOpen` hook can return `pluginPaths` for
 workspace-specific plugins (not available on Cloud Agents). Use a **side chat**
@@ -60,7 +113,7 @@ workspace-specific plugins (not available on Cloud Agents). Use a **side chat**
 interrupting an in-flight investigation. **Cursor Automations** (3.8, `/automate`)
 can **delete memory files** from the UI (or when prompted) and can watch **Workflow run completed** on this repo's CI and open a fix PR; enable
 computer use when you want a demo artifact attached. Prefer **Balance** Auto /
-Cursor Router mode for routine adapter work. **Inbox multi-PR sessions
+Cursor Router mode for routine adapter work. **Grok 4.6 (2026-08-14):** prefer for long-running adapter validation and visual/interactive demos ([announcement](https://cursor.com/blog/grok-4-6)); Router Balance remains the default for routine work. **Inbox multi-PR sessions
 (2026-07-29):** when one chat opens several adapter/docs PRs, open every PR from
 the session — not only the last.
 

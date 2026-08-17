@@ -36,8 +36,12 @@ true` removed from the publishable manifests; `packages/pmctl` now publishes
   string comparison silently produced a no-op CLI in that case).
 
 ### Changed
+- **Cursor Grok 4.6 + Builds T-1 readiness (2026-08-16).** Platform support + Quick Start document Grok 4.6 for long-running / visual adapter work and a T-1 Builds checklist before the **2026-08-17** default. Pins stay **3.11** / **2026-08-13** / desktop **3.16.17**.
 
-- **Cursor currency (desktop 3.15.19; Automations memory-file delete noted).** `.cursor-version` keeps feature **3.11** / changelog **2026-08-03** and records `desktop_cli: 3.15.19`. Docs note Agent Plugins standard support and the desktop `workspaceOpen` hook (`pluginPaths`).
+- **Cursor desktop 3.16.17 + Builds skipped/staleness docs.** Desktop pin **3.15.19 → 3.16.17**; docs cover Builds Skipped checks, 24h staleness default, and install/start/terminals. Feature/date pins stay **3.11** / **2026-08-13**.
+- **Cursor Builds Aug-17 readiness + CLI steer/`/goal`.** Platform support + Quick Start deepen Builds adoption (enable now ahead of **2026-08-17** default; team/environment secrets; git-staleness) and note CLI steer + durable `/goal` for local debugging. Pins stay **3.11** / **2026-08-13** / desktop **3.16.17**.
+- **Cursor CLI Aug 11 tip.** Platform support notes sticky skills and CLI installed-plugin hooks (debugging only).
+- **Cursor currency (changelog through 2026-08-13 — Cloud Agent Builds).** `.cursor-version` keeps feature **3.11** / desktop CLI **3.16.17** and advances `changelog_date` to **2026-08-13**. Platform support + Quick Start document Cloud Agent Builds (warm install snapshots; enable on the environment Builds tab). Also covers Agent Plugins standard support, desktop `workspaceOpen` (`pluginPaths`), and Automations memory-file delete.
 
 ### Security
 
@@ -108,6 +112,44 @@ true` removed from the publishable manifests; `packages/pmctl` now publishes
   an investigation; Cursor Automations (3.8, `/automate`) for **Workflow run
   completed** CI triage; Balance Auto / Cursor Router for routine adapter work;
   Inbox **multi-PR sessions** (2026-07-29) when one chat opens several PRs.
+- **Claude Code target bumped to 2.1.233** (from 2.1.232) in `.claude-code-version`
+  and `docs/user/platform-support.md`. One 2.1.233 fix reaches this repo's own
+  files: every command in `commands/` interpolates `$ARGUMENTS` in both its
+  prose and its Bash block, and before 2.1.233 an argument value shaped like a
+  template marker could be re-expanded a second time instead of passed through
+  literally — troubleshooting gains a **Command arguments (Claude Code)**
+  section naming the affected commands and the fix version. Also noted:
+  **`claude plugin validate` now checks a bare `.claude/skills` directory**
+  and reports unparseable `SKILL.md` frontmatter — this repo's
+  `run-production-master` skill already parses cleanly, so no change was
+  needed, just a documentation mention. Reviewed and not applicable: GitLab
+  merge-request URLs in `--worktree`/`claude agents`, the
+  `forward_user_identity` apps-gateway setting, opt-in Bash memory-cgroup
+  limits, the WebFetch cache-TTL env var, notification-hook/idle-CPU/Windows
+  NT-path/self-hosted-runner fixes, the GitHub-app-setup-tip change for
+  GitLab/Bitbucket origins, and todo/task-tracking tools being off by default
+  on newer models (`CLAUDE_CODE_ENABLE_TODO_TOOLS=1` restores them) — none of
+  this client's commands or docs reference those tools or surfaces.
+- **Claude Code target bumped to 2.1.232** (from 2.1.231) in `.claude-code-version`
+  and `docs/user/platform-support.md`. The 2.1.232 delta needs no client change;
+  two entries improve the install story and are now documented: **`/plugin install
+  plugin@marketplace` refreshes the marketplace first** — quick-start's reload note
+  and troubleshooting's registration section carry the version-scoped behavior
+  (refresh-first on 2.1.232+, refresh-and-retry on 2.1.221–2.1.231) — and the fix
+  for a **startup race that could silently unregister a plugin marketplace**
+  (concurrent `known_marketplaces.json` writes), which troubleshooting now names
+  so a vanished marketplace reads as a host-version answer instead of a
+  registration mistake. Platform-support also notes the managed-settings aliases
+  (`allowedMarketplaces`/`additionalMarketplaces`) and GitLab-hosted marketplaces
+  (bare `gitlab.com` repo URLs) for teams distributing this plugin. Reviewed and
+  not applicable: the MCP protocol-version-probe hang fix concerns Claude Code's
+  own MCP client — this client's Claude Code path registers via `/plugin
+  install`, not MCP, and the `.cursor/mcp.json`/`.codex/config.toml`/
+  `opencode.json` registrations talk to those editors' hosts; GitLab token
+  redaction, session `@`-mentions, subagent-forking defaults, Remote Control,
+  gateway overlay validation, and sandbox `ripgrep` scoping are host-side and
+  touch neither the adapter registration shapes nor the SSE streaming contract
+  this client implements against the Production Master service.
 - **Claude Code target bumped to 2.1.231** (from 2.1.228) in `.claude-code-version`
   and `docs/user/platform-support.md`. The 2.1.229 + 2.1.231 delta (no 2.1.230 entry
   was published) is fix-heavy from this plugin's perspective, with one adoptable

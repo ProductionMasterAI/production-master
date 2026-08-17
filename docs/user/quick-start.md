@@ -46,7 +46,7 @@ the same entry from Cursor's **Customize** page (plugins / skills / MCPs, 3.9+):
 > so members install Production Master without hand-editing `mcp.json`. See
 > [Platform support](platform-support.md).
 >
-> **Desktop note:** feature pin **3.11** / **2026-08-03**; desktop CLI observed **3.15.19**. Optional desktop `workspaceOpen` hook can load workspace plugin paths. **Debugging tip (3.11):** open a side chat (`/side` / `/btw`) to inspect MCP
+> **Desktop note:** feature pin **3.11** / **2026-08-13**; desktop CLI observed **3.16.17**. Cloud Agent **Builds** (2026-08-13) warm the install snapshot — **enable now** (default **2026-08-17**; T-1: confirm a successful Build + team/env secrets before the flip); use team/environment secrets for install credentials; Skipped recurring Builds are healthy; **Staleness threshold** defaults to **24h** (`0` = always pull); phases: `install` / `start` / `terminals`. Optional desktop `workspaceOpen` hook can load workspace plugin paths. Prefer **Grok 4.6** for long-running / visual adapter checks ([announcement](https://cursor.com/blog/grok-4-6)). **Debugging tip (3.11):** open a side chat (`/side` / `/btw`) to inspect MCP
 > connectivity while the main agent keeps investigating. For always-on CI triage,
 > create a Cursor Automation (`/automate`, 3.8) on **Workflow run completed**.
 
@@ -75,7 +75,10 @@ Add to `opencode.json`:
 ```
 
 Reload your editor so it picks up the new client. (On Claude Code 2.1.221+,
-`/plugin install` activates the plugin immediately when safe — no reload needed.)
+`/plugin install` activates the plugin immediately when safe — no reload needed.
+On 2.1.232+, `/plugin install production-master@<marketplace>` also refreshes
+the marketplace first, so a version published minutes ago installs without a
+manual `/plugin marketplace update`.)
 
 ## 2. Log in
 

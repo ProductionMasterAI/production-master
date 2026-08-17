@@ -18,8 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   string comparison silently produced a no-op CLI in that case).
 
 ### Changed
+- **Cursor Grok 4.6 + Builds T-1 readiness (2026-08-16).** Platform support + Quick Start document Grok 4.6 for long-running / visual adapter work and a T-1 Builds checklist before the **2026-08-17** default. Pins stay **3.11** / **2026-08-13** / desktop **3.16.17**.
 
-- **Cursor currency (desktop 3.15.19; Automations memory-file delete noted).** `.cursor-version` keeps feature **3.11** / changelog **2026-08-03** and records `desktop_cli: 3.15.19`. Docs note Agent Plugins standard support and the desktop `workspaceOpen` hook (`pluginPaths`).
+- **Cursor desktop 3.16.17 + Builds skipped/staleness docs.** Desktop pin **3.15.19 → 3.16.17**; docs cover Builds Skipped checks, 24h staleness default, and install/start/terminals. Feature/date pins stay **3.11** / **2026-08-13**.
+- **Cursor Builds Aug-17 readiness + CLI steer/`/goal`.** Platform support + Quick Start deepen Builds adoption (enable now ahead of **2026-08-17** default; team/environment secrets; git-staleness) and note CLI steer + durable `/goal` for local debugging. Pins stay **3.11** / **2026-08-13** / desktop **3.16.17**.
+- **Cursor CLI Aug 11 tip.** Platform support notes sticky skills and CLI installed-plugin hooks (debugging only).
+- **Cursor currency (changelog through 2026-08-13 — Cloud Agent Builds).** `.cursor-version` keeps feature **3.11** / desktop CLI **3.16.17** and advances `changelog_date` to **2026-08-13**. Platform support + Quick Start document Cloud Agent Builds (warm install snapshots; enable on the environment Builds tab). Also covers Agent Plugins standard support, desktop `workspaceOpen` (`pluginPaths`), and Automations memory-file delete.
 
 ### Security
 

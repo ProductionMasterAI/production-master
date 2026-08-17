@@ -25,17 +25,13 @@ except ImportError:  # pragma: no cover - 3.9 always has it
     from typing_extensions import Protocol, runtime_checkable  # type: ignore
 
 
-# The hosted BFF. This is the service's own deployment origin rather than a
-# vanity API hostname on purpose: a default that points at a domain nobody has
-# registered hands every bearer token of every user who does not override it to
-# whoever registers that domain later. The canonical vanity host is now
-# `api.productionmaster.dev` (dev#468) — a subdomain of a domain we do own, and
-# already attached to the `production-master-service` Vercel project — but it
-# has no DNS record yet, so pointing this at it would trade a working default
-# for a dead one. Flip this constant (and the guard in
-# `tests/test_service_url.py`) once that host actually serves the BFF. Override
+# The hosted BFF. The canonical vanity host is `api.productionmaster.dev`
+# (dev#468) — a subdomain we own, so it cannot be hijacked by whoever
+# registers `productionmaster.ai` the way the old default could. It now has a
+# DNS record and serves the BFF (verified dev#642), so this points at it
+# directly rather than the service's raw Vercel deployment origin. Override
 # per-call with `service_url=` or `PM_SERVICE_URL`.
-DEFAULT_SERVICE_URL = "https://production-master-service.vercel.app"
+DEFAULT_SERVICE_URL = "https://api.productionmaster.dev"
 def resolve_service_url(explicit: Optional[str] = None) -> str:
     """Resolve the BFF origin to talk to.
 

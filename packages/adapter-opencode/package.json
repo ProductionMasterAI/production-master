@@ -24,7 +24,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@production-master/plugin-core": "0.0.0-local"
+    "@production-master/plugin-core": "0.1.0"
   },
   "license": "MIT"
 }

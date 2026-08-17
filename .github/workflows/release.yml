@@ -1,15 +1,21 @@
 name: Release
 
+# Tags this fires on are the plugin's own `v*` tags. The Python SDK versions
+# independently under a `python-v*` prefix (see publish-python.yml) so the two
+# release trains can never collide on a tag push.
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 permissions:
   contents: write
 
 jobs:
   release:
+    # ubuntu-latest, never the self-hosted fleet: this repo is public and
+    # accepts third-party pull requests, so a self-hosted runner here would
+    # let a fork execute arbitrary code on the owner's hardware.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -17,8 +23,41 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
+          registry-url: https://registry.npmjs.org
+
       - run: npm ci
       - run: npm run build --if-present
+
+      - name: Tag must match every published package's version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          want="${TAG#v}"
+          for pkg in packages/plugin-core packages/pmctl; do
+            got="$(node -p "require('./${pkg}/package.json').version")"
+            if [ "$got" != "$want" ]; then
+              echo "::error::tag ${TAG} implies version ${want} but ${pkg}/package.json declares ${got}"
+              exit 1
+            fi
+          done
+          echo "version ${want} matches tag ${TAG} in every publishable package"
+
+      - run: npm run test:coverage
+
+      # Publish order matters: plugin-core has no workspace dependency, but
+      # production-master (pmctl) depends on it, so a fresh install of the
+      # latter needs it already on the registry.
+      - name: Publish @production-master/plugin-core to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --workspace packages/plugin-core --access public
+
+      - name: Publish production-master (pmctl) to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --workspace packages/pmctl --access public
+
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

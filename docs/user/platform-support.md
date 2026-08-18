@@ -4,7 +4,7 @@ The editor and agent platforms this client is validated against.
 
 | Platform | Validated against | Latest known |
 |---|---|---|
-| Claude Code | pending | 2.1.233 |
+| Claude Code | pending | 2.1.234 |
 | Cursor | pending | 3.11 (+ changelog 2026-08-13) |
 | Codex | pending | 0.147.0 |
 | OpenCode | pending | pending |
@@ -27,6 +27,21 @@ stdio server intentionally continues to advertise its older supported MCP
 protocol; changing only the protocol string would be unsafe. A future SDK-backed
 upgrade should adopt the newer protocol when paginated discovery, multi-round
 requests, and non-blocking startup can be implemented and tested together.
+
+**Claude Code notes (2.1.233 → 2.1.234).** Registration, sandboxing, and
+command argument handling are unchanged. This release's hardening against
+Windows NT-namespace path reads closes another instance of the same
+sandboxed-file-protection bypass family as the Linux/macOS trailing-slash
+`denyRead` bypass fixed in 2.1.224 (see
+[Troubleshooting → Sandboxed commands](troubleshooting.md#sandboxed-commands-claude-code)):
+Windows users who protect a credentials file seeding `PM_ACCESS_TOKEN` with a
+sandbox filesystem deny entry now get the same guarantee Linux/macOS already
+had. The rest of the delta is host-side session/UI work with no client
+change: auto-continue on usage-limit reset, GitLab MR badges in the
+footer/statusline, account-email-only identification, Remote Control
+cross-session/org-switch sync, `/permissions` and `/add-dir` usable while
+Claude is working, `/goal` improvements, and transcript-rendering fixes —
+none of it touches this client's registration, commands, or manifests.
 
 **Claude Code notes (2.1.232 → 2.1.233).** Registration is unchanged. One
 2.1.233 fix touches this client directly: **skill/command argument

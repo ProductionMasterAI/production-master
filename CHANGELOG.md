@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Claude Code currency (2.1.233 → 2.1.234).** `.claude-code-version` advances to
+  **2.1.234**. Registration, sandboxing, and command-argument handling are
+  unchanged; the only client-relevant item is 2.1.234's hardening against
+  Windows NT-namespace path reads, which closes the same sandboxed-file-protection
+  bypass family as the 2.1.224 Linux/macOS trailing-slash `denyRead` fix — Windows
+  users protecting a `PM_ACCESS_TOKEN` credentials file with a sandbox deny entry
+  now get the same guarantee. See [Platform support](docs/user/platform-support.md)
+  for the full delta.
+
 ## [0.1.0] - 2026-08-17
 
 First published release. Everything below accumulated pre-release, alongside
@@ -297,15 +308,6 @@ true` removed from the publishable manifests; `packages/pmctl` now publishes
   `mcp` JSON-RPC/stdio server. Their registration files are populated to spawn it:
   `.cursor/mcp.json`'s `mcpServers.production-master` and `opencode.json`'s `mcp`
   map (a `type: "local"` entry). All four IDE adapters now have a runnable entry point.
-- **Thin-client runtime** ported into `packages/*` (AD-7 single-path). `plugin-core`
-  is the host-neutral core — `createPluginRuntime` composition root, device-code
-  (RFC 8628) auth + OS-keychain token store, MCP session/tool surface over the
-  service's Streamable-HTTP gateway, SSE event stream, projection fold → `PanelView`
-  rendering, and the `RemoteServiceRunner` streaming engine. Exactly one runtime path
-  (no local/inline mode); imports no LLM/provider SDK.
-- **Per-IDE adapters** as `packages/adapter-{claude-code,cursor,codex,opencode}`, each
-  a thin `HostAdapter` over the core. Claude Code additionally ships a runnable CLI
-  and is wired end-to-end.
 - **Claude Code install layer**: `.claude-plugin/plugin.json` manifest and `commands/`
   slash commands (`/login`, `/investigate`, `/connect`, `/update`, `/logout`) that exec
   the built thin-client binary. Cursor/Codex/OpenCode register through their own config

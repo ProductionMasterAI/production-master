@@ -11,7 +11,7 @@ The editor and agent platforms this client is validated against.
 
 All four adapter packages now ship a runnable `dist/cli.js`, so each client is
 usable today. The Codex release this repo targets is **0.147.0** and the Cursor
-release is **3.11** (changelog covered through 2026-08-17; desktop CLI observed at **3.16.17**): for each, the
+release is **3.11** (changelog covered through 2026-08-17; desktop CLI observed at **3.16.29**): for each, the
 compatibility delta was reviewed against the existing adapter and its registration
 shape (`.codex/config.toml` for Codex, `.cursor/mcp.json` for Cursor), and nothing
 in either requires a client change. That is a documentation review, not a host
@@ -92,7 +92,7 @@ install the same server without hand-editing JSON. Optional Google Workspace
 marketplace plugins (2026-08-03) are unrelated to this thin client and are not
 required for investigations. **Origin (2026-08-17, early beta):** Cursor's git
 forge ([docs](https://cursor.com/docs/origin)) can host or **mirror this public
-GitHub repo** for browse/PR review inside Cursor; GitHub remains the source of
+GitHub repo** for browse/PR review inside Cursor; use the [Origin CLI](https://cursor.com/docs/origin/cli) for clone/push/pull; agents can [create Origin repos](https://cursor.com/docs/origin/create-repository); connect [Automations / Cloud Agents](https://cursor.com/docs/origin/integrations) and apps (Vercel / Depot / Buildkite) from repo settings. GitHub remains the source of
 truth for installs and CI (`ubuntu-latest` only — public repo). Do not treat
 Origin-only hosting as a replacement for the GitHub remote users clone. **Cloud
 Agent Builds (2026-08-13; default as of 2026-08-17):** when validating adapters
@@ -108,14 +108,14 @@ Enable **Update stale builds** and set the **Staleness threshold** (default
 **24 hours**; `0` = always pull latest default-branch at agent start). Phase
 split: durable work in `install` (Build-time), fresh services in `start`, shared
 app processes in `terminals` (both at agent start). Desktop download line
-**3.16.17** (2026-08-14; no separate feature write-up).
+**3.16.29** (2026-08-18; no separate feature write-up).
 ([announcement](https://cursor.com/blog/builds) · [Builds docs](https://cursor.com/docs/cloud-agent/builds)).
 
 **Cursor working tips.** Cursor CLI **Aug 11** adds sticky skills (Option+Enter),
 steer-while-running (Enter queues guidance; Enter again interrupts), optional
 durable `/goal` (gated), and runs hooks from installed plugins once a Cursor-native
 hooks bundle exists — irrelevant to this thin-client adapter beyond local CLI
-debugging.  Desktop CLI may report **3.16.17** while the public feature
+debugging.  Desktop CLI may report **3.16.29** while the public feature
 changelog stays on **3.11** — this repo pins the feature/date in `.cursor-version`
 and records `desktop_cli` separately. Newest covered changelog date is **2026-08-17**
 (Origin). Cursor also loads the open

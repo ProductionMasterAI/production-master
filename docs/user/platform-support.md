@@ -5,13 +5,13 @@ The editor and agent platforms this client is validated against.
 | Platform | Validated against | Latest known |
 |---|---|---|
 | Claude Code | pending | 2.1.234 |
-| Cursor | pending | 3.11 (+ changelog 2026-08-17) |
+| Cursor | pending | 3.11 (+ changelog 2026-08-19) |
 | Codex | pending | 0.147.0 |
 | OpenCode | pending | pending |
 
 All four adapter packages now ship a runnable `dist/cli.js`, so each client is
 usable today. The Codex release this repo targets is **0.147.0** and the Cursor
-release is **3.11** (changelog covered through 2026-08-17; desktop CLI observed at **3.16.29**): for each, the
+release is **3.11** (changelog covered through 2026-08-19; desktop CLI observed at **3.16.29**): for each, the
 compatibility delta was reviewed against the existing adapter and its registration
 shape (`.codex/config.toml` for Codex, `.cursor/mcp.json` for Cursor), and nothing
 in either requires a client change. That is a documentation review, not a host
@@ -98,7 +98,7 @@ rest of the 2.1.229 + 2.1.231 delta is host-side and needs no client change:
 both releases' MCP OAuth fixes concern OAuth-flow MCP servers, while this
 client's device-code + bearer design never touches MCP OAuth.
 
-**Cursor notes (3.11 → 2026-08-17).** Registration remains `.cursor/mcp.json` →
+**Cursor notes (3.11 → 2026-08-19).** Registration remains `.cursor/mcp.json` →
 `mcpServers.production-master` (see [Quick Start](quick-start.md)). Cursor 3.9+'s
 Customize page is the preferred place to manage that MCP entry alongside plugins,
 skills, and hooks. Team admins on 3.10+ can also distribute an approved MCP via
@@ -126,14 +126,13 @@ app processes in `terminals` (both at agent start). Desktop download line
 **3.16.29** (2026-08-18; no separate feature write-up).
 ([announcement](https://cursor.com/blog/builds) · [Builds docs](https://cursor.com/docs/cloud-agent/builds)).
 
-**Cursor working tips.** Cursor CLI **Aug 11** adds sticky skills (Option+Enter),
+**Cursor working tips.** **Subscriptions / Custom Modes / isolated-VM subagents / `/goal` + steering (2026-08-19):** Cloud Agents can wake on PR/Slack/schedule and auto-subscribe to PRs they open; pin any skill as a Custom Mode via ⌥⏎ / Alt+Enter from `/`; cloud subagents can run on their own VMs; follow-ups wait for the next tool call. Cursor CLI **Aug 11** adds sticky skills (Option+Enter),
 steer-while-running (Enter queues guidance; Enter again interrupts), optional
 durable `/goal` (gated), and runs hooks from installed plugins once a Cursor-native
 hooks bundle exists — irrelevant to this thin-client adapter beyond local CLI
 debugging.  Desktop CLI may report **3.16.29** while the public feature
 changelog stays on **3.11** — this repo pins the feature/date in `.cursor-version`
-and records `desktop_cli` separately. Newest covered changelog date is **2026-08-17**
-(Origin). Cursor also loads the open
+and records `desktop_cli` separately. Newest covered changelog date is **2026-08-19** (subscriptions / custom modes / isolated subagent VMs / `/goal` / steering). Cursor also loads the open
 [Agent Plugins](https://agent-plugins.org) standard alongside `.cursor-plugin`
 manifests. The desktop/CLI `workspaceOpen` hook can return `pluginPaths` for
 workspace-specific plugins (not available on Cloud Agents). Use a **side chat**

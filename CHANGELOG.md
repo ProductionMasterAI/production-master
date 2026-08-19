@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Claude Code currency (2.1.233 → 2.1.234).** `.claude-code-version` advances to
+  **2.1.234**. Registration, sandboxing, and command-argument handling are
+  unchanged; the only client-relevant item is 2.1.234's hardening against
+  Windows NT-namespace path reads, which closes the same sandboxed-file-protection
+  bypass family as the 2.1.224 Linux/macOS trailing-slash `denyRead` fix — Windows
+  users protecting a `PM_ACCESS_TOKEN` credentials file with a sandbox deny entry
+  now get the same guarantee. See [Platform support](docs/user/platform-support.md)
+  for the full delta.
 - **Cursor desktop 3.16.29 + Origin CLI/integrations:** re-pin desktop/`validated_against` **3.16.17 → 3.16.29** (stable download line 2026-08-18; no separate feature write-up). Document Origin CLI, agent-created Origin repos, and Origin↔Automations/Cloud Agents / apps integrations. Feature/date pins stay **3.11** / **2026-08-17**.
 - **Cursor Origin + Builds default (2026-08-17).** Documented [Origin](https://cursor.com/docs/origin) (early-beta Cursor git forge; GitHub remains canonical for this public thin client) and flipped Cloud Agent Builds language to **now default**. Pin bump: `changelog_date` **2026-08-13 → 2026-08-17**; feature **3.11** / desktop **3.16.17** unchanged.
 
@@ -302,15 +310,6 @@ true` removed from the publishable manifests; `packages/pmctl` now publishes
   `mcp` JSON-RPC/stdio server. Their registration files are populated to spawn it:
   `.cursor/mcp.json`'s `mcpServers.production-master` and `opencode.json`'s `mcp`
   map (a `type: "local"` entry). All four IDE adapters now have a runnable entry point.
-- **Thin-client runtime** ported into `packages/*` (AD-7 single-path). `plugin-core`
-  is the host-neutral core — `createPluginRuntime` composition root, device-code
-  (RFC 8628) auth + OS-keychain token store, MCP session/tool surface over the
-  service's Streamable-HTTP gateway, SSE event stream, projection fold → `PanelView`
-  rendering, and the `RemoteServiceRunner` streaming engine. Exactly one runtime path
-  (no local/inline mode); imports no LLM/provider SDK.
-- **Per-IDE adapters** as `packages/adapter-{claude-code,cursor,codex,opencode}`, each
-  a thin `HostAdapter` over the core. Claude Code additionally ships a runnable CLI
-  and is wired end-to-end.
 - **Claude Code install layer**: `.claude-plugin/plugin.json` manifest and `commands/`
   slash commands (`/login`, `/investigate`, `/connect`, `/update`, `/logout`) that exec
   the built thin-client binary. Cursor/Codex/OpenCode register through their own config

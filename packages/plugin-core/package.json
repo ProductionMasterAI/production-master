@@ -1,6 +1,6 @@
 {
   "name": "@production-master/plugin-core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Host-neutral thin-client core for the Production Master multi-IDE plugin (service client, device-code auth, MCP session scoping, SSE event stream, projection renderers). Imports NO LLM/provider SDK \u2014 enforced by CI.",
   "type": "module",
   "exports": {

@@ -277,7 +277,7 @@ export async function runMcpServer(
       case 'initialize':
         respond({
           protocolVersion: '2024-11-05',
-          serverInfo: { name: 'production-master', version: '0.1.0' },
+          serverInfo: { name: 'production-master', version: '0.1.1' },
           capabilities: { tools: {} },
         });
         break;

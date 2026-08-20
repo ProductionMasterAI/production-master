@@ -7,8 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-08-20
+
 ### Changed
 
+- **First release cut on the OIDC publish path (dev#725).** `0.1.0` was tagged and
+  published **before** the OIDC workflow change below merged, so that green Release run says
+  nothing about trusted publishing — it went out on the old token path. npm refuses to
+  republish an existing version, so the only way to exercise the new workflow is a
+  genuinely new one; that is what this release is for. If OIDC is not configured
+  correctly on npmjs.com the publish fails loudly rather than falling back, which is the
+  outcome this version exists to establish.
 - **Release workflow: publish to npm via OIDC trusted publishing (dev#725).**
   `.github/workflows/release.yml` gains `id-token: write` and a step that upgrades npm to
   the latest release and **asserts** it is >= 11.5.1 (npm's floor for trusted publishing)
@@ -364,5 +373,6 @@ install`, not MCP, and the `.cursor/mcp.json`/`.codex/config.toml`/
   architecture. Empty npm workspaces layout (`packages/*`) ready to be
   populated.
 
-[Unreleased]: https://github.com/ProductionMasterAI/production-master/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/ProductionMasterAI/production-master/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/ProductionMasterAI/production-master/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/ProductionMasterAI/production-master/releases/tag/v0.1.0

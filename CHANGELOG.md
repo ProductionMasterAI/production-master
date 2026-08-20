@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Claude Code currency (2.1.234 → 2.1.236).** `.claude-code-version` advances to
+  **2.1.236**. Registration, sandboxing configuration shape, and command-argument
+  handling are unchanged; the only client-relevant item is 2.1.236's hardening of
+  macOS sandbox wildcard `denyRead` rules (now honored inside allowed read
+  regions, covering matched directories' contents, and no longer bypassable by
+  renaming the denied file) — closing the same sandboxed-file-protection bypass
+  family as the 2.1.224 Linux/macOS trailing-slash fix and the 2.1.234 Windows
+  NT-namespace-path fix. macOS users protecting a `PM_ACCESS_TOKEN` credentials
+  file with a wildcard sandbox deny entry now get the same guarantee Linux
+  already had. Everything else in the 2.1.235–2.1.236 range is host-side
+  UI/perf/reliability work with no client-relevant surface. See
+  [Platform support](docs/user/platform-support.md) for the full delta.
+- **Claude Code currency (2.1.233 → 2.1.234).** `.claude-code-version` advances to
+  **2.1.234**. Registration, sandboxing, and command-argument handling are
+  unchanged; the only client-relevant item is 2.1.234's hardening against
+  Windows NT-namespace path reads, which closes the same sandboxed-file-protection
+  bypass family as the 2.1.224 Linux/macOS trailing-slash `denyRead` fix — Windows
+  users protecting a `PM_ACCESS_TOKEN` credentials file with a sandbox deny entry
+  now get the same guarantee. See [Platform support](docs/user/platform-support.md)
+  for the full delta.
+- **Cursor desktop 3.16.29 + Origin CLI/integrations:** re-pin desktop/`validated_against` **3.16.17 → 3.16.29** (stable download line 2026-08-18; no separate feature write-up). Document Origin CLI, agent-created Origin repos, and Origin↔Automations/Cloud Agents / apps integrations. Feature/date pins stay **3.11** / **2026-08-17**.
+- **Cursor Origin + Builds default (2026-08-17).** Documented [Origin](https://cursor.com/docs/origin) (early-beta Cursor git forge; GitHub remains canonical for this public thin client) and flipped Cloud Agent Builds language to **now default**. Pin bump: `changelog_date` **2026-08-13 → 2026-08-17**; feature **3.11** / desktop **3.16.17** unchanged.
+
 ## [0.1.0] - 2026-08-20
 
 First published release. Everything below accumulated pre-release, alongside

@@ -103,6 +103,16 @@ Related notes for recent Claude Code versions:
   (e.g. `denyRead: "~/.pm-credentials/"`), that entry was silently bypassable
   on Linux and macOS before 2.1.224. Update Claude Code and keep the deny
   entries as written — no rewrite of the entries is required.
+- **macOS wildcard sandbox deny entries are hardened as of 2.1.236.** If you
+  protect the directory holding your `PM_ACCESS_TOKEN` credentials file with a
+  wildcard `denyRead` pattern on macOS (e.g. `~/.pm-credentials/**`), that
+  pattern now takes precedence inside allowed read regions, covers the
+  matched directory's contents, and can't be sidestepped by renaming the
+  file — closing the last gap in the deny-entry hardening that started with
+  the 2.1.224 trailing-slash fix above. Credential masking (`mode: "mask"`,
+  see above) still falls back to plain `deny` on macOS, so a wildcard deny
+  entry is currently the strongest protection macOS users have for that file;
+  update Claude Code to get the fix.
 - **Sandboxed commands failing to start at all on Linux are fixed in 2.1.223.**
   If every sandboxed command errored immediately (never reaching the network)
   and your sandbox settings have `sandbox.filesystem.denyWrite` covering the

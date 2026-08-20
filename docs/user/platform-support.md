@@ -4,7 +4,7 @@ The editor and agent platforms this client is validated against.
 
 | Platform | Validated against | Latest known |
 |---|---|---|
-| Claude Code | pending | 2.1.234 |
+| Claude Code | pending | 2.1.236 |
 | Cursor | pending | 3.11 (+ changelog 2026-08-19) |
 | Codex | pending | 0.147.0 |
 | OpenCode | pending | pending |
@@ -27,6 +27,29 @@ stdio server intentionally continues to advertise its older supported MCP
 protocol; changing only the protocol string would be unsafe. A future SDK-backed
 upgrade should adopt the newer protocol when paginated discovery, multi-round
 requests, and non-blocking startup can be implemented and tested together.
+
+**Claude Code notes (2.1.234 → 2.1.236).** Registration, sandboxing
+configuration shape, and command-argument handling are unchanged. The one
+2.1.236 item that touches this client directly: **macOS sandbox wildcard
+`denyRead` rules are now hardened** — they take precedence inside allowed
+read regions, cover a matched directory's contents, and can no longer be
+bypassed by renaming the denied file. This closes the same
+sandboxed-file-protection bypass family as the Linux/macOS trailing-slash
+`denyRead` fix in 2.1.224 and the Windows NT-namespace-path fix in 2.1.234
+(see
+[Troubleshooting → Sandboxed commands](troubleshooting.md#sandboxed-commands-claude-code)):
+macOS users protecting a `PM_ACCESS_TOKEN` credentials file with a wildcard
+sandbox deny entry now get the same guarantee Linux already had, and — since
+credential masking falls back to plain `deny` on macOS anyway — this is now
+the strongest protection macOS users have for that file. Everything else in
+2.1.235 and 2.1.236 is host-side UI/perf/reliability work with no
+client-relevant surface: the optional prompt `spellcheck` setting,
+`/ultrareview`/`/autofix-pr` background memory/CPU improvements, permission-
+dialog consistency and embedded-`grep` hardening, `SendMessage` size limits
+and the new `notify_when_idle` option, the `ANTHROPIC_DEFAULT_MODEL`
+environment variable, and auto-mode classifier parity on Bedrock/Vertex/
+Foundry — none of it touches this client's registration, commands, or
+manifests.
 
 **Claude Code notes (2.1.233 → 2.1.234).** Registration, sandboxing, and
 command argument handling are unchanged. This release's hardening against

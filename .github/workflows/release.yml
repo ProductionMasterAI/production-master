@@ -34,10 +34,19 @@ jobs:
       # or resolves an older npm, OIDC would not engage and — with no token
       # wired below — the publish would fail with a confusing auth error
       # instead of naming the real cause.
+      #
+      # Pinned to the 11.x major, NOT `@latest`. `@latest` is unbounded across
+      # majors and the pinned Node is not: npm 12.0.2 requires Node
+      # `^22.22.2 || ^24.15.0 || >=26.0.0`, so on 2026-08-20 the v0.1.1 release
+      # died here with EBADENGINE against Node 22.15.0 — an upstream npm release
+      # broke our release train without a single change on our side. `^11.5.1`
+      # both clears the OIDC floor and stays inside the major whose engine range
+      # (`^20.17.0 || >=22.9.0`) the pinned Node satisfies. Moving `.nvmrc` and
+      # this pin are now one coupled decision: bump Node first, then widen this.
       - name: Upgrade npm for OIDC trusted publishing (dev#725)
         run: |
           set -euo pipefail
-          npm i -g npm@latest
+          npm i -g 'npm@^11.5.1'
           ver="$(npm --version)"
           echo "npm ${ver}"
           node -e '

@@ -23,6 +23,16 @@ jobs:
       # Run the suite under v8 coverage; vitest fails the job if any
       # threshold in vitest.config.ts is breached (rise-only ratchet).
       - run: npm run test:coverage
+      # dev#726: the root pin files (.claude-code-version, .codex-version,
+      # .cursor-version) and docs/user/platform-support.md must say the
+      # same thing -- pairwise, not merely "the value appears somewhere in
+      # the doc" (that proxy would pass a value swapped onto the wrong
+      # pin's line, dev#718's failure mode).
+      - run: node scripts/check-version-pin-docs.mjs
+      # dev#726: every bullet under `## [Unreleased]` in CHANGELOG.md must
+      # sit beneath a Keep a Changelog category header (plugin#37's
+      # regression).
+      - run: node scripts/check-changelog-structure.mjs
 
   secret-scan:
     runs-on: ubuntu-latest

@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Pin↔doc guard + changelog structure lint, wired into the required `CI`
+  job (dev#726).** `scripts/check-version-pin-docs.mjs` asserts the root pin
+  files (`.claude-code-version`, `.codex-version`, `.cursor-version`) and
+  `docs/user/platform-support.md` agree pairwise, per pin — a value present
+  in the doc but attached to the wrong pin's row now fails instead of
+  passing a presence-only check (dev#718's swap failure mode).
+  `scripts/check-changelog-structure.mjs` asserts every `## [Unreleased]`
+  bullet sits under a Keep a Changelog category header (plugin#37's
+  orphaned-bullet regression). Both run as steps in the `CI` job, the sole
+  required status context on this repo's `main`.
+
+### Fixed
+
+- **`docs/user/platform-support.md` claimed Codex 0.147.0; the pin
+  (`.codex-version`) has held 0.148.0 since #35.** The pin-doc guard added
+  above caught this live drift on the current tree; the doc now reads
+  0.148.0 in the platform table and the narrative paragraph.
+
 ## [0.1.1] - 2026-08-20
 
 ### Changed

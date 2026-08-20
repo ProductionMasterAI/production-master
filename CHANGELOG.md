@@ -20,6 +20,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   orphaned-bullet regression). Both run as steps in the `CI` job, the sole
   required status context on this repo's `main`.
 
+### Changed
+
+- **Claude Code currency (2.1.236 → 2.1.238).** `.claude-code-version`
+  advances to **2.1.238**. Registration, sandboxing configuration shape, and
+  command-argument handling are unchanged. Reviewed and not applicable:
+  2.1.237's built-in "Concise" output style and its prompt-caching fix for
+  gateway/custom-base-URL sessions (this repo ships no output-style file and
+  the client never calls a model directly); 2.1.238's plugin-marketplace
+  `headersHelper` (no marketplace/catalog entry lives in this repo for one to
+  attach to — installs go through `/plugin install` or the SHA-256-pinned
+  `archive` source); the new `self-hosted-runner` shutdown/proxy-auth flags
+  (this repo's CI is GitHub-hosted `ubuntu-latest` only); the subagent-tool-
+  result memory fix and output-style-drift fix (no subagents, no output
+  style here); and the stdio-MCP `server/discover`-before-`initialize` fix
+  (this client's Claude Code path registers via `/plugin install`, not MCP).
+  Everything else in the 2.1.237–2.1.238 range is host-side UI/perf/
+  reliability work with no client-relevant surface. See
+  [Platform support](docs/user/platform-support.md) for the full delta.
+
 ### Fixed
 
 - **`docs/user/platform-support.md` claimed Codex 0.147.0; the pin

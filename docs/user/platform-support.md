@@ -4,7 +4,7 @@ The editor and agent platforms this client is validated against.
 
 | Platform | Validated against | Latest known |
 |---|---|---|
-| Claude Code | pending | 2.1.236 |
+| Claude Code | pending | 2.1.238 |
 | Cursor | pending | 3.11 (+ changelog 2026-08-19) |
 | Codex | pending | 0.148.0 |
 | OpenCode | pending | pending |
@@ -27,6 +27,35 @@ stdio server intentionally continues to advertise its older supported MCP
 protocol; changing only the protocol string would be unsafe. A future SDK-backed
 upgrade should adopt the newer protocol when paginated discovery, multi-round
 requests, and non-blocking startup can be implemented and tested together.
+
+**Claude Code notes (2.1.236 → 2.1.238).** Registration, sandboxing
+configuration shape, and command-argument handling are unchanged across
+2.1.237 and 2.1.238. Reviewed and not applicable: 2.1.237's built-in
+**"Concise" output style** (opt-in under `/config`) and its prompt-caching
+fix for gateway/custom-base-URL sessions — this repo ships no output-style
+file, and the client never calls a model directly (see [constraint
+#4](../../.claude/rules/constraints.md)), so neither surface exists here.
+2.1.238's plugin-marketplace **`headersHelper`** (mints auth headers for
+catalog/archive fetches on install/update) is also not applicable: this
+repo's Claude Code install path is `/plugin install` from a marketplace
+hosted elsewhere, or the SHA-256-pinned `archive` source documented in
+[Quick Start](quick-start.md#claude-code) — no marketplace or catalog entry
+lives in this repo for a `headersHelper` to attach to. Also reviewed and not
+applicable: the new `self-hosted-runner --defer-shutdown-max-min` /
+`--proxy-authorization-command`/`--proxy-authorization-file` flags — this
+repo's CI runs GitHub-hosted `ubuntu-latest` only, never `self-hosted` (see
+[constraint #5](../../.claude/rules/constraints.md)); the subagent-tool-result
+memory-growth fix and the custom/project/plugin output-style-drift fix — this
+client's commands run no subagents and define no output style; and the fix
+for stdio MCP servers receiving `server/discover` before `initialize` — this
+client's Claude Code path registers via `/plugin install`, not MCP, so Claude
+Code is never this thin client's MCP client (the `.cursor/mcp.json`/
+`.codex/config.toml`/`opencode.json` registrations talk to Cursor/Codex/
+OpenCode's own MCP clients, not Claude Code's). Everything else in the
+2.1.237–2.1.238 range is host-side UI/perf/reliability work — Remote Control
+and cross-session-messaging fixes, the `keybindingFlavor` readline setting,
+permission-prompt and MCP-elicitation-dialog rendering, startup
+responsiveness — with no client-relevant surface.
 
 **Claude Code notes (2.1.234 → 2.1.236).** Registration, sandboxing
 configuration shape, and command-argument handling are unchanged. The one

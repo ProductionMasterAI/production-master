@@ -10,6 +10,9 @@ on:
 
 permissions:
   contents: write
+  # OIDC trusted publishing to npm (dev#725) — npm exchanges this token for a
+  # short-lived publish credential, no long-lived secret required on npm's side.
+  id-token: write
 
 jobs:
   release:
@@ -24,6 +27,13 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
           registry-url: https://registry.npmjs.org
+
+      # Trusted publishing needs npm >= 11.5.1; .nvmrc's Node 22.15.0 ships
+      # npm 10.9.x, so upgrade npm itself in-job rather than bumping Node.
+      - name: Upgrade npm for OIDC trusted publishing (dev#725)
+        run: |
+          npm i -g npm@latest
+          npm --version
 
       - run: npm ci
       - run: npm run build --if-present
@@ -48,6 +58,14 @@ jobs:
       # Publish order matters: plugin-core has no workspace dependency, but
       # production-master (pmctl) depends on it, so a fresh install of the
       # latter needs it already on the registry.
+      #
+      # NOTE (dev#725): id-token: write + npm >= 11.5.1 above enable OIDC
+      # trusted publishing once the trusted publisher is configured on
+      # npmjs.com for both packages (owner step, done out-of-band). The
+      # NODE_AUTH_TOKEN/NPM_TOKEN wiring stays as a fallback until a real
+      # OIDC publish has succeeded — removing it now would leave no working
+      # publish path if the npm-side config isn't live yet. Drop the token
+      # and this comment in a follow-up once OIDC is proven green.
       - name: Publish @production-master/plugin-core to npm
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

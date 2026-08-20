@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Release workflow: OIDC trusted publishing groundwork (dev#725).** `.github/workflows/release.yml`
+  gains `id-token: write` and a step upgrading npm to the latest release (>= 11.5.1,
+  npm's floor for trusted publishing) before `npm ci`; `.nvmrc`'s Node 22.15.0 already
+  satisfies the Node floor and is unchanged. `NODE_AUTH_TOKEN`/`NPM_TOKEN` stay wired on
+  the publish steps for now — trusted publishing also needs the publisher configured on
+  npmjs.com for both packages (owner step, out-of-band), and the token is only dropped
+  once a real OIDC publish has gone green, in a follow-up.
 - **Cursor 3.11 (+2026-08-19):** advance `changelog_date` **2026-08-17 → 2026-08-19** (desktop **3.16.29** unchanged). Document cloud-agent **Subscriptions**, **Custom Modes**, **isolated-VM subagents**, Agent Window **`/goal`**, and **non-interruptive steering**. Cursor-only; other platform nightlies untouched.
 - **Claude Code currency (2.1.234 → 2.1.236).** `.claude-code-version` advances to
   **2.1.236**. Registration, sandboxing configuration shape, and command-argument

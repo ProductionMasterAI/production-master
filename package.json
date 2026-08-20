@@ -1,6 +1,6 @@
 {
   "name": "production-master",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "IDE thin client for the Production Master hosted incident-investigation service.",
   "license": "MIT",

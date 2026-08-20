@@ -1,6 +1,6 @@
 {
   "name": "production-master",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "pmctl — operator CLI for Production Master over the same BFF as every IDE surface. Reuses @production-master/plugin-core (ServiceClient, device-code auth, token store, SSE event stream). Imports NO LLM/provider SDK. Published unscoped so `npx production-master` works from a clean machine; the binary is still called pmctl.",
   "type": "module",
   "bin": {
@@ -23,7 +23,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@production-master/plugin-core": "0.1.0"
+    "@production-master/plugin-core": "0.1.1"
   },
   "repository": {
     "type": "git",

@@ -30,10 +30,29 @@ jobs:
 
       # Trusted publishing needs npm >= 11.5.1; .nvmrc's Node 22.15.0 ships
       # npm 10.9.x, so upgrade npm itself in-job rather than bumping Node.
+      # The floor is ASSERTED, not just printed: if the upgrade silently no-ops
+      # or resolves an older npm, OIDC would not engage and — with no token
+      # wired below — the publish would fail with a confusing auth error
+      # instead of naming the real cause.
       - name: Upgrade npm for OIDC trusted publishing (dev#725)
         run: |
+          set -euo pipefail
           npm i -g npm@latest
-          npm --version
+          ver="$(npm --version)"
+          echo "npm ${ver}"
+          node -e '
+            const [have, need] = [process.argv[1], "11.5.1"];
+            const cmp = (a, b) => {
+              const pa = a.split(".").map(Number), pb = b.split(".").map(Number);
+              for (let i = 0; i < 3; i++) if (pa[i] !== pb[i]) return pa[i] - pb[i];
+              return 0;
+            };
+            if (cmp(have, need) < 0) {
+              console.log(`::error::npm ${have} is below the ${need} floor required for OIDC trusted publishing`);
+              process.exit(1);
+            }
+            console.log(`npm ${have} meets the ${need} floor for OIDC trusted publishing`);
+          ' "$ver"
 
       - run: npm ci
       - run: npm run build --if-present
@@ -59,21 +78,18 @@ jobs:
       # production-master (pmctl) depends on it, so a fresh install of the
       # latter needs it already on the registry.
       #
-      # NOTE (dev#725): id-token: write + npm >= 11.5.1 above enable OIDC
-      # trusted publishing once the trusted publisher is configured on
-      # npmjs.com for both packages (owner step, done out-of-band). The
-      # NODE_AUTH_TOKEN/NPM_TOKEN wiring stays as a fallback until a real
-      # OIDC publish has succeeded — removing it now would leave no working
-      # publish path if the npm-side config isn't live yet. Drop the token
-      # and this comment in a follow-up once OIDC is proven green.
+      # NOTE (dev#725): these publish with OIDC trusted publishing — `id-token:
+      # write` above plus npm >= 11.5.1, against the trusted publisher configured
+      # on npmjs.com for both packages. There is deliberately NO NODE_AUTH_TOKEN
+      # here. npm "uses OIDC before falling back to traditional tokens", and that
+      # fallback is SILENT: with a token also wired, a green publish would not
+      # distinguish OIDC working from the token quietly carrying it, so the
+      # migration could never actually be verified. Without a token, OIDC either
+      # works or the release fails loudly — which is the recoverable direction.
       - name: Publish @production-master/plugin-core to npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --workspace packages/plugin-core --access public
 
       - name: Publish production-master (pmctl) to npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --workspace packages/pmctl --access public
 
       - name: Create GitHub release

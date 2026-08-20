@@ -9,13 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Release workflow: OIDC trusted publishing groundwork (dev#725).** `.github/workflows/release.yml`
-  gains `id-token: write` and a step upgrading npm to the latest release (>= 11.5.1,
-  npm's floor for trusted publishing) before `npm ci`; `.nvmrc`'s Node 22.15.0 already
-  satisfies the Node floor and is unchanged. `NODE_AUTH_TOKEN`/`NPM_TOKEN` stay wired on
-  the publish steps for now — trusted publishing also needs the publisher configured on
-  npmjs.com for both packages (owner step, out-of-band), and the token is only dropped
-  once a real OIDC publish has gone green, in a follow-up.
+- **Release workflow: publish to npm via OIDC trusted publishing (dev#725).**
+  `.github/workflows/release.yml` gains `id-token: write` and a step that upgrades npm to
+  the latest release and **asserts** it is >= 11.5.1 (npm's floor for trusted publishing)
+  before `npm ci`; `.nvmrc`'s Node 22.15.0 already satisfies the Node floor and is
+  unchanged. The publish steps no longer set `NODE_AUTH_TOKEN`: npm prefers OIDC and falls
+  back to a token **silently**, so leaving the token wired would make a green publish
+  indistinguishable from OIDC never engaging — the migration could never be verified.
+  With no token, OIDC either works or the release fails loudly. Requires the trusted
+  publisher to be configured on npmjs.com for both packages (owner step, done
+  out-of-band); the `NPM_TOKEN` repo secret is deleted once a real tag release has
+  published green.
 - **Cursor 3.11 (+2026-08-19):** advance `changelog_date` **2026-08-17 → 2026-08-19** (desktop **3.16.29** unchanged). Document cloud-agent **Subscriptions**, **Custom Modes**, **isolated-VM subagents**, Agent Window **`/goal`**, and **non-interruptive steering**. Cursor-only; other platform nightlies untouched.
 - **Claude Code currency (2.1.234 → 2.1.236).** `.claude-code-version` advances to
   **2.1.236**. Registration, sandboxing configuration shape, and command-argument
@@ -177,7 +181,7 @@ true` removed from the publishable manifests; `packages/pmctl` now publishes
 - **Claude Code target bumped to 2.1.232** (from 2.1.231) in `.claude-code-version`
   and `docs/user/platform-support.md`. The 2.1.232 delta needs no client change;
   two entries improve the install story and are now documented: **`/plugin install
-  plugin@marketplace` refreshes the marketplace first** — quick-start's reload note
+plugin@marketplace` refreshes the marketplace first** — quick-start's reload note
   and troubleshooting's registration section carry the version-scoped behavior
   (refresh-first on 2.1.232+, refresh-and-retry on 2.1.221–2.1.231) — and the fix
   for a **startup race that could silently unregister a plugin marketplace**
@@ -188,7 +192,7 @@ true` removed from the publishable manifests; `packages/pmctl` now publishes
   (bare `gitlab.com` repo URLs) for teams distributing this plugin. Reviewed and
   not applicable: the MCP protocol-version-probe hang fix concerns Claude Code's
   own MCP client — this client's Claude Code path registers via `/plugin
-  install`, not MCP, and the `.cursor/mcp.json`/`.codex/config.toml`/
+install`, not MCP, and the `.cursor/mcp.json`/`.codex/config.toml`/
   `opencode.json` registrations talk to those editors' hosts; GitLab token
   redaction, session `@`-mentions, subagent-forking defaults, Remote Control,
   gateway overlay validation, and sandbox `ripgrep` scoping are host-side and

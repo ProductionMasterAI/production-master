@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Cursor 3.11 (+2026-08-19):** advance `changelog_date` **2026-08-17 → 2026-08-19** (desktop **3.16.29** unchanged). Document cloud-agent **Subscriptions**, **Custom Modes**, **isolated-VM subagents**, Agent Window **`/goal`**, and **non-interruptive steering**. Cursor-only; other platform nightlies untouched.
 - **Claude Code currency (2.1.234 → 2.1.236).** `.claude-code-version` advances to
   **2.1.236**. Registration, sandboxing configuration shape, and command-argument
   handling are unchanged; the only client-relevant item is 2.1.236's hardening of

@@ -20,16 +20,19 @@ The token is valid but your account may lack access to the service, or you appro
 
 By default the client talks to the standard hosted service. If your organization runs the service at a custom URL, point the client at it before logging in.
 
-Set it via environment variable in your editor's client configuration:
+Set it via environment variable in your editor's client configuration (Cursor,
+Codex, and OpenCode register the client as an MCP server pointing at your local
+build — see [Quick Start](quick-start.md#1-install-the-client-in-your-editor)
+for how to build it):
 
 ```jsonc
 {
   "mcpServers": {
     "production-master": {
-      "command": "npx",
-      "args": ["-y", "@production-master/client"],
+      "command": "node",
+      "args": ["/absolute/path/to/production-master/packages/adapter-cursor/dist/cli.js", "mcp"],
       "env": {
-        "PRODUCTION_MASTER_SERVICE_URL": "https://<your-service-host>"
+        "PM_SERVICE_URL": "https://<your-service-host>"
       }
     }
   }

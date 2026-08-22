@@ -4,7 +4,7 @@ Get from zero to your first investigation in a few minutes. Three steps, same ev
 
 > **Prerequisites:** Node.js 22 and an account on the Production Master hosted service.
 
-> **Status:** client packages are being populated via PRs. The manifest for your editor lands with those PRs; the registration pattern below is stable.
+> **Status:** the Cursor, Codex, and OpenCode adapters are runnable but not yet published to npm (`private: true` for 0.1.0) — register them by pointing your editor at a local build, as shown below. Claude Code installs from the plugin marketplace and needs no local build.
 
 ## 1. Install the client in your editor
 
@@ -27,18 +27,38 @@ Pick your editor. Each registers the same thin client through its native mechani
 
 ### Cursor
 
+`packages/adapter-cursor` isn't on npm yet, so `npx` won't install it — clone this
+repo and build it locally, then point Cursor at the built binary:
+
+```bash
+git clone https://github.com/ProductionMasterAI/production-master.git
+cd production-master
+nvm use && npm ci && npm run build
+```
+
 Add to `.cursor/mcp.json` in your project (or your global Cursor config), or manage
-the same entry from Cursor's **Customize** page (plugins / skills / MCPs, 3.9+):
+the same entry from Cursor's **Customize** page (plugins / skills / MCPs, 3.9+),
+with `args` pointing at the absolute path to `packages/adapter-cursor/dist/cli.js`
+in your clone:
 
 ```jsonc
 {
   "mcpServers": {
     "production-master": {
-      "command": "npx",
-      "args": ["-y", "@production-master/client"]
+      "command": "node",
+      "args": ["/absolute/path/to/production-master/packages/adapter-cursor/dist/cli.js", "mcp"],
+      "env": {
+        "PM_SERVICE_URL": "https://api.productionmaster.dev"
+      }
     }
   }
 }
+```
+
+Log in once from that same clone before using the editor's agent:
+
+```bash
+node packages/adapter-cursor/dist/cli.js login
 ```
 
 > **Teams / Enterprise (Cursor 3.10+):** admins can publish an approved Team MCP once
@@ -52,27 +72,41 @@ the same entry from Cursor's **Customize** page (plugins / skills / MCPs, 3.9+):
 
 ### Codex
 
-Add to `.codex/config.toml`:
+`packages/adapter-codex` isn't on npm yet either. From the same clone and build
+as above, add to `.codex/config.toml`, again pointing at the absolute path to
+the built binary:
 
 ```toml
 [mcp_servers.production-master]
-command = "npx"
-args = ["-y", "@production-master/client"]
+command = "node"
+args = ["/absolute/path/to/production-master/packages/adapter-codex/dist/cli.js", "mcp"]
+
+[mcp_servers.production-master.env]
+PM_SERVICE_URL = "https://api.productionmaster.dev"
 ```
+
+Log in once: `node packages/adapter-codex/dist/cli.js login`.
 
 ### OpenCode
 
-Add to `opencode.json`:
+`packages/adapter-opencode` follows the same pattern. Add to `opencode.json`:
 
 ```jsonc
 {
   "mcp": {
     "production-master": {
-      "command": ["npx", "-y", "@production-master/client"]
+      "type": "local",
+      "command": ["node", "/absolute/path/to/production-master/packages/adapter-opencode/dist/cli.js", "mcp"],
+      "enabled": true,
+      "environment": {
+        "PM_SERVICE_URL": "https://api.productionmaster.dev"
+      }
     }
   }
 }
 ```
+
+Log in once: `node packages/adapter-opencode/dist/cli.js login`.
 
 Reload your editor so it picks up the new client. (On Claude Code 2.1.221+,
 `/plugin install` activates the plugin immediately when safe — no reload needed.

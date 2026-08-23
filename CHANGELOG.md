@@ -152,6 +152,7 @@ true` removed from the publishable manifests; `packages/pmctl` now publishes
   now get the same guarantee. See [Platform support](docs/user/platform-support.md)
   for the full delta.
 - **Cursor desktop 3.16.29 + Origin CLI/integrations:** re-pin desktop/`validated_against` **3.16.17 → 3.16.29** (stable download line 2026-08-18; no separate feature write-up). Document Origin CLI, agent-created Origin repos, and Origin↔Automations/Cloud Agents / apps integrations. Feature/date pins stay **3.11** / **2026-08-17**.
+- **Cursor Origin + Builds default (2026-08-17).** Documented [Origin](https://cursor.com/docs/origin) (early-beta Cursor git forge; GitHub remains canonical for this public thin client) and flipped Cloud Agent Builds language to **now default**. Pin bump: `changelog_date` **2026-08-13 → 2026-08-17**; feature **3.11** / desktop **3.16.17** unchanged.
 - **Cursor Grok 4.6 + Builds T-1 readiness (2026-08-16).** Platform support + Quick Start document Grok 4.6 for long-running / visual adapter work and a T-1 Builds checklist before the **2026-08-17** default. Pins stay **3.11** / **2026-08-13** / desktop **3.16.17**.
 
 - **Cursor desktop 3.16.17 + Builds skipped/staleness docs.** Desktop pin **3.15.19 → 3.16.17**; docs cover Builds Skipped checks, 24h staleness default, and install/start/terminals. Feature/date pins stay **3.11** / **2026-08-13**.

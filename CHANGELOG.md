@@ -130,6 +130,9 @@ true` removed from the publishable manifests; `packages/pmctl` now publishes
   stay `private` — they ship through their own editor's install mechanism
   (Claude Code plugin marketplace / archive source, `.cursor/mcp.json`,
   `.codex/config.toml`, `opencode.json`), not via `npm install`.
+
+### Added
+
 - **`pmctl` operator CLI (dev#268).** New `packages/pmctl` workspace package — a
   standalone thin-client binary (`login`, `start`, `status`, `report`, `events`,
   `approve`, `reject`) over the same BFF and `@production-master/plugin-core` as every

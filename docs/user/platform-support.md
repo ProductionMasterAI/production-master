@@ -4,7 +4,7 @@ The editor and agent platforms this client is validated against.
 
 | Platform | Validated against | Latest known |
 |---|---|---|
-| Claude Code | pending | 2.1.238 |
+| Claude Code | pending | 2.1.241 |
 | Cursor | pending | 3.11 (+ changelog 2026-08-19) |
 | Codex | pending | 0.148.0 |
 | OpenCode | pending | pending |
@@ -27,6 +27,30 @@ stdio server intentionally continues to advertise its older supported MCP
 protocol; changing only the protocol string would be unsafe. A future SDK-backed
 upgrade should adopt the newer protocol when paginated discovery, multi-round
 requests, and non-blocking startup can be implemented and tested together.
+
+**Claude Code notes (2.1.238 → 2.1.241).** Registration, sandboxing
+configuration shape, and command-argument handling are unchanged.
+2.1.240 and 2.1.241 shipped only "bug fixes and reliability improvements,"
+with no further detail published — nothing to review there. Reviewed and
+not applicable from 2.1.239: the **`/cost`/status-line/`--max-budget-usd`
+1.1x US-only-inference premium** for data-residency workspaces and the
+**Bedrock/Vertex/Foundry fullscreen-renderer offer** (this thin client
+displays no cost estimate and is not itself a model-provider console —
+see [constraint #4](../../.claude/rules/constraints.md)); **`/claude-api
+upgrade`** for Python projects on `anthropic` 0.x→1.x (constraint #4 bars
+any model-provider SDK import, so there is no `anthropic` dependency
+anywhere in this repo — [`sdk/python`](../../sdk/python) talks to the
+Production Master service over plain HTTP/SSE, not the Claude API); cloud
+sessions showing claude.ai-synced plugins as **`name@synced`** (this
+plugin installs via `/plugin install production-master@<marketplace>`
+from a marketplace hosted elsewhere, or the SHA-256-pinned `archive`
+source in [Quick Start](quick-start.md#claude-code) — never through a
+claude.ai sync, so the name is always plain `production-master`, never
+`production-master@synced`); the **Alpine/musl native-addon fix**
+(clipboard, image-paste, audio-capture) — this CLI ships no native
+add-ons of its own; and the usage-limit reset-time message wording.
+Everything else in the 2.1.239–2.1.241 range is host-side UI/billing/
+reliability work with no client-relevant surface.
 
 **Claude Code notes (2.1.236 → 2.1.238).** Registration, sandboxing
 configuration shape, and command-argument handling are unchanged across

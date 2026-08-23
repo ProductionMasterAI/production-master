@@ -178,7 +178,7 @@ app processes in `terminals` (both at agent start). Desktop download line
 **3.16.29** (2026-08-18; no separate feature write-up).
 ([announcement](https://cursor.com/blog/builds) · [Builds docs](https://cursor.com/docs/cloud-agent/builds)).
 
-**Cursor working tips.** **Subscriptions / Custom Modes / isolated-VM subagents / `/goal` + steering (2026-08-19):** Cloud Agents can wake on PR/Slack/schedule and auto-subscribe to PRs they open; pin any skill as a Custom Mode via ⌥⏎ / Alt+Enter from `/`; cloud subagents can run on their own VMs; follow-ups wait for the next tool call. Cursor CLI **Aug 11** adds sticky skills (Option+Enter),
+**Cursor working tips.** **Subscriptions / Custom Modes / isolated-VM subagents / `/goal` (+ CreateGoal/UpdateGoal) + steering (2026-08-19):** Cloud Agents can wake on PR/Slack/schedule and auto-subscribe to PRs they open; pin any skill as a Custom Mode via ⌥⏎ / Alt+Enter from `/`; cloud subagents can run on their own VMs; use `/goal` or native **CreateGoal** / **UpdateGoal**; follow-ups wait for the next tool call. Cursor CLI **Aug 11** adds sticky skills (Option+Enter),
 steer-while-running (Enter queues guidance; Enter again interrupts), optional
 durable `/goal` (gated), and runs hooks from installed plugins once a Cursor-native
 hooks bundle exists — irrelevant to this thin-client adapter beyond local CLI

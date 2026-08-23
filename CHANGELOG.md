@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   required status context on this repo's `main`.
 
 ### Changed
+- **Cursor 3.11 (+2026-08-19):** document native **CreateGoal** / **UpdateGoal** beside Agent Window `/goal` in platform-support + quick-start. Cursor-only.
 
 - **Claude Code currency (2.1.236 → 2.1.238).** `.claude-code-version`
   advances to **2.1.238**. Registration, sandboxing configuration shape, and

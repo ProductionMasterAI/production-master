@@ -4,7 +4,7 @@ The editor and agent platforms this client is validated against.
 
 | Platform | Validated against | Latest known |
 |---|---|---|
-| Claude Code | pending | 2.1.241 |
+| Claude Code | pending | 2.1.245 |
 | Cursor | pending | 3.11 (+ changelog 2026-08-19) |
 | Codex | pending | 0.148.0 |
 | OpenCode | pending | pending |
@@ -27,6 +27,37 @@ stdio server intentionally continues to advertise its older supported MCP
 protocol; changing only the protocol string would be unsafe. A future SDK-backed
 upgrade should adopt the newer protocol when paginated discovery, multi-round
 requests, and non-blocking startup can be implemented and tested together.
+
+**Claude Code notes (2.1.241 → 2.1.245).** Registration, sandboxing
+configuration shape, and command-argument handling are unchanged.
+2.1.245 shipped only a Linux-glibc-2.44 startup crash fix — a host binary
+issue with no client-relevant surface. 2.1.244, 2.1.242, and 2.1.240
+shipped no separately documented changes. Reviewed and not applicable from
+2.1.243: the `/usage` Loops breakdown, `modelPicker`, `promptCacheTtl`/
+`subagentPromptCacheTtl`, and `modelPricing` settings, and the model+effort
+column added to `/tasks` (this client makes no model calls and spawns no
+subagents — see [constraint #4](../../.claude/rules/constraints.md)); the
+keyless Console sign-in, the `/web-setup` GitHub-connection tip and
+`/status` line, and the `managed` marker for claude.ai-managed connectors
+(this plugin is never installed as a claude.ai-synced or org-managed
+connector — see the 2.1.239 `name@synced` note above); the workload-identity-
+federation CI fix for `claude-code-action` (this repo's `.github/workflows/
+claude.yml` authenticates with `anthropic_api_key: ${{ secrets.
+ANTHROPIC_API_KEY }}`, not WIF — `id-token: write` is granted but unused by
+that step); the hook `if`-condition command-substitution fix and the
+`/reload-plugins` LSP-tool fix (this repo defines no hooks and no LSP
+plugin); and the `--agents` JSON-validation fix (no command here launches
+Claude Code with `--agents`). One item refines existing guidance rather than
+requiring a change: 2.1.243 changed the sandboxed Bash tool's prompt to stop
+listing allowed network hosts, so in the default (non-`strictAllowlist`)
+sandbox mode Claude now attempts a request to `api.productionmaster.dev` and
+lets you approve it, instead of assuming an unlisted host is blocked —
+[Troubleshooting](troubleshooting.md#investigations-fail-with-connection-errors-only-inside-claude-code)
+now notes this so the `strictAllowlist`-only guidance already there isn't
+misread as covering every sandbox mode. Everything else in the 2.1.242–
+2.1.245 range is host-side UI/perf/reliability work (auto mode, Remote
+Control, `/resume`, cross-session messaging, VS Code) with no surface in
+this thin client.
 
 **Claude Code notes (2.1.238 → 2.1.241).** Registration, sandboxing
 configuration shape, and command-argument handling are unchanged.

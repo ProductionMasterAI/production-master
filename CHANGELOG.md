@@ -22,6 +22,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Claude Code currency (2.1.241 → 2.1.245).** `.claude-code-version`
+  advances to **2.1.245**. Registration, sandboxing configuration shape, and
+  command-argument handling are unchanged. 2.1.245 shipped only a
+  Linux-glibc-2.44 startup crash fix (host binary, no client-relevant
+  surface); 2.1.244, 2.1.242, and 2.1.240 shipped no separately documented
+  changes. Reviewed and not applicable from 2.1.243: the `/usage` Loops
+  breakdown, `modelPicker`/`promptCacheTtl`/`subagentPromptCacheTtl`/
+  `modelPricing` settings, and the `/tasks` model+effort column (this thin
+  client makes no model calls and spawns no subagents — constraint #4); the
+  keyless Console sign-in, `/web-setup` tip, and the claude.ai `managed`
+  connector marker (this plugin is never installed as a claude.ai-synced or
+  org-managed connector); the `claude-code-action` workload-identity-
+  federation CI fix (`.github/workflows/claude.yml` authenticates with
+  `anthropic_api_key`, not WIF); the hook `if`-condition and
+  `/reload-plugins` LSP fixes (no hooks, no LSP plugin here); and the
+  `--agents` JSON-validation fix (no command launches with `--agents`). One
+  item updates existing guidance: 2.1.243 changed the sandboxed Bash tool to
+  stop listing allowed network hosts in non-`strictAllowlist` mode, so
+  Claude now attempts and prompts for approval on `api.productionmaster.dev`
+  instead of assuming it's blocked — noted in
+  [Troubleshooting](docs/user/troubleshooting.md#investigations-fail-with-connection-errors-only-inside-claude-code)
+  so the `strictAllowlist`-only hard-block guidance isn't misread as
+  covering every sandbox mode.
+
 - **Claude Code currency (2.1.238 → 2.1.241).** `.claude-code-version`
   advances to **2.1.241**. Registration, sandboxing configuration shape, and
   command-argument handling are unchanged. Reviewed and not applicable:

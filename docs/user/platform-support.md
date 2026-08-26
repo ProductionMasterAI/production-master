@@ -4,7 +4,7 @@ The editor and agent platforms this client is validated against.
 
 | Platform | Validated against | Latest known |
 |---|---|---|
-| Claude Code | pending | 2.1.245 |
+| Claude Code | pending | 2.1.246 |
 | Cursor | pending | 3.11 (+ changelog 2026-08-19) |
 | Codex | pending | 0.148.0 |
 | OpenCode | pending | pending |
@@ -27,6 +27,55 @@ stdio server intentionally continues to advertise its older supported MCP
 protocol; changing only the protocol string would be unsafe. A future SDK-backed
 upgrade should adopt the newer protocol when paginated discovery, multi-round
 requests, and non-blocking startup can be implemented and tested together.
+
+**Claude Code notes (2.1.245 → 2.1.246).** Registration, sandboxing
+configuration shape, and command-argument handling are unchanged. One
+2.1.246 fix touches guidance already in this repo's docs: the command
+sandbox's **filesystem configuration now respects `--setting-sources`**.
+[Troubleshooting → Sandboxed commands](troubleshooting.md#sandboxed-commands-claude-code)
+already notes that the `mode: "mask"`/`extract`/`decode: "jwt"` credential-file
+protections for a seeded `PM_ACCESS_TOKEN` are honored only from user,
+managed, or `--settings` settings, not from a project's checked-in settings
+— before 2.1.246, a session launched with `--setting-sources` narrowed to
+exclude one of those sources could still pick up sandbox filesystem
+`denyRead`/`denyWrite`/masking rules from a source it was told to exclude
+(or fail to pick up rules from a source it was told to include), so the
+effective protection on that credentials file didn't match what
+`--setting-sources` asked for. Update Claude Code and keep the deny/mask
+entries as written — no rewrite needed once the host respects the flag
+correctly.
+
+The rest of the delta is host-side UI, CLI, and reliability work with no
+surface in this thin client: the `/permissions` Auto mode tab and turn-duration
+line; fullscreen/transcript rendering and memory fixes; the 45-second
+background-session-open fix; MCP-as-client fixes (interrupted-call reporting,
+empty-schema argument typing, `requiresUserInteraction` tools) — this client's
+Claude Code path registers via `/plugin install` and execs a binary from
+`commands/`, so Claude Code is never this thin client's MCP client (see the
+2.1.229 note below); the `←`/`/background` subagent-restart confirmation and
+the subagent partial-result hint (no dynamic workflows or subagents here —
+constraint #4); the plugin-cache duplicate-directory, `claude plugin update
+<name>`, `plugin.json` BOM, and `/reload-plugins` skills-count fixes (this
+plugin's `plugin.json` has no BOM and declares no `skills/` directory — the
+[`run-production-master`](../../.claude/skills/run-production-master/SKILL.md)
+skill is a project-local, contributor-facing skill under `.claude/skills/`,
+not part of the published plugin bundle); the hook-error-message and
+`keybindings.json` fixes (no hooks, no keybindings file here); the
+Write-tool large-file-overwrite fix, the corrupted-`known_marketplaces.json`
+install fix, and the resumed-session 400 fix for third-party API proxies
+(no proxy in this client's path); the `Notification` hook timing fix (no
+hooks); the malformed-Bash-command approval fix (this repo's
+[`.claude/settings.json`](../../.claude/settings.json) allow rules end in a
+trailing `*`, if at all, never a wildcard before a fixed subcommand token,
+and none are malformed); `--strict-mcp-config` and telemetry-credential
+scoping (no `.mcp.json` here, no third-party gateway configured by this
+repo); the auto-continue for non-interactive/SDK/cloud sessions (this
+repo's [`.github/workflows/claude.yml`](../../.github/workflows/claude.yml)
+runs `anthropics/claude-code-action@v1`, which benefits automatically with
+no workflow change); `/code-review` auto-start, the `/goal` check-in cap,
+and the deferred managed-settings consent prompt (none of these commands
+or settings are used here); and the improved `/cd` settings/hooks/skills
+reload and Bash-tool latency (host session ergonomics, no client surface).
 
 **Claude Code notes (2.1.241 → 2.1.245).** Registration, sandboxing
 configuration shape, and command-argument handling are unchanged.

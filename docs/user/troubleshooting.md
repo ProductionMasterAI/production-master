@@ -131,6 +131,19 @@ Related notes for recent Claude Code versions:
   and your sandbox settings have `sandbox.filesystem.denyWrite` covering the
   working directory, that was a Claude Code bug fixed in 2.1.223 — update
   rather than loosening the deny rule.
+- **The sandbox filesystem config now respects `--setting-sources` as of
+  2.1.246.** The `mode: "mask"` / `extract` / `decode: "jwt"` protections for
+  a credentials file seeding `PM_ACCESS_TOKEN` (above) are honored only from
+  user, managed, or `--settings` settings, never from a project's checked-in
+  settings. Before 2.1.246, a session launched with `--setting-sources`
+  narrowed to include or exclude one of those sources could still apply
+  sandbox filesystem `denyRead`/`denyWrite`/masking rules from a source it
+  was told to exclude, or fail to apply rules from a source it was told to
+  include — so the effective protection on the credentials file could
+  silently disagree with what `--setting-sources` asked for. If you launch
+  Claude Code with `--setting-sources` and rely on it to control which
+  source's sandbox filesystem rules apply, update to 2.1.246+; no rewrite of
+  the deny/mask entries themselves is needed.
 
 ## Command arguments (Claude Code)
 

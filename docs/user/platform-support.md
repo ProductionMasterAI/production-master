@@ -6,11 +6,11 @@ The editor and agent platforms this client is validated against.
 |---|---|---|
 | Claude Code | pending | 2.1.238 |
 | Cursor | pending | 3.11 (+ changelog 2026-08-19) |
-| Codex | pending | 0.149.0 |
+| Codex | pending | 0.149.1 |
 | OpenCode | pending | pending |
 
 All four adapter packages now ship a runnable `dist/cli.js`, so each client is
-usable today. The Codex release this repo targets is **0.149.0** and the Cursor
+usable today. The Codex release this repo targets is **0.149.1** and the Cursor
 release is **3.11** (changelog covered through 2026-08-19; desktop CLI observed at **3.16.29**): for each, the
 compatibility delta was reviewed against the existing adapter and its registration
 shape (`.codex/config.toml` for Codex, `.cursor/mcp.json` for Cursor), and nothing
@@ -27,7 +27,10 @@ commands, expanded `codex doctor` diagnostics, and SDK config/reasoning override
 those changes the adapter's `.codex/config.toml` registration or its MCP tool contract, so
 no compatibility migration is required here. Session-permission restoration, queue wakeups,
 and security/sandbox fixes are host-side improvements picked up automatically by users on
-the newer client.
+the newer client. Codex 0.149.1 adds `codex exec --thread-source <SOURCE>` for callers that
+need to classify new or forked threads plus no-follow filesystem/sandbox correctness fixes.
+This adapter does not launch Codex exec sessions, so the flag needs no wrapper here; the
+filesystem fixes are host-side.
 
 Codex 0.147.0 adds an opt-in MCP 2026-07-28 protocol. Production Master's current
 stdio server intentionally continues to advertise its older supported MCP

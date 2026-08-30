@@ -4,7 +4,7 @@ The editor and agent platforms this client is validated against.
 
 | Platform | Validated against | Latest known |
 |---|---|---|
-| Claude Code | pending | 2.1.247 |
+| Claude Code | pending | 2.1.251 |
 | Cursor | pending | 3.11 (+ changelog 2026-08-19) |
 | Codex | pending | 0.148.0 |
 | OpenCode | pending | pending |
@@ -27,6 +27,70 @@ stdio server intentionally continues to advertise its older supported MCP
 protocol; changing only the protocol string would be unsafe. A future SDK-backed
 upgrade should adopt the newer protocol when paginated discovery, multi-round
 requests, and non-blocking startup can be implemented and tested together.
+
+**Claude Code notes (2.1.247 → 2.1.251).** Registration, sandboxing
+configuration shape, and command-argument handling are unchanged across the
+whole range. 2.1.250 shipped only "bug fixes and reliability improvements,"
+with no further detail published — nothing to review there.
+
+Reviewed and not applicable from 2.1.248: `--restricted` /
+`CLAUDE_CODE_RESTRICTED` (every command in [`commands/`](../../commands/)
+declares `allowed-tools: Bash` to exec the thin-client binary, so a
+restricted session that strips command-execution tools couldn't run any of
+them — this repo can't adopt it without dropping Bash entirely; see Future
+opportunities below); `experimental.cacheTtl` agent frontmatter and
+`self-hosted-runner --client-label` (no agents, no self-hosted runners — see
+[constraints #4/#5](../../.claude/rules/constraints.md)); server-managed-
+settings load diagnostics, the `/web-setup` GitHub-token-scope warning,
+`/usage-credits` for AWS-Marketplace/self-serve Enterprise, and cross-session
+messaging on Bedrock/Vertex/Foundry (host session/billing surface, no model
+calls here); and every listed background-session, Remote Control, `claude
+agents`, MCP-as-client, and terminal fix — all host session machinery this
+repo's five Bash-only commands never exercise.
+
+Reviewed and not applicable from 2.1.251: the new `PreModelSwitch`/
+`PostModelSwitch` hooks and `SessionStart` staleness fields, foreground-
+subagent Remote Control streaming, the `/usage` spend-limit bar and `/cost`
+prompt-cache line, and `claude --help attach/logs/stop/respawn/rm` (no
+hooks, no subagents, no model calls, no background-session management from
+this repo's commands — constraint #4); `CLAUDE_CODE_SUBAGENT_MODEL`'s
+changed precedence and the default-commit-trailer change for unrecognized
+models (this repo's [`.claude/settings.json`](../../.claude/settings.json)
+already pins `attribution.commit` explicitly, so neither change alters it);
+and the `env` change dropping `CLAUDE_CONFIG_DIR`/`CLAUDE_CODE_TMPDIR`/
+`TMPDIR` support from project settings (this repo's `.claude/settings.json`
+sets no `env` block to begin with). Two 2.1.251 fixes are worth naming
+individually because they're adjacent to, but distinct from, guidance
+already in this repo's docs:
+
+- **Plugin commands pointing outside the plugin directory are now
+  rejected.** Every command in [`commands/`](../../commands/) already
+  resolves its binary strictly inside the plugin root
+  (`${CLAUDE_PLUGIN_ROOT}/packages/adapter-claude-code/dist/cli.js`, falling
+  back to `${CLAUDE_PLUGIN_ROOT}/dist/cli.js` — never a path that escapes
+  `CLAUDE_PLUGIN_ROOT`), so this hardening changes nothing here; confirmed
+  by inspection of all five command files, not just by absence of an
+  obvious hit.
+- **File tools (Read/Write/Edit) no longer follow a symlink swapped in
+  after the permission check, and Grep/Glob now apply `Read(...)` deny
+  rules through a symlinked search path.** This is a different protection
+  layer from the sandbox `denyRead`/`denyWrite`/masking entries this repo's
+  docs already track for a `PM_ACCESS_TOKEN` credentials file
+  ([Troubleshooting → Sandboxed
+  commands](troubleshooting.md#sandboxed-commands-claude-code)) — those
+  guard the *Bash tool's* sandbox, while this fix guards the *file tools'*
+  own permission checks. This repo's
+  [`.claude/settings.json`](../../.claude/settings.json) sets no
+  `Read(...)`/`Grep(...)`/`Glob(...)` deny rules of its own, so nothing here
+  changes, but a user layering file-tool-level `deny` rules on top of (or
+  instead of) the sandbox entries now gets the same TOCTOU-symlink
+  hardening the sandbox side already had.
+
+Everything else in 2.1.248–2.1.251 — spend-limit and prompt-cache/usage UI,
+self-hosted-runner and Remote Control changes, terminal/keyboard fixes,
+managed-settings and gateway sign-in changes, and the VS Code Remote Control
+footer pill — is host-side UI, billing, or session-management work with no
+surface in this thin client.
 
 **Claude Code notes (2.1.246 → 2.1.247).** Registration, sandboxing
 configuration shape, and command-argument handling are unchanged. One

@@ -22,6 +22,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Claude Code currency (2.1.247 → 2.1.251).** `.claude-code-version`
+  advances to **2.1.251**. Registration, sandboxing configuration shape, and
+  command-argument handling are unchanged across the whole range; 2.1.250
+  shipped only "bug fixes and reliability improvements" with no further
+  detail published. Two 2.1.251 fixes are adjacent to existing guidance but
+  change nothing here: plugin commands can no longer point outside the
+  plugin directory (this repo's `commands/` already resolve strictly under
+  `${CLAUDE_PLUGIN_ROOT}`), and file tools plus Grep/Glob now close a
+  symlink-based bypass of `Read(...)` deny rules — a different mechanism
+  from the sandbox `denyRead`/`denyWrite` entries already tracked here, and
+  this repo sets no `Read(...)` deny rules of its own. Everything else —
+  `--restricted`, model-switch hooks, spend-limit and prompt-cache UI,
+  self-hosted-runner and Remote Control changes — is host-side surface this
+  thin client's five Bash-only commands don't touch (constraints #4/#5). See
+  [Platform support](docs/user/platform-support.md) for the full per-item
+  review.
+
 - **Claude Code currency (2.1.246 → 2.1.247).** `.claude-code-version`
   advances to **2.1.247**. Registration, sandboxing configuration shape, and
   command-argument handling are unchanged. One item updates existing

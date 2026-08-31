@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   required status context on this repo's `main`.
 
 ### Changed
+- **Cursor 3.11 (+2026-08-27):** advance `changelog_date` **2026-08-19 → 2026-08-27**; desktop **3.16.29 → 3.18.9**. Document Cloud Agent **Start from scratch** (no SCM required), Origin **Create repo**, **browser port-forward preview**, and optional **Vercel publish**. Cursor-only; other platform nightlies untouched.
+- **Cursor 3.11 (+2026-08-19):** document native **CreateGoal** / **UpdateGoal** beside Agent Window `/goal` in platform-support + quick-start. Cursor-only.
 
 - **Claude Code currency (2.1.247 → 2.1.251).** `.claude-code-version`
   advances to **2.1.251**. Registration, sandboxing configuration shape, and

@@ -4,7 +4,7 @@ The editor and agent platforms this client is validated against.
 
 | Platform | Validated against | Latest known |
 |---|---|---|
-| Claude Code | pending | 2.1.238 |
+| Claude Code | pending | 2.1.251 |
 | Cursor | pending | 3.11 (+ changelog 2026-08-19) |
 | Codex | pending | 0.148.0 |
 | OpenCode | pending | pending |
@@ -27,6 +27,220 @@ stdio server intentionally continues to advertise its older supported MCP
 protocol; changing only the protocol string would be unsafe. A future SDK-backed
 upgrade should adopt the newer protocol when paginated discovery, multi-round
 requests, and non-blocking startup can be implemented and tested together.
+
+**Claude Code notes (2.1.247 → 2.1.251).** Registration, sandboxing
+configuration shape, and command-argument handling are unchanged across the
+whole range. 2.1.250 shipped only "bug fixes and reliability improvements,"
+with no further detail published — nothing to review there.
+
+Reviewed and not applicable from 2.1.248: `--restricted` /
+`CLAUDE_CODE_RESTRICTED` (every command in [`commands/`](../../commands/)
+declares `allowed-tools: Bash` to exec the thin-client binary, so a
+restricted session that strips command-execution tools couldn't run any of
+them — this repo can't adopt it without dropping Bash entirely; see Future
+opportunities below); `experimental.cacheTtl` agent frontmatter and
+`self-hosted-runner --client-label` (no agents, no self-hosted runners — see
+[constraints #4/#5](../../.claude/rules/constraints.md)); server-managed-
+settings load diagnostics, the `/web-setup` GitHub-token-scope warning,
+`/usage-credits` for AWS-Marketplace/self-serve Enterprise, and cross-session
+messaging on Bedrock/Vertex/Foundry (host session/billing surface, no model
+calls here); and every listed background-session, Remote Control, `claude
+agents`, MCP-as-client, and terminal fix — all host session machinery this
+repo's five Bash-only commands never exercise.
+
+Reviewed and not applicable from 2.1.251: the new `PreModelSwitch`/
+`PostModelSwitch` hooks and `SessionStart` staleness fields, foreground-
+subagent Remote Control streaming, the `/usage` spend-limit bar and `/cost`
+prompt-cache line, and `claude --help attach/logs/stop/respawn/rm` (no
+hooks, no subagents, no model calls, no background-session management from
+this repo's commands — constraint #4); `CLAUDE_CODE_SUBAGENT_MODEL`'s
+changed precedence and the default-commit-trailer change for unrecognized
+models (this repo's [`.claude/settings.json`](../../.claude/settings.json)
+already pins `attribution.commit` explicitly, so neither change alters it);
+and the `env` change dropping `CLAUDE_CONFIG_DIR`/`CLAUDE_CODE_TMPDIR`/
+`TMPDIR` support from project settings (this repo's `.claude/settings.json`
+sets no `env` block to begin with). Two 2.1.251 fixes are worth naming
+individually because they're adjacent to, but distinct from, guidance
+already in this repo's docs:
+
+- **Plugin commands pointing outside the plugin directory are now
+  rejected.** Every command in [`commands/`](../../commands/) already
+  resolves its binary strictly inside the plugin root
+  (`${CLAUDE_PLUGIN_ROOT}/packages/adapter-claude-code/dist/cli.js`, falling
+  back to `${CLAUDE_PLUGIN_ROOT}/dist/cli.js` — never a path that escapes
+  `CLAUDE_PLUGIN_ROOT`), so this hardening changes nothing here; confirmed
+  by inspection of all five command files, not just by absence of an
+  obvious hit.
+- **File tools (Read/Write/Edit) no longer follow a symlink swapped in
+  after the permission check, and Grep/Glob now apply `Read(...)` deny
+  rules through a symlinked search path.** This is a different protection
+  layer from the sandbox `denyRead`/`denyWrite`/masking entries this repo's
+  docs already track for a `PM_ACCESS_TOKEN` credentials file
+  ([Troubleshooting → Sandboxed
+  commands](troubleshooting.md#sandboxed-commands-claude-code)) — those
+  guard the *Bash tool's* sandbox, while this fix guards the *file tools'*
+  own permission checks. This repo's
+  [`.claude/settings.json`](../../.claude/settings.json) sets no
+  `Read(...)`/`Grep(...)`/`Glob(...)` deny rules of its own, so nothing here
+  changes, but a user layering file-tool-level `deny` rules on top of (or
+  instead of) the sandbox entries now gets the same TOCTOU-symlink
+  hardening the sandbox side already had.
+
+Everything else in 2.1.248–2.1.251 — spend-limit and prompt-cache/usage UI,
+self-hosted-runner and Remote Control changes, terminal/keyboard fixes,
+managed-settings and gateway sign-in changes, and the VS Code Remote Control
+footer pill — is host-side UI, billing, or session-management work with no
+surface in this thin client.
+
+**Claude Code notes (2.1.246 → 2.1.247).** Registration, sandboxing
+configuration shape, and command-argument handling are unchanged. One
+2.1.247 fix touches guidance already in this repo's docs: the command
+**sandbox no longer deletes a dotfile-managed symlink** it finds repointed
+outside the writable area — it now just blocks the write, as it already
+does for any other out-of-bounds path.
+[Troubleshooting → Sandboxed commands](troubleshooting.md#sandboxed-commands-claude-code)
+already covers protecting a `PM_ACCESS_TOKEN` credentials file with a
+sandbox `deny`/`mask` entry; a common way to manage that same file is a
+dotfile-manager symlink (chezmoi, GNU Stow, and similar tools all work this
+way), and before 2.1.247 a sandboxed command that repointed such a symlink
+outside its writable area could have the sandbox delete the symlink itself
+rather than merely refuse the write — silently breaking the dotfile
+manager's link, not just the sandboxed command. Update Claude Code; no
+change to the deny/mask entries or how the credentials file is managed is
+needed once the host stops deleting the link.
+
+The rest of the delta is host-side UI, CLI, and reliability work with no
+surface in this thin client: the new `SendFeedback` tool and
+`feedbackDrafts` setting; the enhanced `spinnerTipsOverride` shape and the
+Bash-permission-prompt auto-mode tip; `/claude-api cost-optimize` and the
+`/claude-api` skill's Admin API coverage (constraint #4 — no model calls,
+no Admin API usage here); arrow-key/history-search, kitty-protocol
+Ctrl-shortcut, and split-escape mouse-report terminal fixes; the
+`/terminal-setup` Zed-keymap-merge fix; the `/rename`, `/compact`, and
+background-session-"opening" fixes; the sub-agent first-call-404 fallback
+chain and the hook/background-agent "Prompt is too long" and memory-growth
+fixes (this client defines no hooks under `.claude/` and its commands spawn
+no subagents — constraint #4); the `/install-github-app` SSH messaging fix;
+background-session shell-command logging; the version-less
+marketplace-plugin-cache-directory fix (this plugin's
+[`plugin.json`](../../.claude-plugin/plugin.json) carries an explicit
+`version` and this repo defines no marketplace catalog of its own); Remote
+Control working-tree-diff reporting; the self-hosted-runner status-reporting
+fix (this repo's CI is GitHub-hosted `ubuntu-latest` only — [constraint
+#5](../../.claude/rules/constraints.md)); the managed-gateway first-run and
+organization-sign-in fixes (no managed gateway configured here); cloud
+session permission-mode and container-restart fixes; the plugin-marketplace
+hardening against control/invisible characters (no marketplace lives in
+this repo); the Bedrock/Vertex/Foundry MCP-connection-failure notice (no
+`.mcp.json` here — see the 2.1.229 note below); Sonnet 5's larger
+auto-compact window, collapsed cross-session peer messages, plain-text
+terminal hyperlink hardening, the PR-badge refocus-check skip, and the
+Claude-apps gateway sign-in User-Agent change (host session/UI ergonomics,
+no client surface).
+
+**Claude Code notes (2.1.245 → 2.1.246).** Registration, sandboxing
+configuration shape, and command-argument handling are unchanged. One
+2.1.246 fix touches guidance already in this repo's docs: the command
+sandbox's **filesystem configuration now respects `--setting-sources`**.
+[Troubleshooting → Sandboxed commands](troubleshooting.md#sandboxed-commands-claude-code)
+already notes that the `mode: "mask"`/`extract`/`decode: "jwt"` credential-file
+protections for a seeded `PM_ACCESS_TOKEN` are honored only from user,
+managed, or `--settings` settings, not from a project's checked-in settings
+— before 2.1.246, a session launched with `--setting-sources` narrowed to
+exclude one of those sources could still pick up sandbox filesystem
+`denyRead`/`denyWrite`/masking rules from a source it was told to exclude
+(or fail to pick up rules from a source it was told to include), so the
+effective protection on that credentials file didn't match what
+`--setting-sources` asked for. Update Claude Code and keep the deny/mask
+entries as written — no rewrite needed once the host respects the flag
+correctly.
+
+The rest of the delta is host-side UI, CLI, and reliability work with no
+surface in this thin client: the `/permissions` Auto mode tab and turn-duration
+line; fullscreen/transcript rendering and memory fixes; the 45-second
+background-session-open fix; MCP-as-client fixes (interrupted-call reporting,
+empty-schema argument typing, `requiresUserInteraction` tools) — this client's
+Claude Code path registers via `/plugin install` and execs a binary from
+`commands/`, so Claude Code is never this thin client's MCP client (see the
+2.1.229 note below); the `←`/`/background` subagent-restart confirmation and
+the subagent partial-result hint (no dynamic workflows or subagents here —
+constraint #4); the plugin-cache duplicate-directory, `claude plugin update
+<name>`, `plugin.json` BOM, and `/reload-plugins` skills-count fixes (this
+plugin's `plugin.json` has no BOM and declares no `skills/` directory — the
+[`run-production-master`](../../.claude/skills/run-production-master/SKILL.md)
+skill is a project-local, contributor-facing skill under `.claude/skills/`,
+not part of the published plugin bundle); the hook-error-message and
+`keybindings.json` fixes (no hooks, no keybindings file here); the
+Write-tool large-file-overwrite fix, the corrupted-`known_marketplaces.json`
+install fix, and the resumed-session 400 fix for third-party API proxies
+(no proxy in this client's path); the `Notification` hook timing fix (no
+hooks); the malformed-Bash-command approval fix (this repo's
+[`.claude/settings.json`](../../.claude/settings.json) allow rules end in a
+trailing `*`, if at all, never a wildcard before a fixed subcommand token,
+and none are malformed); `--strict-mcp-config` and telemetry-credential
+scoping (no `.mcp.json` here, no third-party gateway configured by this
+repo); the auto-continue for non-interactive/SDK/cloud sessions (this
+repo's [`.github/workflows/claude.yml`](../../.github/workflows/claude.yml)
+runs `anthropics/claude-code-action@v1`, which benefits automatically with
+no workflow change); `/code-review` auto-start, the `/goal` check-in cap,
+and the deferred managed-settings consent prompt (none of these commands
+or settings are used here); and the improved `/cd` settings/hooks/skills
+reload and Bash-tool latency (host session ergonomics, no client surface).
+
+**Claude Code notes (2.1.241 → 2.1.245).** Registration, sandboxing
+configuration shape, and command-argument handling are unchanged.
+2.1.245 shipped only a Linux-glibc-2.44 startup crash fix — a host binary
+issue with no client-relevant surface. 2.1.244, 2.1.242, and 2.1.240
+shipped no separately documented changes. Reviewed and not applicable from
+2.1.243: the `/usage` Loops breakdown, `modelPicker`, `promptCacheTtl`/
+`subagentPromptCacheTtl`, and `modelPricing` settings, and the model+effort
+column added to `/tasks` (this client makes no model calls and spawns no
+subagents — see [constraint #4](../../.claude/rules/constraints.md)); the
+keyless Console sign-in, the `/web-setup` GitHub-connection tip and
+`/status` line, and the `managed` marker for claude.ai-managed connectors
+(this plugin is never installed as a claude.ai-synced or org-managed
+connector — see the 2.1.239 `name@synced` note above); the workload-identity-
+federation CI fix for `claude-code-action` (this repo's `.github/workflows/
+claude.yml` authenticates with `anthropic_api_key: ${{ secrets.
+ANTHROPIC_API_KEY }}`, not WIF — `id-token: write` is granted but unused by
+that step); the hook `if`-condition command-substitution fix and the
+`/reload-plugins` LSP-tool fix (this repo defines no hooks and no LSP
+plugin); and the `--agents` JSON-validation fix (no command here launches
+Claude Code with `--agents`). One item refines existing guidance rather than
+requiring a change: 2.1.243 changed the sandboxed Bash tool's prompt to stop
+listing allowed network hosts, so in the default (non-`strictAllowlist`)
+sandbox mode Claude now attempts a request to `api.productionmaster.dev` and
+lets you approve it, instead of assuming an unlisted host is blocked —
+[Troubleshooting](troubleshooting.md#investigations-fail-with-connection-errors-only-inside-claude-code)
+now notes this so the `strictAllowlist`-only guidance already there isn't
+misread as covering every sandbox mode. Everything else in the 2.1.242–
+2.1.245 range is host-side UI/perf/reliability work (auto mode, Remote
+Control, `/resume`, cross-session messaging, VS Code) with no surface in
+this thin client.
+
+**Claude Code notes (2.1.238 → 2.1.241).** Registration, sandboxing
+configuration shape, and command-argument handling are unchanged.
+2.1.240 and 2.1.241 shipped only "bug fixes and reliability improvements,"
+with no further detail published — nothing to review there. Reviewed and
+not applicable from 2.1.239: the **`/cost`/status-line/`--max-budget-usd`
+1.1x US-only-inference premium** for data-residency workspaces and the
+**Bedrock/Vertex/Foundry fullscreen-renderer offer** (this thin client
+displays no cost estimate and is not itself a model-provider console —
+see [constraint #4](../../.claude/rules/constraints.md)); **`/claude-api
+upgrade`** for Python projects on `anthropic` 0.x→1.x (constraint #4 bars
+any model-provider SDK import, so there is no `anthropic` dependency
+anywhere in this repo — [`sdk/python`](../../sdk/python) talks to the
+Production Master service over plain HTTP/SSE, not the Claude API); cloud
+sessions showing claude.ai-synced plugins as **`name@synced`** (this
+plugin installs via `/plugin install production-master@<marketplace>`
+from a marketplace hosted elsewhere, or the SHA-256-pinned `archive`
+source in [Quick Start](quick-start.md#claude-code) — never through a
+claude.ai sync, so the name is always plain `production-master`, never
+`production-master@synced`); the **Alpine/musl native-addon fix**
+(clipboard, image-paste, audio-capture) — this CLI ships no native
+add-ons of its own; and the usage-limit reset-time message wording.
+Everything else in the 2.1.239–2.1.241 range is host-side UI/billing/
+reliability work with no client-relevant surface.
 
 **Claude Code notes (2.1.236 → 2.1.238).** Registration, sandboxing
 configuration shape, and command-argument handling are unchanged across

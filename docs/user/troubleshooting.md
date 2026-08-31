@@ -67,6 +67,16 @@ settings — `api.productionmaster.dev` by default, or the host from your custom
 login flow opens a browser out-of-band and is not affected; only the CLI's HTTPS
 calls (trigger, stream, approve/reject) need the allowlist entry.
 
+**This is specific to `sandbox.network.strictAllowlist`.** As of Claude Code
+2.1.243, outside strict-allowlist mode the sandboxed Bash tool's prompt no
+longer lists which hosts are allowed — Claude just attempts the request to
+`api.productionmaster.dev` (or your custom `PM_SERVICE_URL` host) and you
+approve or deny it, rather than the client assuming an unlisted host is
+blocked. The hard, no-prompt failure described above only happens under
+`strictAllowlist`; if you aren't using that setting and a call to the
+service still silently fails, look at the approval prompt rather than
+assuming the host needs allowlisting.
+
 Related notes for recent Claude Code versions:
 
 - **TLS errors on large sandboxed uploads are fixed in 2.1.221.** If attaching a
@@ -121,6 +131,29 @@ Related notes for recent Claude Code versions:
   and your sandbox settings have `sandbox.filesystem.denyWrite` covering the
   working directory, that was a Claude Code bug fixed in 2.1.223 — update
   rather than loosening the deny rule.
+- **The sandbox filesystem config now respects `--setting-sources` as of
+  2.1.246.** The `mode: "mask"` / `extract` / `decode: "jwt"` protections for
+  a credentials file seeding `PM_ACCESS_TOKEN` (above) are honored only from
+  user, managed, or `--settings` settings, never from a project's checked-in
+  settings. Before 2.1.246, a session launched with `--setting-sources`
+  narrowed to include or exclude one of those sources could still apply
+  sandbox filesystem `denyRead`/`denyWrite`/masking rules from a source it
+  was told to exclude, or fail to apply rules from a source it was told to
+  include — so the effective protection on the credentials file could
+  silently disagree with what `--setting-sources` asked for. If you launch
+  Claude Code with `--setting-sources` and rely on it to control which
+  source's sandbox filesystem rules apply, update to 2.1.246+; no rewrite of
+  the deny/mask entries themselves is needed.
+- **The sandbox no longer deletes dotfile-managed symlinks, as of 2.1.247.**
+  If you manage your `PM_ACCESS_TOKEN` credentials file with a dotfile
+  manager (chezmoi, GNU Stow, and similar tools all place a symlink at the
+  real path and keep the actual file elsewhere), a sandboxed command that
+  found that symlink repointed outside its writable area could, before
+  2.1.247, have the sandbox delete the symlink itself instead of simply
+  blocking the write — breaking the dotfile manager's link, not just the
+  command that triggered it. Update to 2.1.247+; the credentials file's
+  location, its symlink, and its existing `deny`/`mask` sandbox entry (above)
+  need no change.
 
 ## Command arguments (Claude Code)
 

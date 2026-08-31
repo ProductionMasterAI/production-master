@@ -4,7 +4,7 @@ The editor and agent platforms this client is validated against.
 
 | Platform | Validated against | Latest known |
 |---|---|---|
-| Claude Code | pending | 2.1.251 |
+| Claude Code | pending | 2.1.252 |
 | Cursor | pending | 3.11 (+ changelog 2026-08-27) |
 | Codex | pending | 0.151.0 |
 | OpenCode | pending | pending |
@@ -37,6 +37,19 @@ stdio server intentionally continues to advertise its older supported MCP
 protocol; changing only the protocol string would be unsafe. A future SDK-backed
 upgrade should adopt the newer protocol when paginated discovery, multi-round
 requests, and non-blocking startup can be implemented and tested together.
+
+**Claude Code notes (2.1.251 → 2.1.252).** Registration, sandboxing
+configuration shape, and command-argument handling are unchanged. 2.1.252's
+published delta is four host-side fixes, none with a surface in this thin
+client: a macOS Bash "task output swap refused" fix, a fix for "always
+allow" not persisting in a project with no `.claude/settings.local.json`
+yet (this repo's [`.claude/settings.json`](../../.claude/settings.json)
+already checks in its allow/deny rules explicitly, so no interactive
+"always allow" write is needed here), a Remote Control stall-after-tool
+fix for Claude Desktop/VS Code hosts, and a fix for oversized background-task
+failure output overflowing the request size limit (this repo defines no
+hooks or background tasks under `.claude/` — constraint #4). Nothing to
+adopt or change.
 
 **Claude Code notes (2.1.247 → 2.1.251).** Registration, sandboxing
 configuration shape, and command-argument handling are unchanged across the

@@ -1,5 +1,6 @@
 {
   "permissions": {
+    "blockReadsOutsideWorkingDirectories": true,
     "allow": [
       "Bash(npm ci)",
       "Bash(npm install)",

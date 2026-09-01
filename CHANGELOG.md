@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`permissions.blockReadsOutsideWorkingDirectories` set in
+  `.claude/settings.json` (Claude Code 2.1.257).** Auto-mode sessions on
+  this repo now have out-of-working-directory file reads blocked outright
+  instead of only a one-time prompt — a layer complementary to, not a
+  replacement for, the existing sandbox `deny`/`mask` protection on a
+  `PM_ACCESS_TOKEN` credentials file documented in
+  [Troubleshooting](docs/user/troubleshooting.md#sandboxed-commands-claude-code):
+  that guards the Bash sandbox, this guards the Read/Grep/Glob tools
+  themselves. No effect on interactive (non-auto) sessions, which already
+  prompt on every tool use.
+
 - **Pin↔doc guard + changelog structure lint, wired into the required `CI`
   job (dev#726).** `scripts/check-version-pin-docs.mjs` asserts the root pin
   files (`.claude-code-version`, `.codex-version`, `.cursor-version`) and

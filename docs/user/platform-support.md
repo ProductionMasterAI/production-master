@@ -59,8 +59,11 @@ it needs no repo change:
   dotfile-managed `PM_ACCESS_TOKEN` credentials file living outside the
   checkout is refused rather than merely prompted once. Set in
   [`.claude/settings.json`](../../.claude/settings.json) alongside the
-  existing allow/deny rules; it changes nothing for interactive (non-auto)
-  sessions, which already prompt on every tool use.
+  existing allow/deny rules. The setting is scoped to auto mode, so it changes
+  nothing for interactive (non-auto) sessions — which are not thereby
+  protected: this repo's own allow list already covers `Read(*)`, `Edit(*)`,
+  `Write(*)`, `Glob(*)`, `Grep(*)` and a set of Bash commands, and a matching
+  call runs without a prompt in any mode.
 - **Reviewed: the plugin symlink component-path fix.** 2.1.257 rejects a
   declared command, agent, skill, or hook path that is a symlink pointing
   outside the component's own directory. This is the same protection family
@@ -92,10 +95,15 @@ constraint #4); the session-only `/effort s` and `--effort` hold change (no
 model calls); `timeFormat`/`timeZone` and the VS Code panel/session-list
 entries (host UI, no client surface); the **auto-mode Containment Escape
 rule** for cloud metadata-credential fetches, egress evasion, and
-cross-tenant reach — reviewed and not applicable, since this client's only
-egress is HTTPS/SSE to `PM_SERVICE_URL` (default
-`api.productionmaster.dev`), never a cloud instance-metadata endpoint or a
-cross-tenant target, so there is nothing here for the rule to gate; the
+cross-tenant reach — reviewed and not applicable, though not for the reason
+"only one host": in the default configuration the client's egress is HTTPS/SSE
+to `PM_SERVICE_URL` (default `api.productionmaster.dev`), but a split-host
+deployment has a second one — with `PM_MCP_GATEWAY_URL` (or `--gateway`) set,
+`createPluginRuntime` resolves that as the gateway base URL and builds an
+`HttpMcpToolTransport` against it, posting tool calls to that separate host
+with the bearer token. Both destinations are operator-configured product
+endpoints, never a cloud instance-metadata endpoint or a cross-tenant target,
+which is what puts this outside the rule; the
 `.claude/` folder hot-pickup fix (this repo's `.claude/` ships at checkout,
 it is never created mid-session); `keybindings.json` and `claude agents`
 Ctrl+G/Ctrl+S/Ctrl+T rebinding (no keybindings file here); `defaultMode:

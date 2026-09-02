@@ -4,7 +4,7 @@ The editor and agent platforms this client is validated against.
 
 | Platform | Validated against | Latest known |
 |---|---|---|
-| Claude Code | pending | 2.1.252 |
+| Claude Code | pending | 2.1.257 |
 | Cursor | pending | 3.11 (+ changelog 2026-08-27) |
 | Codex | pending | 0.152.1 |
 | OpenCode | pending | pending |
@@ -46,6 +46,99 @@ stdio server intentionally continues to advertise its older supported MCP
 protocol; changing only the protocol string would be unsafe. A future SDK-backed
 upgrade should adopt the newer protocol when paginated discovery, multi-round
 requests, and non-blocking startup can be implemented and tested together.
+
+**Claude Code notes (2.1.252 → 2.1.257).** `.claude-code-version` advances to
+**2.1.257** — 2.1.253 through 2.1.256 were never published as separate
+releases, so this is a single-jump delta against one changelog entry.
+Registration, sandboxing configuration shape, and command-argument handling
+are unchanged. One item is adopted, one closes a related surface this repo
+already tracks, and one is worth naming as a new diagnostic aid even though
+it needs no repo change:
+
+- **Adopted: `permissions.blockReadsOutsideWorkingDirectories`.** 2.1.257
+  lets auto mode block a file read outside the working directory outright,
+  instead of only a one-time prompt. This repo's whole reason for existing
+  is keeping `PM_ACCESS_TOKEN` and other host credentials off the wire and
+  out of the transcript — [Troubleshooting → Sandboxed
+  commands](troubleshooting.md#sandboxed-commands-claude-code) already
+  documents `deny`/`mask` sandbox entries for exactly that credentials file.
+  `blockReadsOutsideWorkingDirectories` is a different, complementary layer:
+  it constrains the Read/Grep/Glob tools themselves (auto mode specifically),
+  not the Bash sandbox, so a stray auto-mode read of `~/.ssh`, `~/.aws`, or a
+  dotfile-managed `PM_ACCESS_TOKEN` credentials file living outside the
+  checkout is refused rather than merely prompted once. Set in
+  [`.claude/settings.json`](../../.claude/settings.json) alongside the
+  existing allow/deny rules. The setting is scoped to auto mode, so it changes
+  nothing for interactive (non-auto) sessions — which are not thereby
+  protected: this repo's own allow list already covers `Read(*)`, `Edit(*)`,
+  `Write(*)`, `Glob(*)`, `Grep(*)` and a set of Bash commands, and a matching
+  call runs without a prompt in any mode.
+- **Reviewed: the plugin symlink component-path fix.** 2.1.257 rejects a
+  declared command, agent, skill, or hook path that is a symlink pointing
+  outside the component's own directory. This is the same protection family
+  as 2.1.251's "plugin commands can't point outside the plugin directory"
+  fix already tracked below, extended from path traversal to symlink
+  indirection. Verified by inspection, not just absence of an obvious hit:
+  none of the five files under [`commands/`](../../commands/) or
+  [`.claude/skills/run-production-master/SKILL.md`](../../.claude/skills/run-production-master/SKILL.md)
+  is a symlink (`find commands .claude .claude-plugin -type l` returns
+  nothing in this checkout), so this hardening changes nothing here.
+- **New diagnostic, no repo change needed: `/doctor` now warns about stale
+  sandbox mask files left by a killed session.** Relevant context for anyone
+  following the `mode: "mask"`/`extract`/`decode: "jwt"` credential-masking
+  guidance in
+  [Troubleshooting](troubleshooting.md#sandboxed-commands-claude-code) for a
+  headless `PM_ACCESS_TOKEN` seed file — if a masked sandboxed command is
+  killed mid-run, `/doctor` now surfaces the leftover mask file instead of
+  leaving it to be discovered as an unexplained sandbox-proxy quirk later.
+
+Everything else in the 2.1.257 delta is either host-side surface with no
+client-relevant hook, or a feature this thin client's constraints
+(constraint #4: no model calls, no subagents, no pipeline/agent logic;
+constraint #5: GitHub-hosted runners only — see
+[constraints](../../.claude/rules/constraints.md)) rule out by design:
+**Claude Fable 5.1** and the gateway-model-discovery `description` field
+(this client makes no model calls of its own); `CLAUDE_CODE_SUBAGENT_MODEL_FORCE`
+and every subagent-transcript/monitor/continuation fix (no subagents —
+constraint #4); the session-only `/effort s` and `--effort` hold change (no
+model calls); `timeFormat`/`timeZone` and the VS Code panel/session-list
+entries (host UI, no client surface); the **auto-mode Containment Escape
+rule** for cloud metadata-credential fetches, egress evasion, and
+cross-tenant reach — reviewed and not applicable, though not for the reason
+"only one host": in the default configuration the client's egress is HTTPS/SSE
+to `PM_SERVICE_URL` (default `api.productionmaster.dev`), but a split-host
+deployment has a second one — with `PM_MCP_GATEWAY_URL` (or `--gateway`) set,
+`createPluginRuntime` resolves that as the gateway base URL and builds an
+`HttpMcpToolTransport` against it, posting tool calls to that separate host
+with the bearer token. Both destinations are operator-configured product
+endpoints, never a cloud instance-metadata endpoint or a cross-tenant target,
+which is what puts this outside the rule; the
+`.claude/` folder hot-pickup fix (this repo's `.claude/` ships at checkout,
+it is never created mid-session); `keybindings.json` and `claude agents`
+Ctrl+G/Ctrl+S/Ctrl+T rebinding (no keybindings file here); `defaultMode:
+"bypassPermissions"` now being ignored in project settings — reviewed and
+confirmed not applicable, since
+[`.claude/settings.json`](../../.claude/settings.json) sets no `defaultMode`
+at all; the `--add-dir`/`additionalDirectories` network-path refusal (this
+repo declares no `additionalDirectories`); the GitLab `/code-review
+--comment` improvement (this repo's Cursor-side Origin notes above mention
+GitLab as a git host, but no `/code-review` workflow or GitLab MR integration
+exists in this repo's own Claude Code surface); the Bash `Read()`/`Edit()`
+deny-rule redirect/reader-command fix and the zsh `[[ ]]`-conditional
+permission-check fix (this repo's `.claude/settings.json` sets no
+`Read()`/`Edit()` deny rules and its five commands run a plain `set -euo
+pipefail` script with POSIX `[ -f ... ]` tests, no `[[ ]]` conditionals);
+worktree-isolated-session Bash-loop and linked-worktree `.git`-write fixes
+(this repo's contributor workflow in
+[CONTRIBUTING.md](../CONTRIBUTING.md) is fork-and-branch, not
+`--worktree`/`claude agents` worktrees); `claude self-hosted-runner
+--configure-git` push-negotiation (constraint #5 — this repo's CI is
+GitHub-hosted `ubuntu-latest` only, never `self-hosted`); and every other
+listed background-session, Remote Control, MCP-as-client, terminal-rendering,
+managed-settings, Bedrock/Vertex/Foundry/Bedrock-Mantle, and VS Code fix —
+host session/UI/billing machinery this repo's five Bash-only commands never
+exercise. Nothing else here changes registration, sandboxing shape, or
+command-argument handling.
 
 **Claude Code notes (2.1.251 → 2.1.252).** Registration, sandboxing
 configuration shape, and command-argument handling are unchanged. 2.1.252's

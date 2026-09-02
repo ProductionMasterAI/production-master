@@ -32,6 +32,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   required status context on this repo's `main`.
 
 ### Changed
+- **Claude Code currency (2.1.257 → 2.1.258).** `.claude-code-version`
+  advances to **2.1.258**. Registration, sandboxing configuration shape, and
+  command-argument handling are unchanged. 2.1.258's published delta is two
+  host-side bug fixes — a macOS 12 (Monterey) launch-failure regression fix
+  and a remote/scheduled-session "empty content" fix after a re-sent
+  permission approval — neither with a surface in this thin client's
+  five Bash-only commands (constraint #4: no hooks, no background/scheduled
+  sessions). See [Platform support](docs/user/platform-support.md) for the
+  full per-item review.
+
 - **Claude Code currency (2.1.252 → 2.1.257).** `.claude-code-version`
   advances to **2.1.257** (2.1.253–2.1.256 were never published as separate
   releases). Registration, sandboxing configuration shape, and

@@ -4,7 +4,7 @@ The editor and agent platforms this client is validated against.
 
 | Platform | Validated against | Latest known |
 |---|---|---|
-| Claude Code | pending | 2.1.257 |
+| Claude Code | pending | 2.1.258 |
 | Cursor | pending | 3.11 (+ changelog 2026-08-27) |
 | Codex | pending | 0.152.1 |
 | OpenCode | pending | pending |
@@ -46,6 +46,20 @@ stdio server intentionally continues to advertise its older supported MCP
 protocol; changing only the protocol string would be unsafe. A future SDK-backed
 upgrade should adopt the newer protocol when paginated discovery, multi-round
 requests, and non-blocking startup can be implemented and tested together.
+
+**Claude Code notes (2.1.257 → 2.1.258).** `.claude-code-version` advances to
+**2.1.258**. Registration, sandboxing configuration shape, and
+command-argument handling are unchanged. 2.1.258's published delta is two
+host-side bug fixes, neither with a client-relevant surface: a fix for
+Claude Code failing to launch on macOS 12 (Monterey) — a regression from
+2.1.255 in the host binary's own startup path, nothing this plugin's
+`commands/` or `.claude/` config can affect — and a fix for remote and
+scheduled sessions failing with "user messages must have non-empty content"
+after a re-sent permission approval couldn't be applied, which is Remote
+Control / scheduled-session machinery this repo's five Bash-only commands
+never exercise (no hooks, no background sessions, no scheduled triggers
+defined under `.claude/` — [constraint #4](../../.claude/rules/constraints.md)).
+Nothing to adopt or change.
 
 **Claude Code notes (2.1.252 → 2.1.257).** `.claude-code-version` advances to
 **2.1.257** — 2.1.253 through 2.1.256 were never published as separate

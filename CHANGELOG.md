@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`permissions.blockReadsOutsideWorkingDirectories` set in
+  `.claude/settings.json` (Claude Code 2.1.257).** Auto-mode sessions on
+  this repo now have out-of-working-directory file reads blocked outright
+  instead of only a one-time prompt — a layer complementary to, not a
+  replacement for, the existing sandbox `deny`/`mask` protection on a
+  `PM_ACCESS_TOKEN` credentials file documented in
+  [Troubleshooting](docs/user/troubleshooting.md#sandboxed-commands-claude-code):
+  that guards the Bash sandbox, this guards the Read/Grep/Glob tools
+  themselves. No effect on interactive (non-auto) sessions, which already
+  prompt on every tool use.
+
 - **Pin↔doc guard + changelog structure lint, wired into the required `CI`
   job (dev#726).** `scripts/check-version-pin-docs.mjs` asserts the root pin
   files (`.claude-code-version`, `.codex-version`, `.cursor-version`) and
@@ -21,6 +32,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   required status context on this repo's `main`.
 
 ### Changed
+- **Claude Code currency (2.1.252 → 2.1.257).** `.claude-code-version`
+  advances to **2.1.257** (2.1.253–2.1.256 were never published as separate
+  releases). Registration, sandboxing configuration shape, and
+  command-argument handling are unchanged. Reviewed and confirmed clean by
+  inspection, not just absence of a hit: 2.1.257's plugin symlink
+  component-path fix (no symlink under `commands/` or
+  `.claude/skills/run-production-master/SKILL.md`) and the `defaultMode:
+  "bypassPermissions"`-now-ignored change (`.claude/settings.json` sets no
+  `defaultMode`). The auto-mode Containment Escape rule for cloud
+  metadata-credential fetches, egress evasion, and cross-tenant reach is
+  reviewed and not applicable — this client's only egress is HTTPS/SSE to
+  `PM_SERVICE_URL`, never a metadata endpoint or cross-tenant target. See
+  [Platform support](docs/user/platform-support.md) for the full per-item
+  review, including the new `/doctor` stale-sandbox-mask-file diagnostic
+  worth knowing about alongside this repo's existing mask-entry guidance.
+
 - **Cursor 3.11 (+2026-08-27):** advance `changelog_date` **2026-08-19 → 2026-08-27**; desktop **3.16.29 → 3.18.9**. Document Cloud Agent **Start from scratch** (no SCM required), Origin **Create repo**, **browser port-forward preview**, and optional **Vercel publish**. Cursor-only; other platform nightlies untouched.
 - **Cursor 3.11 (+2026-08-19):** document native **CreateGoal** / **UpdateGoal** beside Agent Window `/goal` in platform-support + quick-start. Cursor-only.
 

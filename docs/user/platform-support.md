@@ -6,11 +6,11 @@ The editor and agent platforms this client is validated against.
 |---|---|---|
 | Claude Code | pending | 2.1.252 |
 | Cursor | pending | 3.11 (+ changelog 2026-08-27) |
-| Codex | pending | 0.151.0 |
+| Codex | pending | 0.152.1 |
 | OpenCode | pending | pending |
 
 All four adapter packages now ship a runnable `dist/cli.js`, so each client is
-usable today. The Codex release this repo targets is **0.151.0** and the Cursor
+usable today. The Codex release this repo targets is **0.152.1** and the Cursor
 release is **3.11** (changelog covered through 2026-08-27; desktop CLI observed at **3.18.9**): for each, the
 compatibility delta was reviewed against the existing adapter and its registration
 shape (`.codex/config.toml` for Codex, `.cursor/mcp.json` for Cursor), and nothing
@@ -31,6 +31,15 @@ configuration and invalid-marketplace isolation, and further hardens restored pe
 profiles and remote sandbox path semantics. None changes this adapter's `.codex/config.toml`
 registration or MCP tool contract, so no compatibility migration is required here; the host
 reliability fixes apply automatically.
+
+Codex 0.152.0 allows package-style MCP server names containing `:`, `@`, `/`, and `.`, adds
+per-tool `output_token_limit`, and lets app-server clients configure long
+`thread/shellCommand` timeouts. It also makes the planning tool opt-in via
+`tools.update_plan.enabled = true`. This adapter does not depend on `update_plan` and its
+current MCP server names/tool outputs require no new limits, so no migration is required;
+prefer these native controls over custom name-normalizing or output-truncation wrappers if a
+future Codex-specific integration needs them. Codex 0.152.1 is a Guardian policy-correctness
+fix with no client-side change.
 
 Codex 0.147.0 adds an opt-in MCP 2026-07-28 protocol. Production Master's current
 stdio server intentionally continues to advertise its older supported MCP

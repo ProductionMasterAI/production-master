@@ -154,6 +154,19 @@ Related notes for recent Claude Code versions:
   command that triggered it. Update to 2.1.247+; the credentials file's
   location, its symlink, and its existing `deny`/`mask` sandbox entry (above)
   need no change.
+- **Unattended headless runs can deny instead of hang, as of 2.1.259.** The
+  `PM_ACCESS_TOKEN`-seeded headless setups described above have no
+  interactive session to answer a permission prompt. Before 2.1.259, if a
+  headless run needed something outside
+  [`.claude/settings.json`](../../.claude/settings.json)'s allow list, the
+  run either stalled waiting on a prompt or had to launch with
+  `--permission-mode bypassPermissions`, which also waives the sandbox and
+  file-tool protections this section relies on for the credentials file. Add
+  `--permission-prompts none` to a headless invocation of `/investigate`,
+  `/connect`, or `/update` (a CI job or scheduled trigger) instead: the
+  active permission mode still decides what the allow list auto-approves,
+  but anything that would otherwise prompt is denied outright, so an
+  unexpected prompt fails the run cleanly rather than hanging it.
 
 ## Command arguments (Claude Code)
 

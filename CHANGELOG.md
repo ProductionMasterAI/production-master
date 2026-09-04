@@ -32,6 +32,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   required status context on this repo's `main`.
 
 ### Changed
+- **Claude Code currency (2.1.258 → 2.1.259).** `.claude-code-version`
+  advances to **2.1.259**. Registration, sandboxing configuration shape, and
+  command-argument handling are unchanged. One item is adopted:
+  `--permission-prompts none` gives an unattended headless run (a CI job or
+  scheduled trigger running `/investigate`, `/connect`, or `/update` with
+  `PM_ACCESS_TOKEN` seeded from a credentials file) a way to deny an
+  unexpected permission prompt outright instead of hanging on it or falling
+  back to `--permission-mode bypassPermissions`, which also waives the
+  sandbox/file-tool protections that credentials file relies on — documented
+  in
+  [Troubleshooting](docs/user/troubleshooting.md#sandboxed-commands-claude-code)
+  alongside the existing headless-token guidance. Everything else in the
+  delta — `managedMcpServers`, `glab` MR recognition, `claude plugin
+  validate --json`, the Bash `Read()` deny-rule matching fix, and the
+  remaining host-side session/UI/telemetry/managed-settings fixes — has no
+  surface in this thin client's five Bash-only commands (constraint #4) or
+  is ruled out by constraint #5. See [Platform
+  support](docs/user/platform-support.md) for the full per-item review.
+
 - **Claude Code currency (2.1.257 → 2.1.258).** `.claude-code-version`
   advances to **2.1.258**. Registration, sandboxing configuration shape, and
   command-argument handling are unchanged. 2.1.258's published delta is two

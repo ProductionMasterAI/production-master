@@ -4,7 +4,7 @@ The editor and agent platforms this client is validated against.
 
 | Platform | Validated against | Latest known |
 |---|---|---|
-| Claude Code | pending | 2.1.258 |
+| Claude Code | pending | 2.1.259 |
 | Cursor | pending | 3.11 (+ changelog 2026-08-27) |
 | Codex | pending | 0.152.1 |
 | OpenCode | pending | pending |
@@ -46,6 +46,75 @@ stdio server intentionally continues to advertise its older supported MCP
 protocol; changing only the protocol string would be unsafe. A future SDK-backed
 upgrade should adopt the newer protocol when paginated discovery, multi-round
 requests, and non-blocking startup can be implemented and tested together.
+
+**Claude Code notes (2.1.258 → 2.1.259).** `.claude-code-version` advances to
+**2.1.259**. Registration, sandboxing configuration shape, and
+command-argument handling are unchanged. One item is adopted as a
+documentation improvement for an already-supported use case; everything else
+in the delta is either a managed-org/host-session surface this repo's
+constraints rule out, or a fix with no client-relevant hit:
+
+- **Adopted: `--permission-prompts none` for unattended headless runs.**
+  [Troubleshooting → Sandboxed commands](troubleshooting.md#sandboxed-commands-claude-code)
+  already documents seeding `PM_ACCESS_TOKEN` from a credentials file for
+  headless setups (CI jobs, scheduled triggers) that run one of this
+  plugin's five commands with no interactive session to answer a prompt.
+  Before 2.1.259, anything outside
+  [`.claude/settings.json`](../../.claude/settings.json)'s allow list that
+  needed approval in such a run either stalled waiting on a prompt nothing
+  could answer, or required `--permission-mode bypassPermissions` — which
+  also waives the sandbox and file-tool protections that credentials file
+  relies on. `--permission-prompts none` is a safer third option: the active
+  permission mode keeps deciding what this repo's allow list auto-approves,
+  but anything that would otherwise prompt is denied outright instead of
+  hanging. Documented alongside the existing headless-token guidance in
+  Troubleshooting so an unattended `/investigate`, `/connect`, or `/update`
+  run fails cleanly on an unexpected prompt rather than hanging the job; no
+  change to `.claude/settings.json` itself, since its allow list already
+  covers this repo's five Bash-only commands.
+- **Reviewed, not applicable: `managedMcpServers`, `managed
+  forceRemoteSettingsRefresh`, and the "managed settings refuses to start
+  when unparseable" hardening.** `managedMcpServers` lets an organization
+  push HTTP/SSE MCP servers to every user via managed settings; this repo
+  configures no managed settings and (per the 2.1.229/2.1.246 notes below)
+  Claude Code registers this plugin via `/plugin install`, never as this
+  client's MCP client — there is no `.mcp.json` or managed-MCP surface here
+  for any of the three to apply to.
+- **Reviewed, not applicable: `glab mr create/merge/close/reopen/note/update`
+  recognition** in the collapsed tool summary and MR footer badge. This
+  repo's five commands never shell out to `glab`; the Cursor Origin notes
+  above discuss GitLab as a git-hosting option for *Cursor*, not as
+  something Claude Code drives here.
+- **Reviewed, not applicable: `claude plugin validate --json`.** This
+  repo's own `check-version-pin-docs.mjs` and `check-changelog-structure.mjs`
+  scripts — not `claude plugin validate` — are the CI gates on
+  [`.claude-plugin/plugin.json`](../../.claude-plugin/plugin.json) and this
+  repo's docs; adding a `claude plugin validate --json` CI step would mean
+  installing the Claude Code CLI itself into `ci.yml` purely to validate a
+  seven-field manifest, a new CI dependency this repo doesn't currently
+  carry. Worth a look if the CLI's install footprint in CI ever needs
+  justifying for another reason; not adopted on its own here.
+- **Reviewed, not applicable: the Bash `Read()` deny-rule matching fix**
+  (option-value paths, git diff/grep file operands, `cd && cat` compounds).
+  Same family as the 2.1.251 symlink-bypass fix noted below —
+  [`.claude/settings.json`](../../.claude/settings.json) sets no `Read()`
+  deny rules of its own, so the matching gap this closes never had a rule to
+  miss here.
+- Everything else — the `~/.claude.json` concurrent-write, thinking-rejection,
+  prompt-cache/OAuth-refresh, fullscreen-render, auto-mode/frontmatter-model,
+  `CLAUDE_CODE_MAX_CONTEXT_TOKENS`, `--resume`-attachment, OpenTelemetry-
+  attribute, repository-detection, and Stop-hook/workflow-resume fixes; the
+  background GitHub-connection check and Artifact-publish error fixes; the
+  file-edit-dialog and MCP-tool-listing display fixes; the worktree-isolation
+  and Bash-loop/xargs fixes (this repo's contributor workflow is
+  fork-and-branch, per [CONTRIBUTING.md](../CONTRIBUTING.md), never
+  `--worktree`); the terminal-resize, `/workflows`, headless/SDK-start-latency,
+  `/install-github-app`, nested-subagent-transcript, `allowedMcpServers`, and
+  VS Code session-list fixes — is host session, UI, telemetry, or
+  managed-settings machinery this repo's five Bash-only commands never
+  exercise (constraint #4), or (the self-hosted-runner and worktree items)
+  ruled out by constraints #4/#5 directly. Nothing else here changes
+  registration, sandboxing shape, or command-argument handling.
 
 **Claude Code notes (2.1.257 → 2.1.258).** `.claude-code-version` advances to
 **2.1.258**. Registration, sandboxing configuration shape, and

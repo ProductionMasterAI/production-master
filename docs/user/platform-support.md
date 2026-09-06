@@ -4,7 +4,7 @@ The editor and agent platforms this client is validated against.
 
 | Platform | Validated against | Latest known |
 |---|---|---|
-| Claude Code | pending | 2.1.259 |
+| Claude Code | pending | 2.1.263 |
 | Cursor | pending | 3.11 (+ changelog 2026-08-27) |
 | Codex | pending | 0.153.4 |
 | OpenCode | pending | pending |
@@ -46,6 +46,80 @@ stdio server intentionally continues to advertise its older supported MCP
 protocol; changing only the protocol string would be unsafe. A future SDK-backed
 upgrade should adopt the newer protocol when paginated discovery, multi-round
 requests, and non-blocking startup can be implemented and tested together.
+
+**Claude Code notes (2.1.259 → 2.1.263).** `.claude-code-version` advances to
+**2.1.263**, covering 2.1.260, 2.1.261, and 2.1.263 (2.1.262 was never
+published as a separate release). Registration, sandboxing configuration
+shape, and command-argument handling are unchanged. Two fixes touch a
+setting this repo already sets, one closes a loop opened by the 2.1.259 note
+below, and one new setting is adopted; everything else is either a
+managed-org/model-calling/subagent/self-hosted-runner surface constraints
+#4/#5 rule out, or host session/UI/telemetry/Remote-Control work with no
+client-relevant hit:
+
+- **Fixed: `permissions.blockReadsOutsideWorkingDirectories` hiding the
+  user's git config from sandboxed git on macOS (2.1.260).** This repo sets
+  `blockReadsOutsideWorkingDirectories: true` in
+  [`.claude/settings.json`](../../.claude/settings.json) (adopted in the
+  2.1.257 note below). Before 2.1.260, the same setting could also block a
+  sandboxed `git` invocation from reading `~/.gitconfig` on macOS — separate
+  from this repo's own credentials, but worth knowing if a contributor's
+  sandboxed `git status`/`git diff` (allowed in this repo's Bash allow list)
+  behaved as if git had no user config on macOS. Update Claude Code; no
+  change to `.claude/settings.json` needed. The fix's other half — a
+  worktree-isolated sub-agent's own checkout no longer hidden from itself —
+  doesn't apply here: this repo's contributor workflow is fork-and-branch,
+  never `--worktree`, and its five commands spawn no sub-agents (constraint
+  #4).
+- **Closed loop: the 2.1.259 `Read()`-deny-rule-on-Bash-args change is
+  reverted (2.1.260).** The 2.1.259 note below reviewed that change as not
+  applicable because [`.claude/settings.json`](../../.claude/settings.json)
+  sets no `Read()` deny rules of its own. 2.1.260 reverted it host-side
+  after it denied plain commands like `npm run build` under an unrelated
+  `Read()` rule in every mode. Still nothing to change here — recorded only
+  so this repo's per-release history doesn't carry a live cross-reference to
+  a behavior that no longer exists.
+- **Adopted: `bashOutputMaxChars` in `.claude/settings.json` (2.1.261).**
+  The [`run-production-master`
+  skill](../../.claude/skills/run-production-master/SKILL.md) chains
+  `npm ci`, `npm run build --workspaces`, `npm run test --workspaces`, and
+  `npm run lint --workspaces` across this repo's workspaces in one sitting —
+  combined output that can exceed the inline budget a Claude Code session
+  gives a single Bash result before the rest is saved to a file and
+  summarized instead of shown. Set to `65536` (2.1.261 raises the settable
+  ceiling to 128K) so a full local verification run — in particular which
+  of the four gates failed and its full stack trace — stays inline for the
+  session instead of being truncated mid-skill. `taskOutputMaxChars` is not
+  set: this repo defines no hooks or background Bash tasks under `.claude/`
+  (constraint #4), so there is no background-task output for it to raise.
+- **Reviewed, no repo change: `/skill-doctor` (2.1.261).** Lists loaded
+  skills that go unused and what they cost in context — useful when
+  iterating on
+  [`run-production-master`](../../.claude/skills/run-production-master/SKILL.md),
+  in the same no-op-until-you-ask-for-it category as `/doctor`'s
+  stale-sandbox-mask-file warning noted in the 2.1.257 entry below. No
+  frontmatter or trigger-phrase change needed.
+- **Reviewed, benefits automatically: improved idle CPU usage of
+  non-interactive (`-p`/SDK) sessions (2.1.260).**
+  [`.github/workflows/claude.yml`](../../.github/workflows/claude.yml) runs
+  `anthropics/claude-code-action@v1` on GitHub-hosted `ubuntu-latest`
+  runners only (constraint #5) — a non-interactive session by construction.
+  No workflow change; the improvement applies the next time the action pulls
+  a newer Claude Code.
+- Everything else in the 2.1.260/2.1.261/2.1.263 delta is either a
+  managed-org, model-calling (`/model`, Fable 5.1, auto-compact, `/effort`,
+  gateway/Bedrock/Vertex), subagent/agent-team, Remote Control, cloud-session,
+  self-hosted-runner, or marketplace-catalog surface constraints #4/#5 rule
+  out or this repo doesn't exercise (no managed settings, no `.mcp.json`, no
+  hooks, no marketplace catalog of its own); or terminal/UI/reliability work
+  (the diff panel, text-form `/advisor`, streaming performance, the `rm -rf`
+  safety-prompt coverage, word-editing keybindings, `/context` token
+  counting, `/reload-plugins` in headless sessions, and the full VS Code
+  list) with no hook into this repo's five Bash-only commands or its
+  [`.claude/settings.json`](../../.claude/settings.json). 2.1.263 itself
+  shipped only "bug fixes and reliability improvements," with no further
+  detail published. Nothing else here changes registration, sandboxing
+  shape, or command-argument handling.
 
 **Claude Code notes (2.1.258 → 2.1.259).** `.claude-code-version` advances to
 **2.1.259**. Registration, sandboxing configuration shape, and

@@ -6,11 +6,11 @@ The editor and agent platforms this client is validated against.
 |---|---|---|
 | Claude Code | pending | 2.1.259 |
 | Cursor | pending | 3.11 (+ changelog 2026-08-27) |
-| Codex | pending | 0.152.1 |
+| Codex | pending | 0.153.4 |
 | OpenCode | pending | pending |
 
 All four adapter packages now ship a runnable `dist/cli.js`, so each client is
-usable today. The Codex release this repo targets is **0.152.1** and the Cursor
+usable today. The Codex release this repo targets is **0.153.4** and the Cursor
 release is **3.11** (changelog covered through 2026-08-27; desktop CLI observed at **3.18.9**): for each, the
 compatibility delta was reviewed against the existing adapter and its registration
 shape (`.codex/config.toml` for Codex, `.cursor/mcp.json` for Cursor), and nothing

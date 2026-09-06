@@ -32,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   required status context on this repo's `main`.
 
 ### Changed
+
+- **Cursor 3.11 (+2026-09-02):** advance `changelog_date` **2026-08-27 → 2026-09-02** (feature **3.11** / desktop **3.18.9** unchanged). Document Cursor **Self-Hosted Machines** / Team Pools / partner sandboxes / computer use on Linux/Mac, and the naming distinction from GitHub Actions self-hosted runners (public repo stays on `ubuntu-latest`). Cursor-only; other platform nightlies untouched.
 - **Claude Code currency (2.1.258 → 2.1.259).** `.claude-code-version`
   advances to **2.1.259**. Registration, sandboxing configuration shape, and
   command-argument handling are unchanged. One item is adopted:

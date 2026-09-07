@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`bashOutputMaxChars` set in `.claude/settings.json` (Claude Code
+  2.1.261).** Raised to `65536` so the combined output of the
+  [`run-production-master`](.claude/skills/run-production-master/SKILL.md)
+  skill's chained `npm ci` / `npm run build --workspaces` / `npm run test
+  --workspaces` / `npm run lint --workspaces` steps stays inline for the
+  session — which of the four gates failed and its full stack trace —
+  instead of being truncated mid-skill. See [Platform
+  support](docs/user/platform-support.md) for the full note.
+
 - **`permissions.blockReadsOutsideWorkingDirectories` set in
   `.claude/settings.json` (Claude Code 2.1.257).** Auto-mode sessions on
   this repo now have out-of-working-directory file reads blocked outright
@@ -32,6 +41,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   required status context on this repo's `main`.
 
 ### Changed
+- **Claude Code currency (2.1.259 → 2.1.263).** `.claude-code-version`
+  advances to **2.1.263**, covering 2.1.260, 2.1.261, and 2.1.263 (2.1.262
+  was never published separately). Registration, sandboxing configuration
+  shape, and command-argument handling are unchanged. Besides the
+  `bashOutputMaxChars` addition above, 2.1.260 fixed
+  `permissions.blockReadsOutsideWorkingDirectories` hiding a sandboxed
+  git's `~/.gitconfig` on macOS (a setting this repo already sets — update
+  Claude Code, no config change needed) and reverted the 2.1.259
+  `Read()`-deny-rule-on-Bash-args change reviewed as not applicable in the
+  entry below; `/skill-doctor` (2.1.261) is a useful diagnostic for the
+  `run-production-master` skill with no repo change; and the
+  non-interactive-session idle-CPU improvement (2.1.260) benefits
+  [`.github/workflows/claude.yml`](.github/workflows/claude.yml)'s
+  `claude-code-action` automatically. Everything else — model-calling,
+  subagent/agent-team, Remote Control, cloud-session, self-hosted-runner,
+  and marketplace-catalog surfaces, plus terminal/UI/reliability work — has
+  no surface in this thin client's five Bash-only commands (constraint #4)
+  or is ruled out by constraint #5. See [Platform
+  support](docs/user/platform-support.md) for the full per-item review.
+
 - **Claude Code currency (2.1.258 → 2.1.259).** `.claude-code-version`
   advances to **2.1.259**. Registration, sandboxing configuration shape, and
   command-argument handling are unchanged. One item is adopted:

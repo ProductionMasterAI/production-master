@@ -43,6 +43,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Cursor 3.11 (+2026-09-02):** advance `changelog_date` **2026-08-27 → 2026-09-02** (feature **3.11** / desktop **3.18.9** unchanged). Document Cursor **Self-Hosted Machines** / Team Pools / partner sandboxes / computer use on Linux/Mac, and the naming distinction from GitHub Actions self-hosted runners (public repo stays on `ubuntu-latest`). Cursor-only; other platform nightlies untouched.
+- **Claude Code currency (2.1.263 → 2.1.267).** `.claude-code-version`
+  advances to **2.1.267**, covering 2.1.265, 2.1.266 (a same-day
+  `CLAUDE_CODE_USE_GATEWAY` regression fix — this repo authenticates
+  [`claude.yml`](.github/workflows/claude.yml) with a plain
+  `ANTHROPIC_API_KEY` secret, not the gateway, so neither the regression nor
+  its fix is repo-visible), and 2.1.267. Registration, sandboxing
+  configuration shape, and command-argument handling are unchanged. Nothing
+  is adopted: `--plugin-dir` (this repo ships one plugin, not several),
+  `maxEffortLevel` (no effort guardrail here to replace — constraint #4, no
+  model calls), and the two backslash symlink-containment SECURITY fixes (no
+  plugin/marketplace paths of this repo's own for either to reach) were all
+  reviewed and ruled out. The resume-after-crash and prompt-cache-reuse
+  reliability fixes apply automatically to any interactive session on this
+  repo with no config change. Everything else — gateway telemetry, the 1 GB
+  tool-result disk cap, `--system-prompt-snapshot off`, Cowork/Workflow-tool/
+  managed-settings/Bedrock-Vertex fixes, and the remaining terminal/UI/
+  reliability work — has no surface in this thin client's five Bash-only
+  commands (constraint #4) or is ruled out by constraint #5. See [Platform
+  support](docs/user/platform-support.md) for the full per-item review.
+
 - **Claude Code currency (2.1.259 → 2.1.263).** `.claude-code-version`
   advances to **2.1.263**, covering 2.1.260, 2.1.261, and 2.1.263 (2.1.262
   was never published separately). Registration, sandboxing configuration

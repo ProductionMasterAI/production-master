@@ -4,7 +4,7 @@ The editor and agent platforms this client is validated against.
 
 | Platform | Validated against | Latest known |
 |---|---|---|
-| Claude Code | pending | 2.1.263 |
+| Claude Code | pending | 2.1.267 |
 | Cursor | pending | 3.11 (+ changelog 2026-09-02) |
 | Codex | pending | 0.153.4 |
 | OpenCode | pending | pending |
@@ -46,6 +46,68 @@ stdio server intentionally continues to advertise its older supported MCP
 protocol; changing only the protocol string would be unsafe. A future SDK-backed
 upgrade should adopt the newer protocol when paginated discovery, multi-round
 requests, and non-blocking startup can be implemented and tested together.
+
+**Claude Code notes (2.1.263 → 2.1.267).** `.claude-code-version` advances to
+**2.1.267**, covering 2.1.265, 2.1.266 (a same-day regression fix for
+2.1.265's `CLAUDE_CODE_USE_GATEWAY` breaking API-key/custom-auth setups —
+[`claude.yml`](../../.github/workflows/claude.yml) authenticates
+`anthropics/claude-code-action@v1` with a plain `ANTHROPIC_API_KEY` secret,
+not the gateway, so both the regression and its fix pass through with no
+repo-visible effect), and 2.1.267. Registration, sandboxing configuration
+shape, and command-argument handling are unchanged. Nothing in this delta is
+adopted — the closest candidates are reviewed below and ruled out by
+constraint #4 or by this repo's existing single-plugin/no-`.mcp.json` shape,
+not adopted with a config change:
+
+- **Reviewed, not applicable: `--plugin-dir` pointing at a folder of
+  plugins (2.1.265).** This repo ships exactly one Claude Code plugin —
+  [`.claude-plugin/plugin.json`](../../.claude-plugin/plugin.json), installed
+  with `/plugin install production-master` — not several local plugins a
+  contributor loads together, so there is no folder of sibling plugin
+  directories for the new flag to point at. Revisit only if a second,
+  separate plugin is ever added to this repo.
+- **Reviewed, not applicable: `maxEffortLevel` (2.1.267).** An org/user
+  ceiling on `/effort`. This repo makes no model calls of its own (constraint
+  #4) and [`.claude/settings.json`](../../.claude/settings.json) sets no
+  effort-related guardrail for `maxEffortLevel` to replace or simplify —
+  there is nothing here in that category to begin with.
+- **Reviewed, not applicable: plugin-path and marketplace-entry backslash
+  symlink-containment fixes (2.1.265, 2.1.267, both SECURITY).** Host-side
+  hardening against a plugin or marketplace-catalog path crafted with a
+  backslash to escape its containment check. This repo ships a single
+  plugin manifest directly (no marketplace catalog of its own, per the
+  2.1.259→2.1.263 note below) and defines no plugin paths of its own for
+  either bypass to reach.
+- **Reviewed, benefits automatically: resume-after-crash prompt/tool-state
+  fixes; the many prompt-cache stability fixes (2.1.265, 2.1.267).** Fixing
+  resumed sessions rewriting the last prompt or mis-marking an interrupted
+  tool, and a long list of prompt-cache-reuse regressions tied to
+  subagent/MCP-tool-set churn on resume. This repo's five commands spawn no
+  subagents and register no `.mcp.json` of their own (constraint #4), so the
+  specific regressions never had a surface here — but the general
+  resume/crash-recovery reliability improves for any interactive session on
+  this repo regardless, with no config change needed.
+- **Reviewed, not applicable: Cowork scheduled-task sandboxing startup fix;
+  `Workflow` tool `agent()` large-output-schema fix (both 2.1.267).** This
+  repo uses neither Cowork nor the `Workflow` tool.
+- Everything else in the 2.1.265/2.1.267 delta — the `user.email`/
+  `user.groups` gateway telemetry addition, the 1 GB tool-result disk cap,
+  `--system-prompt-snapshot off`, the AWS/GCP credential-retry fix (no
+  Bedrock/Vertex here — constraint #4), the managed
+  `allowedHttpHookUrls`/`httpHookAllowedEnvVars`/`allowedChannelPlugins`
+  fix (no managed settings), the `effort:` frontmatter fix (the
+  [`run-production-master`](../../.claude/skills/run-production-master/SKILL.md)
+  skill's frontmatter sets no `effort:` field), VS Code/SDK re-login,
+  background-session retirement, the advisor-tool and Artifact-tool fixes,
+  `/add-dir` subdirectory, forked-skill streaming, legacy-SSE-only MCP
+  fallback, `--worktree` startup, `/workflows` agent detail, slash-command
+  matching, and the plugin-display-metadata (marketplace-over-`plugin.json`)
+  change — is either a managed-org/subagent/Cowork/Workflow/self-hosted-runner
+  surface constraints #4/#5 rule out or this repo doesn't exercise, or
+  terminal/UI/reliability work with no hook into this repo's five Bash-only
+  commands or its [`.claude/settings.json`](../../.claude/settings.json).
+  Nothing here changes registration, sandboxing shape, or command-argument
+  handling.
 
 **Claude Code notes (2.1.259 → 2.1.263).** `.claude-code-version` advances to
 **2.1.263**, covering 2.1.260, 2.1.261, and 2.1.263 (2.1.262 was never

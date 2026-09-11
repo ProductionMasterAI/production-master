@@ -212,7 +212,7 @@ Two related Claude Code notes:
 - **Marketplace vanished, or a just-published version won't install.** Before
   2.1.232, a startup race between concurrent `known_marketplaces.json` writes
   could silently unregister a plugin marketplace — re-add it with
-  `/plugin marketplace add`. And since 2.1.232,
+  `/plugin marketplace add ProductionMasterAI/production-master`. And since 2.1.232,
   `/plugin install production-master@<marketplace>` refreshes the marketplace
   first, so a freshly published plugin version installs without a manual
   `/plugin marketplace update` (2.1.221–2.1.231 refresh a stale catalog and

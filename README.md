@@ -48,10 +48,11 @@ nvm use && npm ci && npm run build
 
 ### Claude Code
 
-Claude Code is wired end-to-end. Install the plugin (`.claude-plugin/plugin.json` + [`commands/`](commands/), backed by [`packages/adapter-claude-code`](packages/adapter-claude-code)), then use the slash commands:
+Claude Code is wired end-to-end. This repo is its own plugin marketplace (`.claude-plugin/marketplace.json`), so a fresh clone or a bare `owner/repo` reference is all `/plugin marketplace add` needs — no separate marketplace repo to find first. Add the marketplace, install the plugin (`.claude-plugin/plugin.json` + [`commands/`](commands/), backed by [`packages/adapter-claude-code`](packages/adapter-claude-code)), then use the slash commands:
 
 ```
-/plugin install production-master
+/plugin marketplace add ProductionMasterAI/production-master
+/plugin install production-master@production-master
 /login
 /investigate PROJ-1234
 ```

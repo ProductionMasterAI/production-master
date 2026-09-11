@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Fresh-clone install path 404'd — this repo was never registered as a
+  Claude Code plugin marketplace (#59).** The README and
+  [Quick Start](docs/user/quick-start.md) told users to run
+  `/plugin install production-master`, but no marketplace named
+  `production-master` (or any other) ever listed this plugin — there was no
+  `.claude-plugin/marketplace.json`, only `.claude-plugin/plugin.json`. A
+  plugin-only repo can't be installed by name alone; Claude Code has to be
+  told where to look first. Added `.claude-plugin/marketplace.json`
+  (self-hosting pattern: `"source": "./"`) so this repo is its own
+  marketplace, and updated the README and Quick Start to add it first:
+  `/plugin marketplace add ProductionMasterAI/production-master` then
+  `/plugin install production-master@production-master`. Verified against a
+  genuinely fresh clone with the real `claude plugin marketplace add` /
+  `claude plugin install` CLI — the plugin installs and enables at version
+  0.1.1 — not just a docs reword.
+
 ### Added
 
 - **`bashOutputMaxChars` set in `.claude/settings.json` (Claude Code

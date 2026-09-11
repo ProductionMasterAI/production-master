@@ -1,0 +1,17 @@
+{
+  "name": "production-master",
+  "owner": {
+    "name": "ProductionMasterAI",
+    "url": "https://github.com/ProductionMasterAI"
+  },
+  "metadata": {
+    "description": "Standalone marketplace for the production-master plugin. Lets Claude Code install straight from this repo without a separate marketplace catalog."
+  },
+  "plugins": [
+    {
+      "name": "production-master",
+      "source": "./",
+      "description": "Thin client for the Production Master hosted incident-investigation service — device-code login, trigger a run, stream live progress, and approve/reject proposed actions from inside Claude Code. No investigation logic runs locally."
+    }
+  ]
+}

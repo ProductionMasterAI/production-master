@@ -4,7 +4,7 @@ The editor and agent platforms this client is validated against.
 
 | Platform | Validated against | Latest known |
 |---|---|---|
-| Claude Code | pending | 2.1.267 |
+| Claude Code | pending | 2.1.268 |
 | Cursor | pending | 3.11 (+ changelog 2026-09-02) |
 | Codex | pending | 0.153.4 |
 | OpenCode | pending | pending |
@@ -46,6 +46,87 @@ stdio server intentionally continues to advertise its older supported MCP
 protocol; changing only the protocol string would be unsafe. A future SDK-backed
 upgrade should adopt the newer protocol when paginated discovery, multi-round
 requests, and non-blocking startup can be implemented and tested together.
+
+**Claude Code notes (2.1.267 → 2.1.268).** `.claude-code-version` advances to
+**2.1.268**, a single release. Registration, sandboxing configuration shape,
+and command-argument handling are unchanged. Nothing in this delta is
+adopted:
+
+- **Reviewed, not applicable: `--json` on `claude plugin
+  install/uninstall/update/enable/disable`, plus `errorDetails`/
+  `noteDetails` on `plugin list --json` rows (2.1.268).** This repo's single
+  plugin — [`.claude-plugin/plugin.json`](../../.claude-plugin/plugin.json)
+  — is installed by the end user with `/plugin install production-master`;
+  no script or CI step in this repo shells out to `claude plugin` at all, so
+  there is no output to reparse against the new JSON shape. Revisit only if
+  a script here ever needs to script plugin lifecycle management itself.
+- **Reviewed, not applicable: `claude self-hosted-runner
+  --remove-session-state` (2.1.268).** Ruled out outright by constraint #5:
+  this repo's CI runs on GitHub-hosted `ubuntu-latest` runners only, never a
+  self-hosted runner, so there is no `_sessions/` state of this repo's own
+  for the flag to clean up.
+- **Reviewed, not applicable: the Claude-apps-gateway `pricing:` setting,
+  its CIDR-allowlist startup warnings, and the `gatewayInternalNetworks`
+  managed setting (2.1.268).** As with the 2.1.266
+  `CLAUDE_CODE_USE_GATEWAY` note above,
+  [`claude.yml`](../../.github/workflows/claude.yml) authenticates
+  `anthropics/claude-code-action@v1` with a plain `ANTHROPIC_API_KEY`
+  secret — no gateway sits in front of it, so gateway pricing, CIDR
+  allowlisting, and gateway login all have no repo surface.
+- **Reviewed, not applicable: task-tracking-tool model gating
+  (`CLAUDE_CODE_ENABLE_TODO_TOOLS`) and the Artifact-tool permission-prompt/
+  `WebFetch`-rule changes (2.1.268).** This repo makes no model calls of its
+  own (constraint #4), and
+  [`.claude/settings.json`](../../.claude/settings.json) sets neither a
+  `WebFetch` nor an `Artifact` permission rule for the changed default
+  scoping to affect.
+- **Reviewed, not applicable: Bedrock/Vertex/Foundry system-prompt-as-
+  attachments and tool-list-stability changes (2.1.268).** No Bedrock,
+  Vertex, or Foundry usage here — constraint #4, no model-provider surface
+  of this repo's own.
+- **Reviewed, not applicable: MCP-secret-masking fixes across `/mcp`,
+  `/plugin`, `claude mcp list`/`get`, MCP login errors, and the
+  plugin/marketplace git-source-URL leak fix (2.1.268).** This repo defines
+  no `.mcp.json`/MCP server configuration of its own for Claude Code and
+  ships no marketplace catalog: as
+  [`cli.ts`](../../packages/adapter-claude-code/src/cli.ts) notes, this
+  binary *is* the MCP client (plugin-core's `HttpMcpToolTransport`) calling
+  the hosted service's own MCP gateway — there is no separate host-side MCP
+  server registration or marketplace entry of this repo's own for either
+  fix to touch.
+- **Reviewed, not applicable: the plugin-root-`SKILL.md`-silently-skipped
+  fix (2.1.268).** This repo's skill lives at the standard nested
+  [`.claude/skills/run-production-master/SKILL.md`](../../.claude/skills/run-production-master/SKILL.md)
+  path, not a plugin-root `SKILL.md`, so the bug this fixes never applied
+  here.
+- **Reviewed, benefits automatically: the symlinked-directory (`/etc`,
+  `/tmp`, `/var` on macOS; `/bin` on Linux) permission-rule-bypass fix, the
+  `/compact`-summary and resumed-session note-ordering fixes, and the
+  Bash-sandbox-prompt-wording fix (2.1.268).**
+  [`.claude/settings.json`](../../.claude/settings.json) sets no deny/ask
+  rules on those symlinked paths and no hooks, so none of these had a
+  repo-specific failure mode — but general Claude Code
+  reliability/security hardening improves for any interactive session on
+  this repo with no config change needed, same pattern as prior currency
+  bumps.
+- Everything else in the 2.1.268 delta — `claude auth status --json`'s new
+  `configDirectory` field, published-artifact browser-tab icons, the
+  WebFetch timeout/`CLAUDE_CODE_WEBFETCH_DEADLINE_MS` addition, the
+  in-process-teammate untrusted-agent-file fix, the idle-session CPU fix,
+  the "message came through empty" post-MCP-tool-call fix (no `.mcp.json`
+  of this repo's own for Claude Code, per the MCP-secret-masking note
+  above), the SDK/`excludeDynamicSections` prompt-cache fix, stale
+  model-access-denial and long-context-429 fixes (constraint #4, no model
+  calls), the workload-identity-federation `jti reused` fix (`claude.yml`
+  uses a plain `ANTHROPIC_API_KEY` secret, not a WIF profile), the MCP
+  OAuth-redirect-port fix, `claude agents`/Remote Control/Slack/Chrome/
+  `/resume`/cloud-session-command UI and messaging fixes, and the remaining
+  terminal/UI cosmetics — is either a managed-org/subagent/Cowork/Workflow/
+  self-hosted-runner surface constraints #4/#5 rule out or this repo doesn't
+  exercise, or terminal/UI/reliability work with no hook into this repo's
+  five Bash-only commands or its
+  [`.claude/settings.json`](../../.claude/settings.json). Nothing here
+  changes registration, sandboxing shape, or command-argument handling.
 
 **Claude Code notes (2.1.263 → 2.1.267).** `.claude-code-version` advances to
 **2.1.267**, covering 2.1.265, 2.1.266 (a same-day regression fix for

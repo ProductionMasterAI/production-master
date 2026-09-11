@@ -12,8 +12,11 @@ Pick your editor. Each registers the same thin client through its native mechani
 
 ### Claude Code
 
+This repo is its own plugin marketplace (`.claude-plugin/marketplace.json`), so add it by `owner/repo` and install from it — no separate marketplace repo to look up first:
+
 ```
-/plugin install production-master
+/plugin marketplace add ProductionMasterAI/production-master
+/plugin install production-master@production-master
 ```
 
 > **No git or npm on the machine?** Claude Code 2.1.224+ also supports an

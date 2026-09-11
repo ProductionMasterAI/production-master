@@ -43,6 +43,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Cursor 3.11 (+2026-09-02):** advance `changelog_date` **2026-08-27 → 2026-09-02** (feature **3.11** / desktop **3.18.9** unchanged). Document Cursor **Self-Hosted Machines** / Team Pools / partner sandboxes / computer use on Linux/Mac, and the naming distinction from GitHub Actions self-hosted runners (public repo stays on `ubuntu-latest`). Cursor-only; other platform nightlies untouched.
+- **Claude Code currency (2.1.267 → 2.1.268).** `.claude-code-version`
+  advances to **2.1.268**, a single release. Registration, sandboxing
+  configuration shape, and command-argument handling are unchanged. Nothing
+  is adopted — every "Added"/"Changed" item in this release is a
+  gateway-pricing/managed-settings, self-hosted-runner, plugin-CLI-JSON,
+  Bedrock/Vertex/Foundry, Cowork/Artifact, or model-calling surface this
+  repo either doesn't exercise or constraints #4/#5 rule out:
+  `claude self-hosted-runner --remove-session-state` (constraint #5, no
+  self-hosted runners, ever); `--json` on `claude plugin
+  install/uninstall/update/enable/disable` and the new `errorDetails`/
+  `noteDetails` fields on `plugin list --json` rows (this repo's one plugin
+  is installed by the end user with `/plugin install production-master`,
+  never scripted here — see the 2.1.265 `--plugin-dir` note below); the
+  Claude-apps-gateway `pricing:`/CIDR-warning/`gatewayInternalNetworks`
+  additions (no gateway — see the 2.1.266 note below); the Bedrock/Vertex/
+  Foundry system-prompt-as-attachments and tool-list-stability changes (no
+  model calls of our own, constraint #4); and the task-tracking-tool
+  model-gating (`CLAUDE_CODE_ENABLE_TODO_TOOLS`) and Artifact-tool
+  permission-prompt/WebFetch-rule changes (no model calls, and
+  [`.claude/settings.json`](.claude/settings.json) sets neither a `WebFetch`
+  nor an `Artifact` permission rule for either change to affect). Reviewed
+  and confirmed to benefit automatically with no config change: the
+  symlinked-directory (`/etc`, `/tmp`, `/var` on macOS; `/bin` on Linux)
+  permission-rule-bypass fix, the `/compact`-summary and resumed-session
+  ordering fixes, and the Bash-sandbox-prompt-wording fix — general
+  reliability/security hardening with no surface in this repo's Bash-only
+  allow list or its lack of hooks. Everything else in the release —
+  MCP-secret-masking fixes (this repo defines no `.mcp.json`/MCP server
+  config of its own for Claude Code; the adapter binary IS the MCP client,
+  per [`cli.ts`](packages/adapter-claude-code/src/cli.ts)), the
+  plugin/marketplace git-source-URL secret-leak fix (no marketplace catalog
+  of this repo's own), the plugin-root-`SKILL.md` fix (this repo's skill
+  lives at the standard nested
+  [`.claude/skills/run-production-master/SKILL.md`](.claude/skills/run-production-master/SKILL.md)
+  path, not a plugin-root file), and the remaining `claude agents`/Remote
+  Control/Slack/Chrome/cloud-session/terminal-UI work — is either a
+  managed-org/subagent/Cowork/Workflow/self-hosted-runner surface
+  constraints #4/#5 rule out or terminal/UI/reliability work with no hook
+  into this repo's five Bash-only commands. See [Platform
+  support](docs/user/platform-support.md) for the full per-item review.
 - **Claude Code currency (2.1.263 → 2.1.267).** `.claude-code-version`
   advances to **2.1.267**, covering 2.1.265, 2.1.266 (a same-day
   `CLAUDE_CODE_USE_GATEWAY` regression fix — this repo authenticates

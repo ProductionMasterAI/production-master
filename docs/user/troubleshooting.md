@@ -167,6 +167,13 @@ Related notes for recent Claude Code versions:
   active permission mode still decides what the allow list auto-approves,
   but anything that would otherwise prompt is denied outright, so an
   unexpected prompt fails the run cleanly rather than hanging it.
+- **Read-only git commands could unexpectedly re-prompt in long-running
+  2.1.269 sessions; fixed in 2.1.270.** If a session running for a while
+  suddenly asked to approve `git status`, `git diff`, or `git log` even
+  though [`.claude/settings.json`](../../.claude/settings.json) already
+  allow-lists them, that was a Claude Code 2.1.269 regression, not a
+  misconfigured allow rule. Update to 2.1.270+; no change to the allow list
+  is needed.
 
 ## Command arguments (Claude Code)
 

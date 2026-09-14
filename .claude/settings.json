@@ -1,5 +1,6 @@
 {
   "bashOutputMaxChars": 65536,
+  "bashEditDiffEnabled": true,
   "permissions": {
     "blockReadsOutsideWorkingDirectories": true,
     "allow": [

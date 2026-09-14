@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
 - **Cursor 3.11 (+2026-09-10 / desktop 3.20.17):** advance Cursor coverage through **Projects** (coordinator agent, shared context, subscriptions) and desktop CLI **3.18.9 → 3.20.17**. Feature pin remains **3.11**. Cursor-only; other platform nightlies untouched.
+
 ### Fixed
 
 - **Fresh-clone install path 404'd — this repo was never registered as a

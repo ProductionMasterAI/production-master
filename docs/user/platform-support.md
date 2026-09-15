@@ -66,8 +66,12 @@ reliability work with no hook into this repo's five Bash-only commands:
   exit. Set `bashEditDiffEnabled: true` in
   [`.claude/settings.json`](../../.claude/settings.json) so that reformat
   shows what it actually changed, the same visibility an `Edit()` call
-  already gets. No effect on this repo's other Bash-only commands (`git`,
-  `npm`, `make`, `node scripts/*`), none of which edit files via Bash.
+  already gets. It is not limited to that one command: the allow list also
+  carries `Bash(git checkout *)` and `Bash(git switch *)`, both of which can
+  replace tracked working-tree files, so a Bash-driven checkout will now
+  attach a diff too. The remaining Bash-only entries (`npm`, `make`,
+  `node scripts/*`, and the read-only `git status`/`diff`/`log` probes) do not
+  write files, and are unaffected.
 - **Reviewed, notable but not newly adopted: the read-only-git
   permission-prompt regression (2.1.269) and its fix (2.1.270).** 2.1.269
   introduced a regression where read-only Bash git commands could
@@ -88,9 +92,11 @@ reliability work with no hook into this repo's five Bash-only commands:
   reproducible JSON/HTML results. This repo's single plugin
   ([`.claude-plugin/plugin.json`](../../.claude-plugin/plugin.json) +
   [`commands/`](../../commands/)) has no automated eval or smoke-test suite
-  today — CI validates the manifest shape and runs the adapter's unit tests,
-  but nothing exercises the five slash commands as Claude Code itself would
-  invoke them. Not adopted here because an eval suite worth committing to
+  today. CI runs the adapter's unit tests with coverage, the version-pin and
+  changelog-structure guards, `secret-scan` and `ip-guard` — but nothing in CI
+  or in the test suite reads `.claude-plugin/plugin.json` or the `commands/`
+  manifests at all, so a malformed manifest passes CI today, and nothing
+  exercises the five slash commands as Claude Code itself would invoke them. Not adopted here because an eval suite worth committing to
   needs deciding what a fixture-backed `PM_SERVICE_URL` for
   `/login`/`/investigate`/`/connect`/`/update`/`/logout` looks like and what
   "correct" scores as, which is a design decision, not a config flip — see

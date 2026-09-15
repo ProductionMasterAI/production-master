@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`bashEditDiffEnabled` set in `.claude/settings.json` (Claude Code
+  2.1.269).** Bash-tool-driven file edits — this repo's
+  [`.claude/settings.json`](.claude/settings.json) allow-lists
+  `Bash(npx prettier --write *)` — now attach a diff of what changed to the
+  Bash tool result, the same visibility an `Edit()` call already gets. See
+  [Platform support](docs/user/platform-support.md) for the full note.
+
+### Changed
+
+- **Claude Code currency (2.1.268 → 2.1.270).** `.claude-code-version`
+  advances to **2.1.270**, covering 2.1.269 and 2.1.270. Registration,
+  sandboxing configuration shape, and command-argument handling are
+  unchanged. Besides the `bashEditDiffEnabled` addition above, this closes a
+  loop this repo's Bash allow list is directly exposed to: a 2.1.269
+  regression made read-only git commands (`git status`/`git diff`/`git
+  log` — all allow-listed in
+  [`.claude/settings.json`](.claude/settings.json)) unexpectedly re-prompt
+  in a long-running session; 2.1.270 fixes it, which is why the pin jumps
+  straight to 2.1.270 rather than stopping at 2.1.269. `claude plugin eval`
+  is a genuine option for this repo's single plugin worth a follow-up (see
+  Future opportunities in the PR that landed this); everything else —
+  `/output-style`, `OTEL_METRICS_INCLUDE_REPOSITORY`,
+  `CLAUDE_CODE_GATEWAY_MODEL_DISCOVERY_TIMEOUT_MS`,
+  `CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS`, and the remaining fixes — is
+  either a managed-org/gateway/OTEL/Workflow surface constraint #4 rules out
+  or host-side reliability work with no hook into this repo's five
+  Bash-only commands. See [Platform support](docs/user/platform-support.md)
+  for the full per-item review.
+
 ### Changed
 
 - **Cursor 3.11 (+2026-09-10 / desktop 3.20.17):** advance Cursor coverage through **Projects** (coordinator agent, shared context, subscriptions) and desktop CLI **3.18.9 → 3.20.17**. Feature pin remains **3.11**. Cursor-only; other platform nightlies untouched.

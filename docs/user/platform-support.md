@@ -4,7 +4,7 @@ The editor and agent platforms this client is validated against.
 
 | Platform | Validated against | Latest known |
 |---|---|---|
-| Claude Code | pending | 2.1.268 |
+| Claude Code | pending | 2.1.270 |
 | Cursor | pending | 3.11 (+ changelog 2026-09-10) |
 | Codex | pending | 0.154.0 |
 | OpenCode | pending | pending |
@@ -46,6 +46,126 @@ stdio server intentionally continues to advertise its older supported MCP
 protocol; changing only the protocol string would be unsafe. A future SDK-backed
 upgrade should adopt the newer protocol when paginated discovery, multi-round
 requests, and non-blocking startup can be implemented and tested together.
+
+**Claude Code notes (2.1.268 → 2.1.270).** `.claude-code-version` advances to
+**2.1.270**, covering 2.1.269 and 2.1.270. Registration, sandboxing
+configuration shape, and command-argument handling are unchanged. One item is
+adopted, one closes a loop directly relevant to this repo's read-only-git
+Bash allow rules, one is called out as a genuine (but not yet taken) option
+for this repo's single plugin, and everything else is either a managed-org/
+gateway/OTEL/Workflow/Cowork surface constraint #4 rules out or host-side
+reliability work with no hook into this repo's five Bash-only commands:
+
+- **Adopted: `bashEditDiffEnabled` (2.1.269).** When the Bash tool itself
+  edits a file, Claude Code can now attach a diff of what changed to the
+  Bash tool result instead of only the command's stdout/stderr. This repo's
+  [`.claude/settings.json`](../../.claude/settings.json) allow-lists
+  `Bash(npx prettier --write *)` — a Bash-tool-driven file edit, not an
+  `Edit()`/`Write()` call — so before 2.1.269 a reformat run this way showed
+  no diff at all in the transcript, only the (silent, on success) prettier
+  exit. Set `bashEditDiffEnabled: true` in
+  [`.claude/settings.json`](../../.claude/settings.json) so that reformat
+  shows what it actually changed, the same visibility an `Edit()` call
+  already gets. It is not limited to that one command: the allow list also
+  carries `Bash(git checkout *)` and `Bash(git switch *)`, both of which can
+  replace tracked working-tree files, so a Bash-driven checkout will now
+  attach a diff too. The remaining Bash-only entries (`npm`, `make`,
+  `node scripts/*`, and the read-only `git status`/`diff`/`log` probes) do not
+  write files, and are unaffected.
+- **Reviewed, notable but not newly adopted: the read-only-git
+  permission-prompt regression (2.1.269) and its fix (2.1.270).** 2.1.269
+  introduced a regression where read-only Bash git commands could
+  unexpectedly ask for permission again after a session had been running for
+  a while; 2.1.270 fixes it. This repo's
+  [`.claude/settings.json`](../../.claude/settings.json) allow-lists exactly
+  the commands this regression affects — `Bash(git status)`,
+  `Bash(git diff *)`, and `Bash(git log *)` — used throughout the contributor
+  workflow in [CONTRIBUTING.md](../CONTRIBUTING.md) and by the
+  [`run-production-master`](../../.claude/skills/run-production-master/SKILL.md)
+  skill's verification steps. Nothing to change in the allow list itself —
+  the rules were always correct — but this is why the version pin advances
+  straight from 2.1.268 to 2.1.270 rather than stopping at 2.1.269: taking
+  2.1.269 alone would have reintroduced spurious prompts on exactly the
+  Bash commands this repo relies on running unattended in a long session.
+- **Reviewed, a real option not taken yet: `claude plugin eval` (2.1.269).**
+  Runs a plugin's eval suite against Claude Code and produces scored,
+  reproducible JSON/HTML results. This repo's single plugin
+  ([`.claude-plugin/plugin.json`](../../.claude-plugin/plugin.json) +
+  [`commands/`](../../commands/)) has no automated eval or smoke-test suite
+  today. CI runs the adapter's unit tests with coverage, the version-pin and
+  changelog-structure guards, `secret-scan` and `ip-guard` — but nothing in CI
+  or in the test suite reads `.claude-plugin/plugin.json` or the `commands/`
+  manifests at all, so a malformed manifest passes CI today, and nothing
+  exercises the five slash commands as Claude Code itself would invoke them. Not adopted here because an eval suite worth committing to
+  needs deciding what a fixture-backed `PM_SERVICE_URL` for
+  `/login`/`/investigate`/`/connect`/`/update`/`/logout` looks like and what
+  "correct" scores as, which is a design decision, not a config flip — see
+  Future opportunities in the tracking PR for a concrete starting shape.
+- **Reviewed, not applicable: `/output-style` (2.1.269).** Lets an
+  interactive, Remote Control, or cloud/headless session list and switch
+  output styles. This repo ships no output-style file of its own (per the
+  2.1.238 note below) and defines no output-style guidance for any of its
+  five commands — there is nothing here for `/output-style` to switch
+  between beyond Claude Code's own built-ins.
+- **Reviewed, not applicable: `OTEL_METRICS_INCLUDE_REPOSITORY` (2.1.269).**
+  Tags a Claude Code session's own OpenTelemetry metrics/events with
+  `vcs.*` repository attributes. This repo configures no OpenTelemetry
+  exporter of Claude Code's own — constraint #4, no model-provider or
+  telemetry surface of this repo's own to tag. (Unrelated to this thin
+  client's own product terminology: `PM_MCP_GATEWAY_URL`/`--gateway` name a
+  Production-Master-service concept, not a Claude Code OTEL/gateway
+  setting.)
+- **Reviewed, not applicable:
+  `CLAUDE_CODE_GATEWAY_MODEL_DISCOVERY_TIMEOUT_MS` (2.1.269).** Extends the
+  Claude-apps-gateway's `/v1/models` discovery timeout. As with the 2.1.266
+  and 2.1.268 gateway notes above,
+  [`claude.yml`](../../.github/workflows/claude.yml) authenticates
+  `anthropics/claude-code-action@v1` with a plain `ANTHROPIC_API_KEY`
+  secret — no Claude-apps gateway sits in front of it, so there is no
+  model-discovery timeout of this kind to extend.
+- **Reviewed, not applicable: `CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS`
+  (2.1.269).** Raises the `Workflow` tool's per-run concurrent-agent limit.
+  This repo uses no `Workflow` tool script of its own (constraint #4).
+- **Reviewed, benefits automatically, and worth naming for this repo's own
+  attribution setting: the attribution-reminder-override fix (2.1.269,
+  SECURITY-adjacent).** Before 2.1.269, a session-level attribution reminder
+  could override a repo's own CLAUDE.md/memory rule against commit/PR
+  attribution. This repo's
+  [`.claude/settings.json`](../../.claude/settings.json) does the opposite —
+  it explicitly *sets* `attribution.commit` rather than disabling it — so
+  the bug's failure direction (an unwanted override winning) was never
+  visible here, but the fix confirms this repo's own explicit setting is now
+  the one that wins over any external attribution reminder, short of a
+  managed-settings override.
+- Everything else in the 2.1.269/2.1.270 delta — the `claude plugin eval`
+  and `/output-style` availability over Remote Control/cloud sessions
+  themselves (constraint #4, no model calls of this repo's own); prompt-cache
+  partial-invalidation and terminal-keybinding fixes (general reliability,
+  benefits automatically); the remote/headless "waiting for your input"
+  background-agent fix and its `CLAUDE_CODE_BG_TASKS_REPORT_RUNNING` revert
+  flag (this repo's five commands spawn no background agents — constraint
+  #4); `git status` after compaction now current (general reliability); the
+  synced-plugin-MCP-servers-not-reconnecting fix (this repo's Claude Code
+  path registers via `/plugin install` and execs a binary from `commands/`,
+  never MCP — see the 2.1.229 note below); the SECURITY plugin-archive
+  extraction permissions/world-writable/stale-file fixes (host-side plugin
+  cache hardening, no repo-specific plugin archive of this repo's own beyond
+  the one it ships); the SECURITY `Edit()`-deny/write-path and
+  `Bash(tee:*)`-allow-rule fixes (this repo's
+  [`.claude/settings.json`](../../.claude/settings.json) sets no `tee`
+  allow rule and no `Edit()` deny rules of its own); organization plugins
+  via managed settings not loading in headless sessions (no managed
+  settings here); `/ultrareview --post` no longer spinning up a second
+  cloud session (this repo uses no `/ultrareview` workflow); the Artifact
+  database scratchpad-read approval change (constraint #4, no Artifact
+  usage); and `anthropic-skills:<name>`-prefixed cloud-synced skills (the
+  [`run-production-master`](../../.claude/skills/run-production-master/SKILL.md)
+  skill is project-local, checked into this repo, never claude.ai-synced) —
+  is either a managed-org/model-calling/Cowork/Workflow surface constraint
+  #4 rules out or this repo doesn't exercise, or host-side reliability/UI
+  work with no hook into this repo's five Bash-only commands or its
+  [`.claude/settings.json`](../../.claude/settings.json). Nothing here
+  changes registration, sandboxing shape, or command-argument handling.
 
 **Claude Code notes (2.1.267 → 2.1.268).** `.claude-code-version` advances to
 **2.1.268**, a single release. Registration, sandboxing configuration shape,

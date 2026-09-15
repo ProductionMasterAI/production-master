@@ -174,6 +174,28 @@ Related notes for recent Claude Code versions:
   allow-lists them, that was a Claude Code 2.1.269 regression, not a
   misconfigured allow rule. Update to 2.1.270+; no change to the allow list
   is needed.
+- **A stale `.git/config.lock` could break every later `git checkout -b`,
+  `git push -u`, or `git config` in the same session — fixed in 2.1.271
+  (Linux).** If a sandboxed command failed to start partway through a
+  session and left `.git/config.lock` behind, this repo's allow-listed
+  `Bash(git checkout *)`, `Bash(git branch *)`, and
+  `Bash(git push origin *)` commands (used throughout
+  [CONTRIBUTING.md](../CONTRIBUTING.md)'s fork-and-branch workflow) could
+  keep failing for the rest of that session even though the working tree
+  itself was fine. Update to 2.1.271+; deleting the stale lock file by hand
+  was the only workaround on older versions.
+- **Per-command `allowed_domains` (2.1.271) is a narrower alternative to the
+  allowlist above, not a replacement for it.** In auto mode with sandboxing,
+  Claude Code can now scope a single Bash invocation to only the hosts that
+  one command needs, reviewed and opened for it alone, instead of the
+  session-wide `sandbox.network.strictAllowlist` entry described above. This
+  repo's `/investigate`, `/connect`, and `/update` commands each run one
+  Bash invocation of the adapter CLI against `api.productionmaster.dev` (or
+  a custom `PM_SERVICE_URL` host), so an auto-mode session can now grant
+  network access to just that one call rather than the host's Bash tool
+  more broadly — worth knowing if you run this plugin unattended, but it
+  needs no change to `.claude/settings.json` or the allowlist guidance
+  above, which still applies outside auto mode.
 
 ## Command arguments (Claude Code)
 

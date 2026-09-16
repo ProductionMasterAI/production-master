@@ -1,0 +1,88 @@
+name: Main Red Escalation
+
+# A workflow that goes red on `main` leaves a red mark on a commit, and nobody
+# is responsible for noticing it. An issue is something people track. When one
+# of the watched workflows fails on a push to `main`, this opens (or comments
+# on) ONE reused issue for that workflow. When that workflow next passes on
+# `main`, it comments and closes the issue, so an open issue always means
+# "main is red right now", not "main was red once".
+#
+# Only push-to-main runs from this repository count. A pull_request run whose
+# head branch happens to be called `main` (e.g. from a fork) is filtered out by
+# the event + head_repository check, and no code from the triggering run is
+# checked out or executed here -- this job only calls the issues API.
+#
+# `cancelled` is deliberately ignored: it is almost always a superseded or
+# evicted run, not a verdict on the commit.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  issues: write
+
+concurrency:
+  # One writer per watched workflow, so two quick main pushes cannot both
+  # decide "no issue exists" and open duplicates.
+  group: main-red-escalation-${{ github.event.workflow_run.workflow_id }}
+  cancel-in-progress: false
+
+jobs:
+  escalate:
+    name: Track red main
+    if: >-
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      contains(fromJSON('["success","failure","timed_out","startup_failure"]'), github.event.workflow_run.conclusion)
+    # PUBLIC repo: GitHub-hosted on purpose (Hard rule 4 -- never the self-hosted
+    # fleet from a repo that accepts third-party PRs).
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Open, update or close the tracking issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          export TITLE="main is red: ${WORKFLOW_NAME}"
+          # List, not search: the search index lags issue creation, and a lagging
+          # lookup is exactly how two red runs in a row would open two issues.
+          EXISTING="$(gh issue list --state open --limit 500 --json number,title \
+                        --jq '[.[] | select(.title == env.TITLE)] | .[0].number // empty')"
+
+          if [ "$CONCLUSION" = "success" ]; then
+            if [ -n "$EXISTING" ]; then
+              gh issue comment "$EXISTING" --body "\`${WORKFLOW_NAME}\` is green on \`main\` again at \`${HEAD_SHA}\`: ${RUN_URL}
+
+          Closing -- an open issue with this title means main is red right now."
+              gh issue close "$EXISTING" --reason completed
+              echo "Closed #$EXISTING: ${WORKFLOW_NAME} recovered on main"
+            else
+              echo "${WORKFLOW_NAME} is green on main and no tracking issue is open -- nothing to do"
+            fi
+            exit 0
+          fi
+
+          BODY="\`${WORKFLOW_NAME}\` concluded **${CONCLUSION}** on a push to \`main\`.
+
+          Run: ${RUN_URL}
+          Commit: \`${HEAD_SHA}\`
+
+          Every PR opened while this is open inherits the failure and looks individually
+          broken, so fix or revert on \`main\` first. This issue closes itself on the next
+          green \`${WORKFLOW_NAME}\` run on \`main\`."
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --body "$BODY"
+            echo "::warning title=main is red::${WORKFLOW_NAME} is still red on main -- commented on #$EXISTING"
+          else
+            URL="$(gh issue create --title "$TITLE" --body "$BODY")"
+            echo "::warning title=main is red::${WORKFLOW_NAME} went red on main -- opened $URL"
+          fi

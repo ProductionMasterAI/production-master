@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Claude Code currency (2.1.270 → 2.1.272).** `.claude-code-version`
+  advances to **2.1.272**, covering 2.1.271 and 2.1.272. Registration,
+  sandboxing configuration shape, and command-argument handling are
+  unchanged. No new setting is adopted, but two 2.1.271 fixes land on
+  surface this repo already documents and are now called out in
+  [Troubleshooting](docs/user/troubleshooting.md#sandboxed-commands-claude-code):
+  a stale `.git/config.lock` that could break `git checkout -b`/`git push
+  -u`/`git config` for the rest of a session on Linux (this repo's
+  allow-listed `git checkout`/`git branch`/`git push origin` commands), and
+  a compound-Bash-command (`cd`+`git`, subshell, two directory changes) gap
+  in the `permissions.blockReadsOutsideWorkingDirectories` prompt this repo
+  already sets in
+  [`.claude/settings.json`](.claude/settings.json). Per-command
+  `allowed_domains` for auto-mode sandboxed Bash (2.1.271) is documented as
+  informational — it narrows the same `api.productionmaster.dev` network
+  allowlisting this repo's docs already cover, but needs no
+  `.claude/settings.json` change. Everything else — `omitClaudeMd` agent
+  frontmatter, Remote fast mode, the `modelPricing` multiplier,
+  self-hosted-runner and Cowork/Workflow/Artifact/MCP-as-client changes, and
+  2.1.272's undetailed "bug fixes and reliability improvements" — is either
+  a managed-org/model-calling/Cowork/Workflow/self-hosted-runner surface
+  this repo's constraints rule out or host-side UI/reliability work with no
+  hook into this repo's five Bash-only commands. See [Platform
+  support](docs/user/platform-support.md) for the full per-item review.
+
 ### Added
 
 - **`bashEditDiffEnabled` set in `.claude/settings.json` (Claude Code

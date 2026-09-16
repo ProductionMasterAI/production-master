@@ -22,6 +22,8 @@ on:
     branches: [main]
 
 permissions:
+  # actions: read -- only to look up the latest run of the watched workflow.
+  actions: read
   issues: write
 
 concurrency:
@@ -50,8 +52,32 @@ jobs:
           CONCLUSION: ${{ github.event.workflow_run.conclusion }}
           RUN_URL: ${{ github.event.workflow_run.html_url }}
           HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          WORKFLOW_ID: ${{ github.event.workflow_run.workflow_id }}
         run: |
           set -euo pipefail
+
+          # Act only on the NEWEST push run of this workflow on main. Push-to-main
+          # runs overlap, so completions arrive in finish order, not commit order:
+          # without this, an older green run finishing late closes the issue a newer
+          # red run opened, and an older red run finishing late opens one a newer
+          # green run already cleared. Compared by run id against the latest run of
+          # the SAME workflow rather than main's head SHA, because a path-filtered
+          # workflow does not run on every main commit. If the newest run is still
+          # in progress its id differs from this event's, so the event is ignored
+          # and the newest run's own completion decides.
+          LATEST="$(gh api "repos/${GH_REPO}/actions/workflows/${WORKFLOW_ID}/runs?branch=main&event=push&per_page=1" \
+                      --jq '.workflow_runs[0] | "\(.id) \(.head_sha) \(.status)"')"
+          read -r LATEST_ID LATEST_SHA LATEST_STATUS <<<"$LATEST" || true
+          if [ -z "${LATEST_ID:-}" ]; then
+            echo "::error title=main-red-escalation::could not read the latest ${WORKFLOW_NAME} run on main -- refusing to guess whether ${HEAD_SHA} is current"
+            exit 1
+          fi
+          if [ "$LATEST_ID" != "$RUN_ID" ]; then
+            echo "Stale completion for ${HEAD_SHA} (run ${RUN_ID}, ${CONCLUSION}); latest ${WORKFLOW_NAME} run on main is ${LATEST_ID} for ${LATEST_SHA} (${LATEST_STATUS}) -- ignored"
+            exit 0
+          fi
+
           export TITLE="main is red: ${WORKFLOW_NAME}"
           # List, not search: the search index lags issue creation, and a lagging
           # lookup is exactly how two red runs in a row would open two issues.

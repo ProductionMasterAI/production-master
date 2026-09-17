@@ -17,6 +17,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Claude Code currency (2.1.272 → 2.1.273).** `.claude-code-version`
+  advances to **2.1.273**, a single release. Registration, sandboxing
+  configuration shape, and command-argument handling are unchanged. One
+  2.1.273 fix — a Bash command the permission checker can't fully analyze
+  could still skip the `permissions.blockReadsOutsideWorkingDirectories`
+  prompt — is now called out in
+  [Troubleshooting](docs/user/troubleshooting.md#sandboxed-commands-claude-code),
+  widening the same guarantee the 2.1.271 compound-command fix already
+  documented there. Most of 2.1.273's published "New Features" list is a
+  verbatim republish of 2.1.271's, already reviewed and ruled not
+  applicable in the entry below; genuinely new this release — gateway hint
+  headers, an MCP-server-disconnect notification, and forking a
+  `--remote-control` session — needs a gateway, an `.mcp.json` server, or a
+  Remote Control session of this repo's own, none of which exist here
+  (constraint #4). The reverted 2.1.268 `Read()`/`Edit()`-deny-on-Bash-line
+  change doesn't apply either — this repo sets no `Read()`/`Edit()` deny
+  rules. Everything else in 2.1.273 is host-side UI/reliability work, or a
+  managed-org/gateway surface, with no hook into this repo's five
+  Bash-only commands. See [Platform
+  support](docs/user/platform-support.md) for the full per-item review.
+
 - **Claude Code currency (2.1.270 → 2.1.272).** `.claude-code-version`
   advances to **2.1.272**, covering 2.1.271 and 2.1.272. Registration,
   sandboxing configuration shape, and command-argument handling are
@@ -332,9 +353,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   client makes no model calls and spawns no subagents — constraint #4); the
   keyless Console sign-in, `/web-setup` tip, and the claude.ai `managed`
   connector marker (this plugin is never installed as a claude.ai-synced or
-  org-managed connector); the `claude-code-action` workload-identity-
-  federation CI fix (`.github/workflows/claude.yml` authenticates with
-  `anthropic_api_key`, not WIF); the hook `if`-condition and
+  org-managed connector — see the 2.1.239 `name@synced` note above); the workload-identity-
+  federation CI fix for `claude-code-action` (this repo's `.github/workflows/
+  claude.yml` authenticates with `anthropic_api_key: ${{ secrets.
+  ANTHROPIC_API_KEY }}`, not WIF — `id-token: write` is granted but unused by
+  that step); the hook `if`-condition and
   `/reload-plugins` LSP fixes (no hooks, no LSP plugin here); and the
   `--agents` JSON-validation fix (no command launches with `--agents`). One
   item updates existing guidance: 2.1.243 changed the sandboxed Bash tool to

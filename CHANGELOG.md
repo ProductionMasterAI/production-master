@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Red `main` now escalates to a tracked issue.** New
+  `.github/workflows/main-red-escalation.yml`: when `CI` fails on a push to `main`, it opens
+  (or comments on) one reused issue titled `main is red: CI`, and closes it on the next green
+  run. It acts only on the newest push run on `main`, so overlapping runs finishing out of
+  order cannot close a newer failure's issue or open a stale one.
+
 ### Changed
 
 - **Claude Code currency (2.1.272 → 2.1.273).** `.claude-code-version`

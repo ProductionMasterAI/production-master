@@ -4,7 +4,7 @@ The editor and agent platforms this client is validated against.
 
 | Platform | Validated against | Latest known |
 |---|---|---|
-| Claude Code | pending | 2.1.273 |
+| Claude Code | pending | 2.1.274 |
 | Cursor | pending | 3.11 (+ changelog 2026-09-10) |
 | Codex | pending | 0.154.0 |
 | OpenCode | pending | pending |
@@ -46,6 +46,71 @@ stdio server intentionally continues to advertise its older supported MCP
 protocol; changing only the protocol string would be unsafe. A future SDK-backed
 upgrade should adopt the newer protocol when paginated discovery, multi-round
 requests, and non-blocking startup can be implemented and tested together.
+
+**Claude Code notes (2.1.273 → 2.1.274).** `.claude-code-version` advances to
+**2.1.274**, a single release. Registration, sandboxing configuration shape,
+and command-argument handling are unchanged. Nothing in this delta is
+adopted — one bug fix is general reliability that benefits automatically,
+and everything else is either a managed-org/gateway/MCP-as-client/
+subagent/hook surface [constraint #4](../../.claude/rules/constraints.md)
+rules out or this repo doesn't exercise, or host-side UI/telemetry work
+with no hook into this repo's five Bash-only commands:
+
+- **Reviewed, benefits automatically: the fix for stuck retry loops on
+  `tool_use_id` errors (2.1.274).** General session reliability with no
+  repo-specific failure mode to reproduce — applies to any session on this
+  repo the next time it pulls a newer Claude Code, with no config change
+  needed.
+- **Reviewed, not applicable: the MCP HTTP+SSE 4xx-handling, ~5-minute
+  Streamable-HTTP tool-call timeout, and `listChanged`-dependent
+  resources/prompts-refresh fixes (2.1.274).** As in the 2.1.268 MCP-secret-
+  masking note above, this repo defines no `.mcp.json`/MCP server
+  registration of its own for Claude Code —
+  [`cli.ts`](../../packages/adapter-claude-code/src/cli.ts) notes this
+  binary *is* the MCP client (plugin-core's `HttpMcpToolTransport`) calling
+  the hosted service's own MCP gateway, a separate transport from Claude
+  Code's own built-in MCP client that these three fixes change — so none of
+  them has a registered server here to fix.
+- **Reviewed, not applicable: `CLAUDE_CODE_MCP_STARTUP_WAIT_MS` (2.1.274).**
+  Bounds how long a non-interactive first turn waits on MCP server startup.
+  Same reasoning as above — no `.mcp.json` server of this repo's own for
+  Claude Code to wait on.
+- **Reviewed, not applicable: MCP client v2 as the default transport for
+  Bedrock/Vertex/Foundry and telemetry-disabled sessions
+  (`MCP_SDK_GENERATION=v1` / `MCP_PROTOCOL_NEGOTIATION=legacy` to opt out,
+  2.1.274).** No Bedrock, Vertex, or Foundry usage here (constraint #4), and
+  the default only matters to a session with a registered MCP server —
+  which this repo has none of for Claude Code, independent of whether
+  telemetry happens to be disabled.
+- **Reviewed, not applicable: leaner inline `/code-review` prompts
+  replacing subagent fan-out, for every model (2.1.274).** This repo defines
+  no `/code-review` workflow of its own, as already noted in the 2.1.272 and
+  2.1.273 entries below.
+- **Reviewed, not applicable: the OTel `effort` span attribute and the
+  `claude_code.managed_settings_resolved` event (2.1.274).** This repo
+  configures no OpenTelemetry exporter of Claude Code's own (constraint #4)
+  and no managed settings, so neither addition has a repo-specific signal to
+  carry.
+- **Reviewed, not applicable: hook-driven sessions like `/goal` hitting
+  "prompt too long" instead of compacting (2.1.274).** This repo defines no
+  hooks under `.claude/` (constraint #4).
+- **Reviewed, not applicable: `claude agents` losing `--model`/`--effort`/
+  `--permission-mode` after an auto-update, and subagent model mismatches on
+  Bedrock/Vertex/Foundry (2.1.274).** This repo's contributor workflow is
+  fork-and-branch, per [CONTRIBUTING.md](../CONTRIBUTING.md), never `claude
+  agents` teleport/worktrees, and its five commands spawn no subagents
+  (constraint #4); no Bedrock/Vertex/Foundry usage either.
+- **Reviewed, not applicable: the visible low-memory warning with recovery
+  steps (2.1.274).** Host-side terminal UI with no
+  [`.claude/settings.json`](../../.claude/settings.json) field or command
+  surface for this repo to hook into.
+
+Everything else in 2.1.274 is either a managed-org/gateway/MCP-as-client/
+subagent/hook surface constraint #4 rules out or this repo doesn't
+exercise, or host-side UI/reliability work with no hook into this repo's
+five Bash-only commands or its
+[`.claude/settings.json`](../../.claude/settings.json). Nothing here
+changes registration, sandboxing shape, or command-argument handling.
 
 **Claude Code notes (2.1.272 → 2.1.273).** `.claude-code-version` advances to
 **2.1.273**, a single release. Registration, sandboxing configuration shape,

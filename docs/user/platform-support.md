@@ -4,7 +4,7 @@ The editor and agent platforms this client is validated against.
 
 | Platform | Validated against | Latest known |
 |---|---|---|
-| Claude Code | pending | 2.1.272 |
+| Claude Code | pending | 2.1.273 |
 | Cursor | pending | 3.11 (+ changelog 2026-09-10) |
 | Codex | pending | 0.154.0 |
 | OpenCode | pending | pending |
@@ -46,6 +46,87 @@ stdio server intentionally continues to advertise its older supported MCP
 protocol; changing only the protocol string would be unsafe. A future SDK-backed
 upgrade should adopt the newer protocol when paginated discovery, multi-round
 requests, and non-blocking startup can be implemented and tested together.
+
+**Claude Code notes (2.1.272 → 2.1.273).** `.claude-code-version` advances to
+**2.1.273**, a single release. Registration, sandboxing configuration shape,
+and command-argument handling are unchanged. One 2.1.273 fix widens a gap in
+the same guarantee the 2.1.271 compound-command fix already documented below
+(now called out in
+[Troubleshooting](troubleshooting.md#sandboxed-commands-claude-code) above);
+most of 2.1.273's published "New Features" list is a verbatim republish of
+2.1.271's — already reviewed and ruled not applicable in the note below —
+and everything genuinely new this release is either a gateway/MCP-server/
+Remote-Control surface constraint #4 rules out or host-side UI/reliability
+work with no hook into this repo's five Bash-only commands:
+
+- **Documented: a Bash command the permission checker can't fully analyze
+  could still skip the `permissions.blockReadsOutsideWorkingDirectories`
+  prompt, and a subshell could hide a dangerous `rm` in bypass mode
+  (2.1.273).** This narrows the same gap the 2.1.271 note below closed for
+  two-`cd`/subshell/`cd`+`git` command shapes specifically: 2.1.273 covers
+  the broader class of commands the checker can't fully parse. This repo
+  sets `blockReadsOutsideWorkingDirectories: true` in
+  [`.claude/settings.json`](../../.claude/settings.json) precisely so a
+  stray read can't reach a `PM_ACCESS_TOKEN` credentials file living
+  outside the checkout; update Claude Code, the setting itself needs no
+  change.
+- **Reviewed, not applicable: gateway hint headers
+  (`x-claude-code-request-class` and friends, 2.1.273), the MCP-server-
+  disconnect `/mcp` notification (2.1.273), and forking a `--remote-control`
+  session (2.1.273) — the three items new in 2.1.273's feature list.**
+  Gateway hint headers need a Claude-apps-gateway session of this repo's
+  own; [`claude.yml`](../../.github/workflows/claude.yml) authenticates
+  `anthropics/claude-code-action@v1` with a plain `ANTHROPIC_API_KEY`, no
+  gateway (constraint #4, as in every earlier gateway note above). The MCP
+  notification needs an `.mcp.json` server registered for Claude Code,
+  which this repo has none of — its Claude Code path execs a binary from
+  `commands/`, never MCP (see the 2.1.229 note below). Forking needs a
+  Remote Control session, which this repo runs none of (same as the
+  2.1.271 Remote-fast-mode note below).
+- **Reviewed, not applicable: the reverted 2.1.268 `Read()`/`Edit()`-deny-
+  on-unanalyzable-Bash-line check (2.1.273).** 2.1.273 reverts a 2.1.268
+  change that applied `Read()`/`Edit()` deny rules to Bash lines the
+  checker can't fully parse (`eval`, `env -C`); such commands prompt again
+  instead of being silently denied. [`.claude/settings.json`](../../.claude/settings.json)
+  sets no `Read()`/`Edit()` deny rules of its own — only the two
+  `Bash(git push --force *)`/`Bash(git push -f *)` Bash deny entries — so
+  neither the original 2.1.268 behavior nor this revert changes anything
+  this repo's allow/deny list produces.
+- **Reviewed, republished verbatim from 2.1.271, already ruled not
+  applicable: Remote fast mode, `/config` mouse support,
+  `self-hosted-runner --drain-marker-file`, per-command `allowed_domains`,
+  `omitClaudeMd`, `--accept-command <sha256>`, and the `modelPricing`
+  multiplier above 1.** See the individual entries under the 2.1.271 note
+  below — nothing changed for this repo's review of any of them between
+  2.1.271 and 2.1.273.
+- 2.1.272 shipped only "bug fixes and reliability improvements," with no
+  further detail published — nothing to review there, as already noted
+  below.
+- Everything else in 2.1.273 — the Bug Fixes list (the claude.ai-synced-
+  skills-off cleanup, no synced skill here — see the 2.1.270 note below;
+  the `allowManagedMcpServersOnly`/`deniedMcpServers`/
+  `disableClaudeAiConnectors` managed-settings fix, no managed settings
+  here; Bedrock/Vertex/Foundry 401/403 messaging, no gateway; the
+  scheduled-task-wrong-session, agent-team/`/tui`, and background-subagent
+  stream-json fixes, no scheduled tasks, agent teams, or subagents here;
+  and the remaining terminal/spinner/`.git/info/exclude`/macOS-screenshot
+  cosmetics), the Improvements list (Artifact-tool, `/autofix-pr`, and
+  `/web-setup` error-message polish — constraint #4, no Artifact usage and
+  neither command used here), the Changes list (the Bedrock/Vertex/Foundry
+  auto-mode classifier default, `OTEL_LOG_TOOL_DETAILS` agent/skill/plugin
+  naming, claude.ai-plugin sign-in scope, and `/bug`/`/feedback`
+  report-field trimming — no gateway, no OTEL exporter, no plugin-access
+  sign-in flow of this repo's own to affect), and the Platform-Specific
+  VSCode/Windows/Claude-Code-on-the-web/Claude-Tag(Slack)/Code-Review
+  sections (this repo is used from a terminal or from
+  [`claude.yml`](../../.github/workflows/claude.yml)'s comment-triggered
+  `anthropics/claude-code-action@v1` job, never the VS Code extension,
+  Claude Code on the web, Claude in Slack, or the separate auto-PR "Code
+  Review" product those sections describe) — is either a managed-org/
+  gateway/model-calling surface constraint #4 rules out or host-side UI/
+  reliability work with no hook into this repo's five Bash-only commands or
+  its [`.claude/settings.json`](../../.claude/settings.json). Nothing here
+  changes registration, sandboxing shape, or command-argument handling.
 
 **Claude Code notes (2.1.270 → 2.1.272).** `.claude-code-version` advances to
 **2.1.272**, covering 2.1.271 and 2.1.272. Registration, sandboxing

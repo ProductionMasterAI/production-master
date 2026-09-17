@@ -196,6 +196,17 @@ Related notes for recent Claude Code versions:
   more broadly — worth knowing if you run this plugin unattended, but it
   needs no change to `.claude/settings.json` or the allowlist guidance
   above, which still applies outside auto mode.
+- **A Bash command the permission checker can't fully analyze could still
+  skip the `permissions.blockReadsOutsideWorkingDirectories` prompt, and a
+  subshell could hide a dangerous `rm` in bypass mode — fixed in 2.1.273.**
+  This closes a further gap in the same guarantee the compound-command fix
+  above (2.1.271) narrowed, this time for the broader class of command
+  shapes the checker can't fully parse rather than just two-`cd`/subshell/
+  `cd`+`git` chains. This repo sets `blockReadsOutsideWorkingDirectories:
+  true` in [`.claude/settings.json`](../../.claude/settings.json)
+  specifically so a stray read can't reach a `PM_ACCESS_TOKEN` credentials
+  file living outside the checkout. Update to 2.1.273+; the setting itself
+  needs no change.
 
 ## Command arguments (Claude Code)
 

@@ -17,6 +17,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Claude Code currency (2.1.273 → 2.1.274).** `.claude-code-version`
+  advances to **2.1.274**, a single release. Registration, sandboxing
+  configuration shape, and command-argument handling are unchanged. Nothing
+  in this delta is adopted: the fix for stuck retry loops on `tool_use_id`
+  errors is general reliability that benefits automatically, and everything
+  else — the MCP HTTP+SSE/Streamable-HTTP-timeout/`listChanged` fixes,
+  `CLAUDE_CODE_MCP_STARTUP_WAIT_MS`, the Bedrock/Vertex/Foundry/telemetry-
+  disabled MCP-client-v2 default, leaner `/code-review` prompts, the OTel
+  `effort`/`managed_settings_resolved` additions, hook-driven `/goal`
+  compaction, `claude agents` flag loss after auto-update, and
+  subagent/Bedrock/Vertex/Foundry model mismatches — needs an `.mcp.json`
+  server, hooks, subagents, or a gateway/Bedrock/Vertex/Foundry session of
+  this repo's own, none of which exist here (constraint #4). See [Platform
+  support](docs/user/platform-support.md) for the full per-item review.
+
 - **Claude Code currency (2.1.272 → 2.1.273).** `.claude-code-version`
   advances to **2.1.273**, a single release. Registration, sandboxing
   configuration shape, and command-argument handling are unchanged. One

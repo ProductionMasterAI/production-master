@@ -1,6 +1,8 @@
 {
   "bashOutputMaxChars": 65536,
   "bashEditDiffEnabled": true,
+  "syncClaudeAiSkills": false,
+  "syncClaudeAiPlugins": false,
   "permissions": {
     "blockReadsOutsideWorkingDirectories": true,
     "allow": [

@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`AGENTS.md` added as this repo's auto-loaded project instructions
+  (Claude Code 2.1.277).** This repo has no `CLAUDE.md`, so its real hard
+  constraints lived only in `.claude/rules/constraints.md`, never
+  auto-loaded by any tool convention. New root [`AGENTS.md`](AGENTS.md)
+  surfaces the scope boundary and the other hard constraints directly in
+  every Claude Code 2.1.277+ session, linking to `constraints.md` for full
+  detail. See [Platform support](docs/user/platform-support.md) for the
+  full note.
+- **`syncClaudeAiSkills` / `syncClaudeAiPlugins` set to `false` in
+  `.claude/settings.json` (Claude Code 2.1.275).** Claude Code now syncs a
+  person's own claude.ai skills/plugins into terminal sessions by default;
+  both are now explicitly disabled here so every contributor's session on
+  this public, scope-bounded repo sees the same reviewable tool surface
+  regardless of what is enabled on their own account. See [Platform
+  support](docs/user/platform-support.md) for the full note.
 - **Red `main` now escalates to a tracked issue.** New
   `.github/workflows/main-red-escalation.yml`: when `CI` fails on a push to `main`, it opens
   (or comments on) one reused issue titled `main is red: CI`, and closes it on the next green
@@ -16,6 +31,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   order cannot close a newer failure's issue or open a stale one.
 
 ### Changed
+
+- **Claude Code currency (2.1.274 → 2.1.278).** `.claude-code-version`
+  advances to **2.1.278**, covering 2.1.275, 2.1.277, and 2.1.278 (2.1.276
+  was never published as a separate entry). Registration, sandboxing
+  configuration shape, and command-argument handling are unchanged. Three
+  items are adopted (the two `Added` entries above, plus a `/plugin install
+  --marketplace` one-liner in [Quick Start](docs/user/quick-start.md)); the
+  removed `TaskOutput` tool (2.1.277) needed a compatibility check — this
+  repo's five commands never referenced it, so no migration was required.
+  Everything else — the gateway egress-boundary env var and upstream
+  `headers:` map, auto mode's server-side classifier default and
+  `CLAUDE_CODE_AUTO_MODE_SERVER=0`, the send-now key, the plugin/marketplace
+  secret-leak and `marketplace update` deletion-on-failure fixes, and the
+  Grep/Glob/Write/Edit/plugin/sandboxed-Bash reliability fixes — is either a
+  managed-org/gateway/Bedrock/Vertex/Foundry/Enterprise surface constraint
+  #4 rules out or host-side UI/reliability work with no hook into this
+  repo's five Bash-only commands. See [Platform
+  support](docs/user/platform-support.md) for the full per-item review.
 
 - **Claude Code currency (2.1.273 → 2.1.274).** `.claude-code-version`
   advances to **2.1.274**, a single release. Registration, sandboxing
@@ -514,7 +547,7 @@ true` removed from the publishable manifests; `packages/pmctl` now publishes
   for the full delta.
 - **Cursor desktop 3.16.29 + Origin CLI/integrations:** re-pin desktop/`validated_against` **3.16.17 → 3.16.29** (stable download line 2026-08-18; no separate feature write-up). Document Origin CLI, agent-created Origin repos, and Origin↔Automations/Cloud Agents / apps integrations. Feature/date pins stay **3.11** / **2026-08-17**.
 - **Cursor Origin + Builds default (2026-08-17).** Documented [Origin](https://cursor.com/docs/origin) (early-beta Cursor git forge; GitHub remains canonical for this public thin client) and flipped Cloud Agent Builds language to **now default**. Pin bump: `changelog_date` **2026-08-13 → 2026-08-17**; feature **3.11** / desktop **3.16.17** unchanged.
-- **Cursor Grok 4.6 + Builds T-1 readiness (2026-08-16).** Platform support + Quick Start document Grok 4.6 for long-running / visual adapter work and a T-1 Builds checklist before the **2026-08-17** default. Pins stay **3.11** / **2026-08-13** / desktop **3.16.17**.
+- **Cursor Grok 4.6 + Builds T-1 readiness (2026-08-16).** Platform support + Quick Start document Grok 4.6 for long-running / visual adapter checks and a T-1 Builds checklist before the **2026-08-17** default. Pins stay **3.11** / **2026-08-13** / desktop **3.16.17**.
 
 - **Cursor desktop 3.16.17 + Builds skipped/staleness docs.** Desktop pin **3.15.19 → 3.16.17**; docs cover Builds Skipped checks, 24h staleness default, and install/start/terminals. Feature/date pins stay **3.11** / **2026-08-13**.
 - **Cursor Builds Aug-17 readiness + CLI steer/`/goal`.** Platform support + Quick Start deepen Builds adoption (enable now ahead of **2026-08-17** default; team/environment secrets; git-staleness) and note CLI steer + durable `/goal` for local debugging. Pins stay **3.11** / **2026-08-13** / desktop **3.16.17**.

@@ -10,13 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **`AGENTS.md` added as this repo's auto-loaded project instructions
-  (Claude Code 2.1.277).** This repo has no `CLAUDE.md`, so its real hard
-  constraints lived only in `.claude/rules/constraints.md`, never
-  auto-loaded by any tool convention. New root [`AGENTS.md`](AGENTS.md)
-  surfaces the scope boundary and the other hard constraints directly in
-  every Claude Code 2.1.277+ session, linking to `constraints.md` for full
-  detail. See [Platform support](docs/user/platform-support.md) for the
-  full note.
+  (Claude Code 2.1.277).** This repo has no `CLAUDE.md`. Claude Code
+  already auto-loads `.claude/rules/constraints.md`; new root
+  [`AGENTS.md`](AGENTS.md) is the 2.1.277 fallback surface and a shared
+  convention other agent tools read, so the scope boundary and the other
+  hard constraints are visible beyond Claude Code's rules loader, linking
+  to `constraints.md` for full detail. See [Platform
+  support](docs/user/platform-support.md) for the full note.
 - **`syncClaudeAiSkills` / `syncClaudeAiPlugins` set to `false` in
   `.claude/settings.json` (Claude Code 2.1.275).** Claude Code now syncs a
   person's own claude.ai skills/plugins into terminal sessions by default;

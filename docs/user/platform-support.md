@@ -58,18 +58,20 @@ UI/reliability work with no hook into this repo's five Bash-only commands:
 
 - **Adopted: `AGENTS.md` as this repo's auto-loaded project instructions
   (2.1.277).** Claude Code now reads `AGENTS.md` for project instructions in
-  any project with no `CLAUDE.md` — and this repo has neither: its real hard
-  constraints lived only in
-  [`.claude/rules/constraints.md`](../../.claude/rules/constraints.md),
-  never auto-loaded by any tool convention, so a session had to be told to
-  go read it. New root
-  [`AGENTS.md`](../../AGENTS.md) surfaces the scope boundary, the
+  any project with no `CLAUDE.md` — and this repo has neither. The hard
+  constraints in
+  [`.claude/rules/constraints.md`](../../.claude/rules/constraints.md)
+  were already auto-loaded in Claude Code sessions: Markdown under
+  `.claude/rules/` is project instruction even without a `CLAUDE.md`, so a
+  session never had to be told to go read them. New root
+  [`AGENTS.md`](../../AGENTS.md) is the 2.1.277 fallback surface and a
+  shared convention other agent tools read, so the scope boundary, the
   no-force-push/no-unreviewed-workflow-edits rules, and the host-neutral-core
-  seam directly in every Claude Code session's context from 2.1.277 on, with
-  no other file to add or maintain — `constraints.md` remains the source of
+  seam are visible to every tool that looks for `AGENTS.md`, not only to
+  Claude Code's rules loader. `constraints.md` remains the source of
   truest detail and is linked from it. This is a documentation-visibility
-  win, not a behavior change: nothing about registration or the five
-  commands moves.
+  and interoperability win, not a behavior change: nothing about
+  registration or the five commands moves.
 - **Adopted: `syncClaudeAiSkills: false` / `syncClaudeAiPlugins: false` in
   `.claude/settings.json` (2.1.275).** Claude Code now syncs the skills and
   plugins enabled on a person's own claude.ai account into their terminal

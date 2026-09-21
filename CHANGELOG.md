@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Cursor 3.11 (+2026-09-10 / desktop 3.21.13):** bump desktop CLI pin **3.20.17 → 3.21.13** (download line 2026-09-18; feature **3.11** / date **2026-09-10** unchanged). Advance `cli_changelog_date` **2026-08-11 → 2026-08-26** (CLI persistent sessions `agent persist` / `/detach`; hibernated worker wake). No adapter / `.cursor/mcp.json` change required. Cursor-only; other platform nightlies untouched.
+
 - **Claude Code currency (2.1.273 → 2.1.274).** `.claude-code-version`
   advances to **2.1.274**, a single release. Registration, sandboxing
   configuration shape, and command-argument handling are unchanged. Nothing

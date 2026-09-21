@@ -19,6 +19,10 @@ This repo is its own plugin marketplace (`.claude-plugin/marketplace.json`), so 
 /plugin install production-master@production-master
 ```
 
+> **Claude Code 2.1.275+:** the two steps above collapse into one —
+> `/plugin install production-master --marketplace ProductionMasterAI/production-master`
+> adds the marketplace and installs from it in a single command.
+
 > **No git or npm on the machine?** Claude Code 2.1.224+ also supports an
 > `archive` plugin source: the plugin is installed from a zip fetched over
 > HTTPS, with optional SHA-256 pinning of the archive — no git clone and no

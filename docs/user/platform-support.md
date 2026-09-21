@@ -4,7 +4,7 @@ The editor and agent platforms this client is validated against.
 
 | Platform | Validated against | Latest known |
 |---|---|---|
-| Claude Code | pending | 2.1.274 |
+| Claude Code | pending | 2.1.278 |
 | Cursor | pending | 3.11 (+ changelog 2026-09-10) |
 | Codex | pending | 0.155.1 |
 | OpenCode | pending | pending |
@@ -50,6 +50,86 @@ stdio server intentionally continues to advertise its older supported MCP
 protocol; changing only the protocol string would be unsafe. A future SDK-backed
 upgrade should adopt the newer protocol when paginated discovery, multi-round
 requests, and non-blocking startup can be implemented and tested together.
+
+**Claude Code notes (2.1.274 → 2.1.278).** `.claude-code-version` advances to
+**2.1.278**, covering 2.1.275, 2.1.277, and 2.1.278 (2.1.276 was never
+published as a separate entry). Registration, sandboxing configuration
+shape, and command-argument handling are unchanged. Three items are
+adopted, one is a required compatibility check, and everything else is
+either a managed-org/gateway/Bedrock/Vertex/Foundry/Enterprise surface
+[constraint #4](../../.claude/rules/constraints.md) rules out or host-side
+UI/reliability work with no hook into this repo's five Bash-only commands:
+
+- **Adopted: `AGENTS.md` as this repo's auto-loaded project instructions
+  (2.1.277).** Claude Code now reads `AGENTS.md` for project instructions in
+  any project with no `CLAUDE.md` — and this repo has neither. The hard
+  constraints in
+  [`.claude/rules/constraints.md`](../../.claude/rules/constraints.md)
+  were already auto-loaded in Claude Code sessions: Markdown under
+  `.claude/rules/` is project instruction even without a `CLAUDE.md`, so a
+  session never had to be told to go read them. New root
+  [`AGENTS.md`](../../AGENTS.md) is the 2.1.277 fallback surface and a
+  shared convention other agent tools read, so the scope boundary, the
+  no-force-push/no-unreviewed-workflow-edits rules, and the host-neutral-core
+  seam are visible to every tool that looks for `AGENTS.md`, not only to
+  Claude Code's rules loader. `constraints.md` remains the source of
+  truest detail and is linked from it. This is a documentation-visibility
+  and interoperability win, not a behavior change: nothing about
+  registration or the five commands moves.
+- **Adopted: `syncClaudeAiSkills: false` / `syncClaudeAiPlugins: false` in
+  `.claude/settings.json` (2.1.275).** Claude Code now syncs the skills and
+  plugins enabled on a person's own claude.ai account into their terminal
+  sessions by default. For most repos that's a convenience; for this
+  public, scope-bounded thin client — whose CI already runs an `ip-guard`
+  and a no-LLM-SDK-import check specifically because arbitrary code can land
+  in a PR — an unreviewed, per-contributor set of personal skills/plugins
+  silently entering the tool surface of every session on this repo is exactly
+  the kind of drift constraint #4 exists to prevent. Both settings are now
+  explicitly `false` in
+  [`.claude/settings.json`](../../.claude/settings.json), so every
+  contributor's session sees the same allow-listed, reviewable tool surface
+  regardless of what is enabled on their own account.
+- **Adopted: the one-line `/plugin install <plugin> --marketplace <source>`
+  form in Quick Start (2.1.275).** The two-step
+  `/plugin marketplace add …` + `/plugin install …@…` sequence still works and
+  remains the primary documented path, but
+  [Quick Start](quick-start.md) now also shows the 2.1.275+ one-liner
+  (`/plugin install production-master --marketplace
+  ProductionMasterAI/production-master`) as a faster alternative for anyone
+  already on 2.1.275+. No adapter or registration change — install ergonomics
+  only.
+- **Reviewed, compatibility-required: the removed `TaskOutput` tool
+  (2.1.277).** Searched `commands/`, `packages/`, and `.claude/` for any
+  reference — none exists. This repo's five slash commands
+  ([`commands/`](../../commands)) exec the thin-client binary over `Bash` and
+  never call `TaskOutput` (or any Task-family tool) directly, so the removal
+  needs no migration here.
+- **Reviewed, not applicable: `CLAUDE_GATEWAY_PROXY_IS_EGRESS_BOUNDARY=1` and
+  the gateway upstream `headers:` map (2.1.277).** No Claude apps gateway of
+  this repo's own (constraint #4) — this binary talks to the hosted
+  service's own MCP gateway over its own HTTP transport, not Claude Code's
+  gateway feature.
+- **Reviewed, not applicable: auto mode's server-side classifier default and
+  `CLAUDE_CODE_AUTO_MODE_SERVER=0` (2.1.278).** Only changes billing/behavior
+  for API/Enterprise/Bedrock/Vertex/Foundry/gateway auto-mode sessions, none
+  of which this repo configures (constraint #4); the new "Auto mode server"
+  `/status` row is informational only.
+- **Reviewed, not applicable: the send-now key, and the plugin/marketplace
+  secret-in-URL and `marketplace update` deletion-on-fetch-failure fixes
+  (2.1.275).** Host-side terminal UI and marketplace-client reliability with
+  no repo-specific config to change — the fixes apply automatically the next
+  time a session pulls a newer Claude Code.
+- **Reviewed, not applicable: reliability fixes to Grep/Glob/Write/Edit,
+  plugin install/reload, and sandboxed Bash (2.1.277).** General session
+  reliability with no repo-specific failure mode to reproduce — applies
+  automatically, no config change needed.
+
+Everything else in 2.1.275–2.1.278 is either a managed-org/gateway/Bedrock/
+Vertex/Foundry/Enterprise surface constraint #4 rules out or host-side UI/
+reliability work with no hook into this repo's five Bash-only commands or its
+[`.claude/settings.json`](../../.claude/settings.json). Nothing here changes
+registration, sandboxing shape, or command-argument handling beyond the two
+settings adopted above.
 
 **Claude Code notes (2.1.273 → 2.1.274).** `.claude-code-version` advances to
 **2.1.274**, a single release. Registration, sandboxing configuration shape,

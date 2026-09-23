@@ -32,6 +32,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Claude Code currency (2.1.278 → 2.1.281).** `.claude-code-version`
+  advances to **2.1.281**, covering 2.1.280 and 2.1.281 (2.1.279 was never
+  published as a separate entry). Registration, sandboxing configuration
+  shape, and command-argument handling are unchanged. Nothing here is adopted
+  as a config change; two 2.1.280 fixes are documented in [Platform
+  support](docs/user/platform-support.md) because they land on this repo's
+  own plugin-install and skill surface (an `installed_plugins.json`
+  commit-loss bug after `marketplace update` on a GitHub-repo-sourced
+  plugin — exactly how this plugin is installed — and a `manifest.json`
+  name-collision bug that could wrongly trash an existing skill, relevant to
+  this repo's one skill,
+  [`run-production-master`](.claude/skills/run-production-master/SKILL.md)).
+  2.1.281 was checked against the repo: `claude plugin validate` (now with
+  MCP-server and unquoted-`${CLAUDE_PLUGIN_ROOT}` checks) passes on both the
+  marketplace and plugin manifests, and `"attribution": false` is
+  deliberately not adopted — `.claude/settings.json` keeps the object form
+  because the repo wants a commit trailer and older CLIs skip a file holding
+  the boolean. Everything else — Opus 5.5 and the new Pro/Team-Standard
+  default model, `CLAUDE_CODE_MAX_MCP_DESCRIPTION_LENGTH`, the
+  `hook_execution_complete` OTel event, MCP URL-mode elicitation, `--agents`
+  file paths, `sandbox.network.allowLocalBinding`, the auto-mode/dangerous-`rm`
+  changes, self-hosted-runner system-prompt files, the Claude apps gateway
+  keys, the `unpkg.com` Artifact change, and the
+  VSCode/Claude-Code-on-the-web/Claude-Tag sections — is either a
+  managed-org/gateway/Cowork/Artifact/self-hosted-runner surface constraint
+  #4/#5 rules out or host-side work with no hook into this repo's five
+  Bash-only commands. See [Platform support](docs/user/platform-support.md)
+  for the full per-item review.
+
 - **Claude Code currency (2.1.274 → 2.1.278).** `.claude-code-version`
   advances to **2.1.278**, covering 2.1.275, 2.1.277, and 2.1.278 (2.1.276
   was never published as a separate entry). Registration, sandboxing
@@ -518,7 +547,7 @@ and PyPI have returned 404 for these package names until now (dev#642).
 ### Added
 
 - **npm and PyPI packages published for the first time (dev#642).** `private:
-true` removed from the publishable manifests; `packages/pmctl` now publishes
+  true` removed from the publishable manifests; `packages/pmctl` now publishes
   unscoped as `production-master` (`npx production-master` runs the `pmctl`
   binary) and `packages/plugin-core` publishes as
   `@production-master/plugin-core`, both at `0.1.0`. `sdk/python` publishes to

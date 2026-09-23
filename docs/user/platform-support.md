@@ -4,7 +4,7 @@ The editor and agent platforms this client is validated against.
 
 | Platform | Validated against | Latest known |
 |---|---|---|
-| Claude Code | pending | 2.1.278 |
+| Claude Code | pending | 2.1.281 |
 | Cursor | pending | 3.11 (+ changelog 2026-09-10) |
 | Codex | pending | 0.155.1 |
 | OpenCode | pending | pending |
@@ -50,6 +50,140 @@ stdio server intentionally continues to advertise its older supported MCP
 protocol; changing only the protocol string would be unsafe. A future SDK-backed
 upgrade should adopt the newer protocol when paginated discovery, multi-round
 requests, and non-blocking startup can be implemented and tested together.
+
+**Claude Code notes (2.1.278 → 2.1.281).** `.claude-code-version` advances to
+**2.1.281**, covering 2.1.280 and 2.1.281 (2.1.279 was never published as a
+separate entry). Registration, sandboxing configuration shape, and
+command-argument handling are unchanged. Two 2.1.280 fixes and three 2.1.281
+items touch this repo's own plugin/skill/settings surface directly enough to
+document, and everything else is either a
+managed-org/gateway/Bedrock/Vertex/Foundry/Cowork/Artifact/self-hosted-runner
+surface [constraint #4](../../.claude/rules/constraints.md) rules out (or
+[constraint #5](../../.claude/rules/constraints.md), for the self-hosted-runner
+item), or host-side UI/reliability work with no hook into this repo's five
+Bash-only commands:
+
+- **Documented: `installed_plugins.json` could lose its recorded commit after
+  a GitHub-repo-sourced plugin's `marketplace update` (2.1.280).** This
+  repo is installed exactly this way —
+  [Quick Start](quick-start.md#1-install-the-client-in-your-editor)'s
+  `/plugin marketplace add ProductionMasterAI/production-master` +
+  `/plugin install production-master@production-master` (or the 2.1.275+
+  one-liner) — so a contributor running `/plugin marketplace update` on an
+  existing install before 2.1.280 could see the plugin still installed but
+  its pinned commit gone from `installed_plugins.json`, which matters for
+  `--accept-command <sha256>` and for diagnosing "which build am I actually
+  running" reports. Update Claude Code; no change to
+  [`.claude-plugin/marketplace.json`](../../.claude-plugin/marketplace.json)
+  or [`plugin.json`](../../.claude-plugin/plugin.json) is needed — this was a
+  host-side bookkeeping bug, not a manifest problem.
+- **Documented: a `manifest.json` name collision could get a skill wrongly
+  trashed (2.1.280).** This repo ships exactly one skill,
+  [`run-production-master`](../../.claude/skills/run-production-master/SKILL.md).
+  Before 2.1.280, installing or syncing a second skill whose generated
+  manifest entry collided by name with an existing one could delete the
+  existing skill's files instead of just failing the install — worth knowing
+  if `run-production-master` ever disappeared from a session unexpectedly
+  after installing another plugin or syncing skills from elsewhere. Update
+  Claude Code; the skill's own path and frontmatter need no change, and
+  `syncClaudeAiSkills: false` in
+  [`.claude/settings.json`](../../.claude/settings.json) (adopted in the
+  2.1.278 note below) already keeps this repo's sessions from pulling in
+  outside skills that could collide with it in the first place.
+- **Reviewed, not applicable: Opus 5.5 and the Pro/Team-Standard default-model
+  change to Opus (2.1.280).** This repo makes no model calls of its own
+  (constraint #4) — model defaults and availability are an interactive
+  contributor-session concern, not something this thin client configures or
+  depends on.
+- **Reviewed, not applicable: `CLAUDE_CODE_MAX_MCP_DESCRIPTION_LENGTH`
+  (2.1.280).** Bounds how long a Claude Code MCP tool description can be
+  before Claude Code's own MCP client truncates it. As
+  [`cli.ts`](../../packages/adapter-claude-code/src/cli.ts) notes, this
+  binary registers with Claude Code via `/plugin install`, never as an
+  `.mcp.json` MCP server of its own — there is no Claude Code MCP tool
+  description here for the new limit to bound.
+- **Reviewed, not applicable: the `hook_execution_complete` OTel event's new
+  output-size stats (2.1.280).** This repo defines no hooks under `.claude/`
+  (constraint #4) and configures no OpenTelemetry exporter of Claude Code's
+  own.
+- **Reviewed, not applicable: background-subagent MCP tool messages no
+  longer silently lost in headless/SDK sessions, and background-subagent LSP
+  tool access (2.1.280).** This repo's five commands spawn no subagents
+  (constraint #4).
+- **Reviewed, not applicable: benign non-zero exits from background shell
+  tasks no longer misreported as failures (2.1.280).** This repo defines no
+  hooks or background Bash tasks under `.claude/` (constraint #4); its five
+  commands each run a single foreground Bash invocation.
+- **Reviewed, benefits automatically: the auto-mode safety-check
+  retry-loop backoff, the symlink-write-path permission-rule fix, the `Write`
+  tool alt-param-name validation fix, and the model-switch prompt-cache-miss
+  fix (2.1.280).** General session reliability and correctness fixes with no
+  repo-specific failure mode to reproduce — apply to any interactive session
+  on this repo the next time it pulls a newer Claude Code, with no config
+  change needed.
+- **Reviewed, not applicable: cloud/self-hosted-runner reliability fixes
+  (2.1.280).** Ruled out by [constraint #5](../../.claude/rules/constraints.md)
+  — this repo's CI runs on GitHub-hosted `ubuntu-latest` runners only, never a
+  self-hosted or cloud runner of its own.
+
+- **Reviewed, no change: `claude plugin validate` now checks MCP servers,
+  warns on unquoted `${CLAUDE_PLUGIN_ROOT}` in shell-form hooks, and stops
+  flagging `privacyPolicyUrl`/`supportUrl` (2.1.281).** Ran
+  `claude plugin validate .` and `claude plugin validate
+  .claude-plugin/plugin.json` on 2.1.281: both pass. None of the new checks
+  has anything to flag here — the plugin ships no `.mcp.json` (it registers
+  via `/plugin install`, never as an MCP server of its own), no hooks, and
+  the only `${CLAUDE_PLUGIN_ROOT}` uses are inside the five
+  [`commands/`](../../commands) markdown bash blocks, which are not
+  shell-form hooks and already use the `"${CLAUDE_PLUGIN_ROOT:-$(pwd)}"`
+  quoted form. The command is still a useful local pre-flight for a
+  manifest change; it is not wired into CI (that would be the
+  `claude plugin eval` follow-up flagged in the PR).
+- **Reviewed, kept the object form: `"attribution": false` in `settings.json`
+  (2.1.281).** [`.claude/settings.json`](../../.claude/settings.json) keeps
+  `"attribution": { "commit": "Co-Authored-By: Claude <noreply@anthropic.com>" }`
+  deliberately: the repo *wants* a commit trailer, and 2.1.281 notes older
+  CLI versions skip a settings file holding the boolean form, so the object
+  form is also the safe one for a file shared across contributors' versions.
+- **Reviewed, not applicable: `--agents` JSON file path (2.1.281),
+  `sandbox.network.allowLocalBinding` (2.1.281), `mcp_tool` hooks on blocking
+  events waiting for MCP connect (2.1.281), MCP URL-mode elicitation
+  (2.1.281).** This repo spawns no subagents, sets no `sandbox` block, defines
+  no hooks, and registers no MCP server (constraint #4).
+- **Reviewed, benefits automatically / no action: the auto-mode changes
+  (2.1.281).** The dangerous-`rm` prompt now times out after 2 minutes and
+  denies with a rewrite hint in auto/`--dangerously-skip-permissions` mode
+  (`CLAUDE_CODE_DISABLE_DANGEROUS_RM_TIMEOUT=1` turns it off), a recursive
+  `rm` of command-substitution output now prompts, and
+  `CLAUDE_CODE_AUTO_MODE_SERVER` now also applies on a direct Anthropic API
+  connection. These are contributor-session behaviors: no `.claude/settings.json`
+  permission rule here allows `rm`, so nothing needs to change.
+- **Reviewed, not applicable: self-hosted-runner system prompts as private
+  files (2.1.281).** Wrappers appending `--system-prompt` must switch to
+  `--system-prompt-file`. [Constraint #5](../../.claude/rules/constraints.md)
+  rules out self-hosted runners; [`claude.yml`](../../.github/workflows/claude.yml)
+  runs `anthropics/claude-code-action@v1` on GitHub-hosted runners.
+- **Reviewed, not applicable: Claude apps gateway (`assume_role`, `guardrail`,
+  `telemetry.resource_attributes`, `desktop` policy keys, `envHelper` path
+  refusal), Artifact tool loading scripts from `unpkg.com`, and the
+  VSCode / Claude Code on the web / Claude Tag / Code Review sections
+  (2.1.281).** Managed-org/gateway/Artifact/host surfaces
+  constraint #4 rules out. The remaining 2.1.281 fixes (session resume,
+  proxy-stream handling, plugin CLI scope resolution, `/plugin`, vim mode,
+  and TUI polish) are host-side reliability work that reaches this repo
+  through a newer Claude Code with no config change.
+
+Everything else in 2.1.280 — the Artifact-tool policy-load/republish-DB-rules
+fixes (constraint #4, no Artifact usage), and the VSCode, Claude Code on the
+web, and Claude Tag (Slack) sections — is either a managed-org/Cowork/Artifact
+surface constraint #4 rules out or a host surface this repo's Claude Code path
+never uses: as the 2.1.273 note below already established, this repo is used
+from a terminal or from
+[`claude.yml`](../../.github/workflows/claude.yml)'s comment-triggered
+`anthropics/claude-code-action@v1` job, never the VS Code extension, Claude
+Code on the web, or Claude in Slack. Nothing here changes registration,
+sandboxing shape, or command-argument handling beyond the two documented
+fixes above.
 
 **Claude Code notes (2.1.274 → 2.1.278).** `.claude-code-version` advances to
 **2.1.278**, covering 2.1.275, 2.1.277, and 2.1.278 (2.1.276 was never

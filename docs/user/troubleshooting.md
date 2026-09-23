@@ -257,6 +257,13 @@ Two related Claude Code notes:
   first, so a freshly published plugin version installs without a manual
   `/plugin marketplace update` (2.1.221–2.1.231 refresh a stale catalog and
   retry only after a failed lookup).
+- **Recorded commit missing after `/plugin marketplace update`.** Before
+  2.1.280, updating a GitHub-repo-sourced plugin — this plugin's install path
+  — could drop its recorded commit from `installed_plugins.json`, even though
+  the plugin itself stayed installed and working. Update Claude Code; no
+  reinstall needed, and no change to
+  [`.claude-plugin/marketplace.json`](../../.claude-plugin/marketplace.json)
+  is required.
 
 ### The client registers but fails to start
 

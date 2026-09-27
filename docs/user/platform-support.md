@@ -5,13 +5,13 @@ The editor and agent platforms this client is validated against.
 | Platform | Validated against | Latest known |
 |---|---|---|
 | Claude Code | pending | 2.1.278 |
-| Cursor | pending | 3.11 (+ changelog 2026-09-10) |
+| Cursor | pending | 3.11 (+ changelog 2026-09-23) |
 | Codex | pending | 0.155.1 |
 | OpenCode | pending | pending |
 
 All four adapter packages now ship a runnable `dist/cli.js`, so each client is
 usable today. The Codex release this repo targets is **0.155.1** and the Cursor
-release is **3.11** (changelog covered through 2026-09-10; desktop CLI observed at **3.21.13**): for each, the
+release is **3.11** (changelog covered through 2026-09-23; desktop CLI observed at **3.22.7**): for each, the
 compatibility delta was reviewed against the existing adapter and its registration
 shape (`.codex/config.toml` for Codex, `.cursor/mcp.json` for Cursor), and nothing
 in either requires a client change. That is a documentation review, not a host
@@ -19,7 +19,10 @@ test — `Validated against` stays `pending` for both, as it does for every plat
 because running the adapter end-to-end against a released host is a separate axis
 that no target has cleared yet. 
 
-**Cursor currency (desktop 3.21.13 / CLI 2026-08-26).** Feature write-up remains **3.11** (changelog through **2026-09-10** Projects). The desktop download line is **3.21.13** (2026-09-18). CLI changelog **2026-08-26** adds persistent sessions (`agent persist`, `/detach`, `agent persist attach`) useful for long local adapter smoke runs — optional; no MCP registration change. Hibernated self-hosted worker wake on follow-up is irrelevant to this thin-client plugin (constraint #4 / no self-hosted Cursor workers declared here).
+
+**Security Review + Rollouts (2026-09-23).** Teams/Enterprise bots from [Automations](https://cursor.com/automations) ([docs](https://cursor.com/docs/security-agents)). Security Review comments exploitable bugs on ready PRs (drafts skipped; Bugbot keeps style/quality); use `/review-security` before push. Rollouts watches deploy health per environment — optional for this public thin-client (no product deploy surface here). [Changelog](https://cursor.com/changelog/rollouts-and-security-reviewer).
+
+**Cursor currency (desktop 3.22.7 / CLI 2026-08-26).** Feature write-up remains **3.11** (changelog through **2026-09-23** Projects). The desktop download line is **3.22.7** (2026-09-18). CLI changelog **2026-08-26** adds persistent sessions (`agent persist`, `/detach`, `agent persist attach`) useful for long local adapter smoke runs — optional; no MCP registration change. Hibernated self-hosted worker wake on follow-up is irrelevant to this thin-client plugin (constraint #4 / no self-hosted Cursor workers declared here).
 
 The tracked pins live at the repo root:
 [`.claude-code-version`](../../.claude-code-version),
@@ -1243,7 +1246,7 @@ rest of the 2.1.229 + 2.1.231 delta is host-side and needs no client change:
 both releases' MCP OAuth fixes concern OAuth-flow MCP servers, while this
 client's device-code + bearer design never touches MCP OAuth.
 
-**Cursor notes (3.11 → 2026-09-10).** Registration remains `.cursor/mcp.json` →
+**Cursor notes (3.11 → 2026-09-23).** Registration remains `.cursor/mcp.json` →
 `mcpServers.production-master` (see [Quick Start](quick-start.md)). Cursor 3.9+'s
 Customize page is the preferred place to manage that MCP entry alongside plugins,
 skills, and hooks. Team admins on 3.10+ can also distribute an approved MCP via
@@ -1268,16 +1271,16 @@ Enable **Update stale builds** and set the **Staleness threshold** (default
 **24 hours**; `0` = always pull latest default-branch at agent start). Phase
 split: durable work in `install` (Build-time), fresh services in `start`, shared
 app processes in `terminals` (both at agent start). Desktop download line
-**3.21.13** (stable download API; no separate feature write-up beyond date-only changelog through 2026-09-10 Projects).
+**3.22.7** (stable download API; no separate feature write-up beyond date-only changelog through 2026-09-23 Projects).
 ([announcement](https://cursor.com/blog/builds) · [Builds docs](https://cursor.com/docs/cloud-agent/builds)).
 
-**Cursor working tips.** **Projects (2026-09-10):** use Cursor **Projects** (left nav) for multi-week / multi-agent work — a **coordinator** plans and delegates (does not write code); **shared context** syncs across cloud and local agents; **subscriptions** can watch Slack, schedules, or all PRs. Keep one-shot adapter fixes in ordinary Agent / Cloud Agent chats. Desktop CLI observed **3.21.13** (feature changelog still **3.11**). **Self-Hosted Machines (2026-09-02):** Cursor can run Cloud Agent tool execution on **My Machines**, **Team Pools** (dynamic scale + hibernation), or partner sandboxes (AWS Lambda, Coder, Cloudflare, Daytona, Modal, Namespace, Vercel, E2B), with **computer use** on Linux/Mac ([docs](https://cursor.com/docs/cloud-agent/self-hosted)). This is **not** GitHub Actions `runs-on: [self-hosted]` — this **public** thin-client repo stays on `ubuntu-latest` only (Hard rule 4 / fork-PR RCE). Prefer Cursor-managed Cloud Agents for day-to-day plugin work; use self-hosted only for private-network or custom-hardware constraints. **Start from scratch / Origin without SCM (2026-08-27):** Cloud Agents no longer need a connected GitHub (or other SCM) to begin — pick **Start from scratch**, prompt immediately, then **Create repo** to save into an Origin repo (private/internal). Live **browser port-forward preview** (incl. design mode) and optional **Vercel publish** for a live URL are available from the agent session. GitHub remains canonical for this public thin client's installs/CI. **Subscriptions / Custom Modes / isolated-VM subagents / `/goal` (+ CreateGoal/UpdateGoal) + steering (2026-08-19):** Cloud Agents can wake on PR/Slack/schedule and auto-subscribe to PRs they open; pin any skill as a Custom Mode via ⌥⏎ / Alt+Enter from `/`; cloud subagents can run on their own VMs; use `/goal` or native **CreateGoal** / **UpdateGoal**; follow-ups wait for the next tool call. Cursor CLI **Aug 11** adds sticky skills (Option+Enter),
+**Cursor working tips.** **Security Review + Rollouts (2026-09-23):** enable from Automations when on Teams/Enterprise; `/review-security` for local pre-push. **Projects (2026-09-10):** use Cursor **Projects** (left nav) for multi-week / multi-agent work — a **coordinator** plans and delegates (does not write code); **shared context** syncs across cloud and local agents; **subscriptions** can watch Slack, schedules, or all PRs. Keep one-shot adapter fixes in ordinary Agent / Cloud Agent chats. Desktop CLI observed **3.22.7** (feature changelog still **3.11**). **Self-Hosted Machines (2026-09-02):** Cursor can run Cloud Agent tool execution on **My Machines**, **Team Pools** (dynamic scale + hibernation), or partner sandboxes (AWS Lambda, Coder, Cloudflare, Daytona, Modal, Namespace, Vercel, E2B), with **computer use** on Linux/Mac ([docs](https://cursor.com/docs/cloud-agent/self-hosted)). This is **not** GitHub Actions `runs-on: [self-hosted]` — this **public** thin-client repo stays on `ubuntu-latest` only (Hard rule 4 / fork-PR RCE). Prefer Cursor-managed Cloud Agents for day-to-day plugin work; use self-hosted only for private-network or custom-hardware constraints. **Start from scratch / Origin without SCM (2026-08-27):** Cloud Agents no longer need a connected GitHub (or other SCM) to begin — pick **Start from scratch**, prompt immediately, then **Create repo** to save into an Origin repo (private/internal). Live **browser port-forward preview** (incl. design mode) and optional **Vercel publish** for a live URL are available from the agent session. GitHub remains canonical for this public thin client's installs/CI. **Subscriptions / Custom Modes / isolated-VM subagents / `/goal` (+ CreateGoal/UpdateGoal) + steering (2026-08-19):** Cloud Agents can wake on PR/Slack/schedule and auto-subscribe to PRs they open; pin any skill as a Custom Mode via ⌥⏎ / Alt+Enter from `/`; cloud subagents can run on their own VMs; use `/goal` or native **CreateGoal** / **UpdateGoal**; follow-ups wait for the next tool call. Cursor CLI **Aug 11** adds sticky skills (Option+Enter),
 steer-while-running (Enter queues guidance; Enter again interrupts), optional
 durable `/goal` (gated), and runs hooks from installed plugins once a Cursor-native
 hooks bundle exists — irrelevant to this thin-client adapter beyond local CLI
 debugging.  Desktop CLI may report **3.16.29** while the public feature
 changelog stays on **3.11** — this repo pins the feature/date in `.cursor-version`
-and records `desktop_cli` separately. Newest covered changelog date is **2026-09-10** (Projects; prior Self-Hosted Machines / Team Pools / partner sandboxes / computer use on **2026-09-02**; subscriptions / custom modes / isolated subagent VMs / `/goal` / steering). Desktop CLI **3.21.13**. Cursor also loads the open
+and records `desktop_cli` separately. Newest covered changelog date is **2026-09-10** (Projects; prior Self-Hosted Machines / Team Pools / partner sandboxes / computer use on **2026-09-02**; subscriptions / custom modes / isolated subagent VMs / `/goal` / steering). Desktop CLI **3.22.7**. Cursor also loads the open
 [Agent Plugins](https://agent-plugins.org) standard alongside `.cursor-plugin`
 manifests. The desktop/CLI `workspaceOpen` hook can return `pluginPaths` for
 workspace-specific plugins (not available on Cloud Agents). Use a **side chat**

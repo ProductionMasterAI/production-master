@@ -31,4 +31,8 @@ session should see up front.
 Run the same gates CI does before opening a PR — the
 [`run-production-master`](.claude/skills/run-production-master/SKILL.md)
 skill scripts this end to end: install, build all workspaces, test, lint,
-then validate install manifests.
+then validate install manifests. Claude Code 2.1.286+ also runs the
+lighter [`verify`](.claude/skills/verify/SKILL.md) skill (build, test,
+lint) automatically right before every commit that isn't docs-only or
+tests-only — still run `run-production-master` yourself before opening
+the PR for the full gate.

@@ -257,6 +257,27 @@ Two related Claude Code notes:
   first, so a freshly published plugin version installs without a manual
   `/plugin marketplace update` (2.1.221–2.1.231 refresh a stale catalog and
   retry only after a failed lookup).
+- **Recorded commit missing after `/plugin marketplace update`.** Before
+  2.1.280, updating a GitHub-repo-sourced plugin — this plugin's install path
+  — could drop its recorded commit from `installed_plugins.json`, even though
+  the plugin itself stayed installed and working. Update Claude Code; no
+  reinstall needed, and no change to
+  [`.claude-plugin/marketplace.json`](../../.claude-plugin/marketplace.json)
+  is required.
+- **A Bash approval prompt appears on every `/investigate`, `/connect`,
+  `/update`, `/login`, or `/logout` in a managed organization, where it
+  didn't before.** Each command in [`commands/`](../../commands) declares
+  `allowed-tools: Bash` to pre-approve the one tool it needs. As of Claude
+  Code 2.1.284, that pre-approval is no longer honored under an
+  organization's managed `allowManagedPermissionRulesOnly` policy unless
+  the plugin comes from an official Anthropic source or one the
+  organization's managed settings explicitly vouch for — this repo's
+  marketplace is neither by default. This isn't a bug in the plugin or a
+  regression to fix here: if your organization runs
+  `allowManagedPermissionRulesOnly` and you want the pre-approval back, ask
+  your Claude Code admin to vouch for
+  `ProductionMasterAI/production-master` in managed settings; otherwise,
+  approve the Bash prompt once per command as usual.
 
 ### The client registers but fails to start
 

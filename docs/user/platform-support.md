@@ -6,11 +6,11 @@ The editor and agent platforms this client is validated against.
 |---|---|---|
 | Claude Code | pending | 2.1.278 |
 | Cursor | pending | 3.11 (+ changelog 2026-09-10) |
-| Codex | pending | 0.155.1 |
+| Codex | pending | 0.159.2 |
 | OpenCode | pending | pending |
 
 All four adapter packages now ship a runnable `dist/cli.js`, so each client is
-usable today. The Codex release this repo targets is **0.155.1** and the Cursor
+usable today. The Codex release this repo targets is **0.159.2** and the Cursor
 release is **3.11** (changelog covered through 2026-09-10; desktop CLI observed at **3.21.13**): for each, the
 compatibility delta was reviewed against the existing adapter and its registration
 shape (`.codex/config.toml` for Codex, `.cursor/mcp.json` for Cursor), and nothing
@@ -25,6 +25,16 @@ The tracked pins live at the repo root:
 [`.claude-code-version`](../../.claude-code-version),
 [`.codex-version`](../../.codex-version), and
 [`.cursor-version`](../../.cursor-version).
+
+Codex 0.156.0 through 0.159.2 were reviewed cumulatively against this adapter. Native
+worktree/task lifecycle, usage reporting, background-server recovery, stronger proxy and
+network-policy enforcement, MCP OAuth/client-secret handling, opt-in instant interruption,
+thread-history improvements, and GPT-6.1 Sol becoming the bundled default do not change this
+repo's `.codex/config.toml` registration or thin-client command contract. The removals of
+`tui.prompt_suggestions` and the bundled `plugin-creator` skill are also host-side for this
+adapter. Prefer these native Codex capabilities over custom wrappers when future Codex-specific
+orchestration needs them. The 0.159.2 Windows background-console fix is consumed upstream; no
+repository-specific workaround is carried here.
 
 Codex 0.150.0 adds native task references, improved task naming/copy ergonomics, and an
 `Interrupt` hook that can invoke commands or MCP handlers when a top-level turn is

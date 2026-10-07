@@ -1,1 +1,158 @@
-PLACEHOLDER
+# Quick Start
+
+Get from zero to your first investigation in a few minutes. Three steps, same everywhere: **install → log in → investigate.**
+
+> **Prerequisites:** Node.js 22 and an account on the Production Master hosted service.
+
+> **Status:** the Cursor, Codex, and OpenCode adapters are runnable but not yet published to npm (`private: true` for 0.1.0) — register them by pointing your editor at a local build, as shown below. Claude Code installs from the plugin marketplace and needs no local build.
+
+## 1. Install the client in your editor
+
+Pick your editor. Each registers the same thin client through its native mechanism.
+
+### Claude Code
+
+This repo is its own plugin marketplace (`.claude-plugin/marketplace.json`), so add it by `owner/repo` and install from it — no separate marketplace repo to look up first:
+
+```
+/plugin marketplace add ProductionMasterAI/production-master
+/plugin install production-master@production-master
+```
+
+> **Claude Code 2.1.275+:** the two steps above collapse into one —
+> `/plugin install production-master --marketplace ProductionMasterAI/production-master`
+> adds the marketplace and installs from it in a single command.
+
+> **Claude Code 2.1.292+:** the same `--marketplace <source>` flag also works
+> on the `claude` CLI itself, outside any session —
+> `claude plugin install production-master --marketplace ProductionMasterAI/production-master`
+> adds the marketplace and installs the plugin from a plain shell, useful for
+> scripting a contributor's environment setup before Claude Code even opens.
+
+> **No git or npm on the machine?** Claude Code 2.1.224+ also supports an
+> `archive` plugin source: the plugin is installed from a zip fetched over
+> HTTPS, with optional SHA-256 pinning of the archive — no git clone and no
+> npm involved in the install itself. If you install this client that way,
+> point the archive source at a zip that already contains the built `dist/`
+> output (a release archive built with `npm run build`): the slash commands
+> exec the built thin-client binary, and an archive install performs no build
+> step. Node.js 22 is still required at runtime.
+
+### Cursor
+
+`packages/adapter-cursor` isn't on npm yet, so `npx` won't install it — clone this
+repo and build it locally, then point Cursor at the built binary:
+
+```bash
+git clone https://github.com/ProductionMasterAI/production-master.git
+cd production-master
+nvm use && npm ci && npm run build
+```
+
+Add to `.cursor/mcp.json` in your project (or your global Cursor config), or manage
+the same entry from Cursor's **Customize** page (plugins / skills / MCPs, 3.9+),
+with `args` pointing at the absolute path to `packages/adapter-cursor/dist/cli.js`
+in your clone:
+
+```jsonc
+{
+  "mcpServers": {
+    "production-master": {
+      "command": "node",
+      "args": ["/absolute/path/to/production-master/packages/adapter-cursor/dist/cli.js", "mcp"],
+      "env": {
+        "PM_SERVICE_URL": "https://api.productionmaster.dev"
+      }
+    }
+  }
+}
+```
+
+Log in once from that same clone before using the editor's agent:
+
+```bash
+node packages/adapter-cursor/dist/cli.js login
+```
+
+> **Teams / Enterprise (Cursor 3.10+):** admins can publish an approved Team MCP once
+> under Dashboard → Integrations & MCP and distribute it through a team marketplace,
+> so members install Production Master without hand-editing `mcp.json`. See
+> [Platform support](platform-support.md).
+>
+> **Desktop note:** feature pin **3.11** / **2026-09-10**; desktop CLI observed **3.21.13**. **2026-09-10:** Cursor **Projects** (coordinator + shared context + subscriptions) for multi-week work — not a replacement for ordinary Agent chats. **2026-09-02:** Self-Hosted Machines (My Machines / Team Pools / partner sandboxes) + computer use on Linux/Mac — **not** GHA self-hosted runners; this public repo stays on `ubuntu-latest`. **2026-08-27:** Cloud Agents can **Start from scratch** without a connected SCM, save via **Create repo** to Origin, use **browser port-forward preview**, and optionally **Vercel publish**. **2026-08-19:** Cloud Agents gain **Subscriptions**, **Custom Modes** (⌥⏎), **isolated-VM subagents**, Agent Window **`/goal`** (native **CreateGoal** / **UpdateGoal**), and **non-interruptive steering**. **Origin** (2026-08-17, early beta) can mirror this GitHub repo for browse/PR in Cursor; use the [Origin CLI](https://cursor.com/docs/origin/cli) for clone/push/pull; agents can [create Origin repos](https://cursor.com/docs/origin/create-repository); connect [Automations / Cloud Agents](https://cursor.com/docs/origin/integrations) and apps (Vercel / Depot / Buildkite) from repo settings. GitHub stays the install/CI source of truth ([docs](https://cursor.com/docs/origin)). Cloud Agent **Builds** (2026-08-13; **now default** as of 2026-08-17) warm the install snapshot — confirm a successful Build + team/env secrets; use team/environment secrets for install credentials; Skipped recurring Builds are healthy; **Staleness threshold** defaults to **24h** (`0` = always pull); phases: `install` / `start` / `terminals`. Optional desktop `workspaceOpen` hook can load workspace plugin paths. Prefer **Grok 4.6** for long-running / visual adapter checks ([announcement](https://cursor.com/blog/grok-4-6)). **Debugging tip (3.11):** open a side chat (`/side` / `/btw`) to inspect MCP
+> connectivity while the main agent keeps investigating. For always-on CI triage,
+> create a Cursor Automation (`/automate`, 3.8) on **Workflow run completed**.
+
+### Codex
+
+`packages/adapter-codex` isn't on npm yet either. From the same clone and build
+as above, add to `.codex/config.toml`, again pointing at the absolute path to
+the built binary:
+
+```toml
+[mcp_servers.production-master]
+command = "node"
+args = ["/absolute/path/to/production-master/packages/adapter-codex/dist/cli.js", "mcp"]
+
+[mcp_servers.production-master.env]
+PM_SERVICE_URL = "https://api.productionmaster.dev"
+```
+
+Log in once: `node packages/adapter-codex/dist/cli.js login`.
+
+### OpenCode
+
+`packages/adapter-opencode` follows the same pattern. Add to `opencode.json`:
+
+```jsonc
+{
+  "mcp": {
+    "production-master": {
+      "type": "local",
+      "command": ["node", "/absolute/path/to/production-master/packages/adapter-opencode/dist/cli.js", "mcp"],
+      "enabled": true,
+      "environment": {
+        "PM_SERVICE_URL": "https://api.productionmaster.dev"
+      }
+    }
+  }
+}
+```
+
+Log in once: `node packages/adapter-opencode/dist/cli.js login`.
+
+Reload your editor so it picks up the new client. (On Claude Code 2.1.221+,
+`/plugin install` activates the plugin immediately when safe — no reload needed.
+On 2.1.232+, `/plugin install production-master@<marketplace>` also refreshes
+the marketplace first, so a version published minutes ago installs without a
+manual `/plugin marketplace update`.)
+
+## 2. Log in
+
+Run the login command in your editor:
+
+```
+/login
+```
+
+The client starts a **device-code** flow: it shows a short code and a URL. Open the URL in your browser, enter the code, and approve the session. Once approved, the client stores your token and you won't need to log in again until it expires.
+
+If your organization runs the service at a custom URL, set it before logging in — see [Troubleshooting → Service URL](troubleshooting.md#service-url).
+
+## 3. Run your first investigation
+
+Start an investigation by describing the incident:
+
+```
+/investigate "checkout latency spiked at 14:20 UTC"
+```
+
+The client hands this to the hosted service and begins streaming progress back into your editor: status updates, findings, and finally the report. You don't have to wait at the terminal — you can reconnect to a run later (see [Usage](usage.md)).
+
+When the investigation proposes an action that would change a system, the client pauses and shows it to you. **Nothing runs until you approve it.** Approve or reject inline.
+
+## Next steps
+
+- [Usage](usage.md) — start, reconnect, and approve/reject workflows in depth
+- [Commands](reference/commands.md) — the full thin-client command list
+- [Troubleshooting](troubleshooting.md) — if login or registration doesn't work

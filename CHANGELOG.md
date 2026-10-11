@@ -1,11 +1,8 @@
-# Changelog
-
-All notable changes to this project are documented here.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
 ## [Unreleased]
+
+### Changed
+- **Cursor desktop pin 3.23.12 → 3.24.12** (feature changelog still 3.11 / 2026-09-23). Document IDE 3.24 hook correlation, auto-review risky-delete approval, cloud-agent OOM recognition, and MCP OAuth hosted callback for thin-client operators.
+
 
 - **Cursor 3.11 (+2026-09-23 / desktop 3.23.12):** bump desktop pin **3.22.7 → 3.23.12** (stable download API 2026-10-01; public feature changelog still **3.11** / **2026-09-23**). Document desktop **3.23** team/org MCP allowlists, service tokens, Origin MCP endpoint, xAI linking; note removal of applying team marketplace **Required** plugins. Feature pin remains **3.11**. CLI still **2026-08-26**. Cursor-only; other platform nightlies untouched.
 

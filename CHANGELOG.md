@@ -1,11 +1,12 @@
-# Changelog
-
-All notable changes to this project are documented here.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
 ## [Unreleased]
+
+### Changed
+- **Cursor desktop pin 3.23.12 → 3.24.12** (feature changelog still 3.11 / 2026-09-23). Document IDE 3.24 hook correlation, auto-review risky-delete approval, cloud-agent OOM recognition, and MCP OAuth hosted callback for thin-client operators.
+
+
+- **Cursor 3.11 (+2026-09-23 / desktop 3.23.12):** bump desktop pin **3.22.7 → 3.23.12** (stable download API 2026-10-01; public feature changelog still **3.11** / **2026-09-23**). Document desktop **3.23** team/org MCP allowlists, service tokens, Origin MCP endpoint, xAI linking; note removal of applying team marketplace **Required** plugins. Feature pin remains **3.11**. CLI still **2026-08-26**. Cursor-only; other platform nightlies untouched.
+
+- **Cursor 3.11 (+2026-09-23 / desktop 3.22.7):** advance `changelog_date` **2026-09-10 → 2026-09-23**; desktop CLI **3.21.13 → 3.22.7** (stable download API). Document Cursor **Security Review** + **Rollouts** (Teams/Enterprise Automations; `/review-security` pre-push). Feature pin remains **3.11**. CLI still **2026-08-26**. Cursor-only; other platform nightlies untouched.
 
 ### Added
 
@@ -50,7 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   repo's five Bash-only commands. See [Platform
   support](docs/user/platform-support.md) for the full per-item review.
 
-- **Cursor 3.11 (+2026-09-10 / desktop 3.21.13):** bump desktop CLI pin **3.20.17 → 3.21.13** (download line 2026-09-18; feature **3.11** / date **2026-09-10** unchanged). Advance `cli_changelog_date` **2026-08-11 → 2026-08-26** (CLI persistent sessions `agent persist` / `/detach`; hibernated worker wake). No adapter / `.cursor/mcp.json` change required. Cursor-only; other platform nightlies untouched.
+- **Cursor 3.11 (+2026-09-10 / desktop 3.22.7):** bump desktop CLI pin **3.20.17 → 3.22.7** (download line 2026-09-18; feature **3.11** / date **2026-09-10** unchanged). Advance `cli_changelog_date` **2026-08-11 → 2026-08-26** (CLI persistent sessions `agent persist` / `/detach`; hibernated worker wake). No adapter / `.cursor/mcp.json` change required. Cursor-only; other platform nightlies untouched.
 
 - **Claude Code currency (2.1.273 → 2.1.274).** `.claude-code-version`
   advances to **2.1.274**, a single release. Registration, sandboxing

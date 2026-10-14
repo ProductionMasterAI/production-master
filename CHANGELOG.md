@@ -42,6 +42,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Claude Code currency (2.1.293 → 2.1.300).** `.claude-code-version`
+  advances to **2.1.300**, covering 2.1.294, 2.1.295, 2.1.296, 2.1.299, and
+  2.1.300 (2.1.297 and 2.1.298 were never published as separate entries).
+  Registration, sandboxing configuration shape, and command-argument
+  handling are unchanged. Nothing is adoptable as a one-line config change
+  this round. Documented: a Bash permission-check bypass via a
+  `BASH_ARGV0=...` prefix (2.1.296, closing a further gap in this repo's
+  `Bash(git push --force *)`/`Bash(git push -f *)` deny rules); a macOS
+  sandbox symlink-real-location read/write bypass (2.1.299, closing a
+  further gap in the credentials-file-symlink protection story); a
+  skill/command display-name spoofing gap via hidden/direction-changing
+  characters (2.1.299, relevant to this public fork-PR-driven repo's
+  `commands/` and `.claude/skills/`); and a Windows `claude plugin install`
+  fix that retries a bare `owner/repo` source's clone over HTTPS with no
+  GitHub SSH key configured (2.1.296, exactly how this plugin is installed)
+  — now noted in [Quick Start](docs/user/quick-start.md). `claude plugin
+  validate`'s new README-install-line advisory (2.1.295) needs no change —
+  [README.md](README.md) already has one. Everything else — the hooks/mods/
+  MCP-server/gateway/OTel/Workflow/Cowork/Artifact/self-hosted-runner
+  additions across 2.1.294–2.1.300 — is either a managed-org/gateway/model/
+  mods surface constraint #4 rules out or applies automatically with no
+  config change. See [Platform support](docs/user/platform-support.md) for
+  the full per-item review.
+
 - **Claude Code currency (2.1.286 → 2.1.293).** `.claude-code-version`
   advances to **2.1.293**, covering 2.1.287–2.1.293 (all seven published as
   their own entries). Registration, sandboxing configuration shape, and

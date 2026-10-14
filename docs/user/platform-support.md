@@ -4,7 +4,7 @@ The editor and agent platforms this client is validated against.
 
 | Platform | Validated against | Latest known |
 |---|---|---|
-| Claude Code | pending | 2.1.293 |
+| Claude Code | pending | 2.1.300 |
 | Cursor | pending | 3.11 (+ changelog 2026-09-10) |
 | Codex | pending | 0.155.1 |
 | OpenCode | pending | pending |
@@ -50,6 +50,116 @@ stdio server intentionally continues to advertise its older supported MCP
 protocol; changing only the protocol string would be unsafe. A future SDK-backed
 upgrade should adopt the newer protocol when paginated discovery, multi-round
 requests, and non-blocking startup can be implemented and tested together.
+
+**Claude Code notes (2.1.293 → 2.1.300).** `.claude-code-version` advances to
+**2.1.300**, covering 2.1.294, 2.1.295, 2.1.296, 2.1.299, and 2.1.300 (2.1.297
+and 2.1.298 were never published as separate changelog entries). Registration,
+sandboxing configuration shape, and command-argument handling are unchanged.
+Nothing here is adoptable as a one-line config change; two items close real
+gaps in protections this repo already relies on, one closes a display/
+spoofing gap relevant to a public fork-PR-driven repo, one is a reliability
+fix directly relevant to how this plugin is installed, one is a required
+`claude plugin validate`/README re-check, and everything else is either a
+managed-org/gateway/model/mods/hooks/OTel/Workflow/self-hosted-runner/Cowork/
+Artifact/Claude-Tag surface [constraint #4](../../.claude/rules/constraints.md)
+(or [constraint #5](../../.claude/rules/constraints.md)) rules out, or
+host-side UI/reliability work with no hook into this repo's five Bash-only
+commands:
+
+- **Documented: Bash permission checks could auto-approve a command prefixed
+  with a `BASH_ARGV0=...` shell-variable assignment that then used that
+  variable, bypassing a deny rule written for the plain command (2.1.296).**
+  This is the same class of gap the 2.1.289 `FOO=bar git push --force origin
+  main` fix closed for this repo's two
+  [`.claude/settings.json`](../../.claude/settings.json) deny entries
+  (`Bash(git push --force *)`, `Bash(git push -f *)`), there specifically so
+  an auto-mode session can never force-push to `main`
+  ([constraint #2](../../.claude/rules/constraints.md)) — this time via
+  `BASH_ARGV0` rather than a plain prefix assignment. Update Claude Code; the
+  deny entries themselves need no change.
+- **Documented: a sandboxed command on macOS could read or write a denied
+  path by its real location when the denied path passes through a symlink
+  (2.1.299).** Closes a further gap in the same credentials-file-symlink
+  protection story as the 2.1.236 wildcard-`denyRead`-hardening and 2.1.247
+  symlink-deletion fixes above, and the 2.1.287 symlink-write-now-prompts fix
+  below — relevant to anyone protecting a `PM_ACCESS_TOKEN` credentials file
+  living outside the checkout with a sandbox `denyRead`/`denyWrite` entry on
+  macOS. Update Claude Code; no change to the credentials file's location or
+  any existing deny entry is needed.
+- **Documented: a skill or command whose file/folder name contains hidden,
+  direction-changing, or blank-like characters, or `<`/`>`, is no longer
+  offered until renamed — such a `name:` is now ignored (2.1.299).** On this
+  public, fork-PR-driven repo, a malicious contribution could previously add
+  a file under [`commands/`](../../commands) or
+  [`.claude/skills/`](../../.claude/skills) whose display name used one of
+  these characters to visually spoof one of this plugin's five genuine slash
+  commands (`/investigate`, `/connect`, `/update`, `/login`, `/logout`) or
+  its two skills. Update Claude Code; none of this repo's own file or folder
+  names use any of the now-rejected characters, so nothing here needs
+  renaming — the fix only closes the door on a future malicious addition.
+- **Documented: `claude plugin install`/`enable`/`disable`/`marketplace add`
+  retries a GitHub `owner/repo` plugin source's clone over HTTPS when no
+  GitHub SSH key is configured, on Windows (2.1.296).** This is exactly how
+  this plugin is installed —
+  [Quick Start](quick-start.md#1-install-the-client-in-your-editor)'s
+  `claude plugin install production-master --marketplace
+  ProductionMasterAI/production-master` (or the two-step
+  `/plugin marketplace add`/`/plugin install` form) names a bare
+  `ProductionMasterAI/production-master` GitHub source — so a Windows
+  contributor with no SSH key configured for GitHub previously saw the
+  install fail outright instead of falling back to HTTPS. Update Claude
+  Code; no change to the install instructions themselves is needed. Noted in
+  [Quick Start](quick-start.md#1-install-the-client-in-your-editor) as a
+  Windows-specific reliability note.
+- **Reviewed, no change needed: `claude plugin validate`'s new advice when a
+  plugin's README has no install line (2.1.295).** It only ever prints the
+  line to paste and never changes the exit code, even with `--strict`.
+  [README.md](../../README.md) already has one (the `/plugin marketplace
+  add`/`/plugin install` block quick-start also shows), so there is nothing
+  for the advisory to flag.
+- **Reviewed, a refinement to an already-tracked, not-yet-adopted option:
+  `claude plugin eval`'s new `--disallow-tools`/`disallowed_tools` case field
+  (2.1.299).** Lets an eval case keep specific built-in tools (such as
+  `Agent`) out of a run. This narrows, but does not resolve, the open
+  question already tracked for this repo's single plugin having no automated
+  eval/smoke-test suite — see Future opportunities in the tracking PR.
+- **Reviewed, not applicable: everything hook-, mod-, MCP-server-, gateway-,
+  OTel-, Workflow-, Cowork-, Artifact-, and self-hosted-runner-shaped across
+  2.1.294–2.1.300** — `onFailure: "block"` for command/HTTP hooks and the
+  change making a blocked action refuse rather than let through on hook
+  failure (2.1.295/2.1.299), `UserPromptSubmit` running before skill/command
+  expansion and the skill-frontmatter-hook ordering change (2.1.299), the
+  `agent.spawn`/`turn.start`/`prompt.change`/`prompt.submit`-adjacent mod
+  hooks and every `$.ui.*`/`$.session.*`/`$.prompt.*` mod API addition
+  (2.1.295–2.1.300), the MCP allow-rule exact-server-name-match change and
+  the MCP-tool-description/instruction length changes (2.1.295/2.1.296/
+  2.1.299), Claude Haiku 5.5/Sonnet-cache-price/model-availability items, the
+  Claude apps gateway additions (the `code` managed-policy key, `desktop`
+  policy handling, `forceLoginMethod: "gateway"`, `CLAUDE_CODE_ATTRIBUTION_
+  HEADER`, `timeouts.upstream_ttfb_ms`, per-upstream `models` lists), the
+  OpenTelemetry GenAI semantic-convention attributes and new `api_request`
+  cache-token fields, `/advisor` on AWS, the `Workflow`-tool and subagent
+  additions (`autoCompactWindow`, `CLAUDE_CODE_WORKFLOW_SUBAGENT_MODEL`,
+  32-skill subagent preload cap), Cowork cloud-session and self-hosted-runner
+  orchestrator changes (`--shutdown-drain-sec` and the rest), and the
+  Artifact-tool publish/watch-limit changes — is either a managed-org/
+  gateway/model/mods/hooks/OTel/Workflow/Cowork/Artifact surface
+  [constraint #4](../../.claude/rules/constraints.md) rules out, a
+  self-hosted-runner surface [constraint #5](../../.claude/rules/constraints.md)
+  rules out, or this repo defines/runs none of (no hooks, no mods, no
+  `.mcp.json` server, no subagents, no `Workflow` tool script). This repo
+  makes no model calls of its own either way.
+- **Reviewed, benefits automatically / no action: the rest of
+  2.1.294–2.1.300.** General session reliability and correctness fixes
+  (idle terminal compaction, the exit-force-kills-background-commands
+  change, the WSL2 `bwrap` sandboxed-command-startup fix, Bash permission
+  check accuracy for for-loops over glob patterns, the Grep `-l`/`-c`/`-r`
+  flag-handling fix, the HTTP MCP connection memory leak noted in the
+  2.1.293 entry below, and the large volume of terminal/VSCode/Claude-Tag/
+  Code-Review/Remote-Control UI and Windows-specific fixes) apply to any
+  session on this repo the next time it pulls a newer Claude Code, with no
+  config change needed. Nothing here changes registration, sandboxing
+  shape, or command-argument handling beyond the items documented above.
 
 **Claude Code notes (2.1.286 → 2.1.293).** `.claude-code-version` advances to
 **2.1.293**, covering 2.1.287 through 2.1.293 — all seven published as their

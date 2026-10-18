@@ -1,6 +1,8 @@
 ## [Unreleased]
 
 ### Changed
+
+- **Cursor 3.11 (+2026-10-16 / desktop 3.25.9):** advance `changelog_date` **2026-09-23 → 2026-10-16**; desktop CLI **3.24.12 → 3.25.9** (stable download API 2026-10-18). Public feature pin remains **3.11**. Cover date-only changelog: **Remote Control** for local agents (2026-10-06), **Origin App Marketplace** (2026-10-13), and **Cloud Agent canvases + Environments API + 300-repo / 5× faster environments** (2026-10-16). CLI still **2026-08-26**. Cursor-only; other platform nightlies untouched.
 - **Cursor desktop pin 3.23.12 → 3.24.12** (feature changelog still 3.11 / 2026-09-23). Document IDE 3.24 hook correlation, auto-review risky-delete approval, cloud-agent OOM recognition, and MCP OAuth hosted callback for thin-client operators.
 
 

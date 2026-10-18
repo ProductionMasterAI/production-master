@@ -5,13 +5,13 @@ The editor and agent platforms this client is validated against.
 | Platform | Validated against | Latest known |
 |---|---|---|
 | Claude Code | pending | 2.1.278 |
-| Cursor | pending | 3.11 (+ changelog 2026-09-23) |
+| Cursor | pending | 3.11 (+ changelog 2026-10-16; desktop 3.25.9) |
 | Codex | pending | 0.155.1 |
 | OpenCode | pending | pending |
 
 All four adapter packages now ship a runnable `dist/cli.js`, so each client is
 usable today. The Codex release this repo targets is **0.155.1** and the Cursor
-release is **3.11** (changelog covered through 2026-09-23; desktop CLI observed at **3.24.12**): for each, the
+release is **3.11** (changelog covered through 2026-10-16; desktop CLI observed at **3.25.9**): for each, the
 compatibility delta was reviewed against the existing adapter and its registration
 shape (`.codex/config.toml` for Codex, `.cursor/mcp.json` for Cursor), and nothing
 in either requires a client change. That is a documentation review, not a host
@@ -20,11 +20,17 @@ because running the adapter end-to-end against a released host is a separate axi
 that no target has cleared yet. 
 
 
+**Cloud Agent canvases + Environments API (2026-10-16).** Cloud agents can publish shareable interactive canvases; Environments API (beta) manages environments programmatically; environments support up to 300 repos and load ~5× faster ([changelog](https://cursor.com/changelog/cloud-agent-canvases-and-environments)). Optional for this thin-client plugin — no MCP registration change.
+
+**Origin App Marketplace (2026-10-13).** Origin apps for deploy/CI/review/security ([changelog](https://cursor.com/changelog/origin-app-marketplace)). Distinct from this plugin's marketplace install path; GitHub stays install/CI source of truth.
+
+**Remote Control (2026-10-06).** iOS can steer local Cursor agents on a paired computer ([changelog](https://cursor.com/changelog/remote-control-local-agents)). Optional operator convenience; Cloud Automations remain the unattended path.
+
 **Security Review + Rollouts (2026-09-23).** Teams/Enterprise bots from [Automations](https://cursor.com/automations) ([docs](https://cursor.com/docs/security-agents)). Security Review comments exploitable bugs on ready PRs (drafts skipped; Bugbot keeps style/quality); use `/review-security` before push. Rollouts watches deploy health per environment — optional for this public thin-client (no product deploy surface here). [Changelog](https://cursor.com/changelog/rollouts-and-security-reviewer).
 
-**Desktop 3.24.12 (2026-10-10/11).** Stable download line advances **3.23.12 → 3.24.12** while the public feature write-up remains **3.11** / **2026-09-23**. IDE notes: hook **`tool_use_id`** correlation for shell/MCP hooks, always-on **`transcript_path`**, **auto-review** approval for risky deletes, cloud-agent **OOM recognition**, MCP OAuth **hosted callback**. Retains 3.23 controls (team/org MCP allowlists, service tokens, Origin MCP at `api.origin.cursor.com/mcp`; Required team-marketplace plugins remain removed). For this thin client: prefer service tokens over personal PATs for Cloud Agent CI triage; confirm org MCP allowlists still permit any Team MCP registration after upgrade.
+**Desktop 3.25.9 (2026-10-18).** Stable download line advances **3.24.12 → 3.25.9** while the public feature write-up remains **3.11** / **2026-10-16**. IDE notes: hook **`tool_use_id`** correlation for shell/MCP hooks, always-on **`transcript_path`**, **auto-review** approval for risky deletes, cloud-agent **OOM recognition**, MCP OAuth **hosted callback**. Retains 3.23 controls (team/org MCP allowlists, service tokens, Origin MCP at `api.origin.cursor.com/mcp`; Required team-marketplace plugins remain removed). For this thin client: prefer service tokens over personal PATs for Cloud Agent CI triage; confirm org MCP allowlists still permit any Team MCP registration after upgrade.
 
-**Cursor currency (desktop 3.24.12 / CLI 2026-08-26).** Feature write-up remains **3.11** (changelog through **2026-09-23** Projects). The desktop download line is **3.24.12** (2026-10-10/11). CLI changelog **2026-08-26** adds persistent sessions (`agent persist`, `/detach`, `agent persist attach`) useful for long local adapter smoke runs — optional; no MCP registration change. Hibernated self-hosted worker wake on follow-up is irrelevant to this thin-client plugin (constraint #4 / no self-hosted Cursor workers declared here).
+**Cursor currency (desktop 3.25.9 / CLI 2026-08-26).** Feature write-up remains **3.11** (changelog through **2026-10-16** canvases/Environments API). The desktop download line is **3.25.9** (2026-10-18). CLI changelog **2026-08-26** adds persistent sessions (`agent persist`, `/detach`, `agent persist attach`) useful for long local adapter smoke runs — optional; no MCP registration change. Hibernated self-hosted worker wake on follow-up is irrelevant to this thin-client plugin (constraint #4 / no self-hosted Cursor workers declared here).
 
 The tracked pins live at the repo root:
 [`.claude-code-version`](../../.claude-code-version),
@@ -1248,7 +1254,7 @@ rest of the 2.1.229 + 2.1.231 delta is host-side and needs no client change:
 both releases' MCP OAuth fixes concern OAuth-flow MCP servers, while this
 client's device-code + bearer design never touches MCP OAuth.
 
-**Cursor notes (3.11 → 2026-09-23).** Registration remains `.cursor/mcp.json` →
+**Cursor notes (3.11 → 2026-10-16).** Registration remains `.cursor/mcp.json` →
 `mcpServers.production-master` (see [Quick Start](quick-start.md)). Cursor 3.9+'s
 Customize page is the preferred place to manage that MCP entry alongside plugins,
 skills, and hooks. Team admins on 3.10+ can also distribute an approved MCP via

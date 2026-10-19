@@ -42,6 +42,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Cursor 3.11 (+2026-10-16 / desktop 3.25.9):** advance `changelog_date` **2026-09-23 → 2026-10-16**; desktop CLI **3.24.12 → 3.25.9** (stable download API 2026-10-18). Public feature pin remains **3.11**. Cover date-only changelog: **Remote Control** for local agents (2026-10-06), **Origin App Marketplace** (2026-10-13), and **Cloud Agent canvases + Environments API + 300-repo / 5× faster environments** (2026-10-16). CLI still **2026-08-26**. Cursor-only; other platform nightlies untouched.
+
+- **Cursor desktop pin 3.23.12 → 3.24.12** (feature changelog still 3.11 / 2026-09-23). Document IDE 3.24 hook correlation, auto-review risky-delete approval, cloud-agent OOM recognition, and MCP OAuth hosted callback for thin-client operators.
+
+- **Cursor 3.11 (+2026-09-23 / desktop 3.23.12):** bump desktop pin **3.22.7 → 3.23.12** (stable download API 2026-10-01; public feature changelog still **3.11** / **2026-09-23**). Document desktop **3.23** team/org MCP allowlists, service tokens, Origin MCP endpoint, xAI linking; note removal of applying team marketplace **Required** plugins. Feature pin remains **3.11**. CLI still **2026-08-26**. Cursor-only; other platform nightlies untouched.
+
+- **Cursor 3.11 (+2026-09-23 / desktop 3.22.7):** advance `changelog_date` **2026-09-10 → 2026-09-23**; desktop CLI **3.21.13 → 3.22.7** (stable download API). Document Cursor **Security Review** + **Rollouts** (Teams/Enterprise Automations; `/review-security` pre-push). Feature pin remains **3.11**. CLI still **2026-08-26**. Cursor-only; other platform nightlies untouched.
+
 - **Claude Code currency (2.1.293 → 2.1.300).** `.claude-code-version`
   advances to **2.1.300**, covering 2.1.294, 2.1.295, 2.1.296, 2.1.299, and
   2.1.300 (2.1.297 and 2.1.298 were never published as separate entries).

@@ -23,6 +23,19 @@ This repo is its own plugin marketplace (`.claude-plugin/marketplace.json`), so 
 > `/plugin install production-master --marketplace ProductionMasterAI/production-master`
 > adds the marketplace and installs from it in a single command.
 
+> **Claude Code 2.1.292+:** the same `--marketplace <source>` flag also works
+> on the `claude` CLI itself, outside any session —
+> `claude plugin install production-master --marketplace ProductionMasterAI/production-master`
+> adds the marketplace and installs the plugin from a plain shell, useful for
+> scripting a contributor's environment setup before Claude Code even opens.
+
+> **Windows, no GitHub SSH key configured?** Before Claude Code 2.1.296, a
+> `claude plugin install`/`marketplace add` against this repo's bare
+> `owner/repo` source failed outright on Windows machines with no SSH key
+> set up for GitHub. 2.1.296+ retries the clone over HTTPS automatically, so
+> the install above (or the one-liner just above it) now succeeds without
+> any SSH setup.
+
 > **No git or npm on the machine?** Claude Code 2.1.224+ also supports an
 > `archive` plugin source: the plugin is installed from a zip fetched over
 > HTTPS, with optional SHA-256 pinning of the archive — no git clone and no

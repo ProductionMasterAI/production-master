@@ -207,6 +207,26 @@ Related notes for recent Claude Code versions:
   specifically so a stray read can't reach a `PM_ACCESS_TOKEN` credentials
   file living outside the checkout. Update to 2.1.273+; the setting itself
   needs no change.
+- **A shell write through a repo-committed symlink onto a sensitive file now
+  prompts, instead of writing through it silently — fixed in 2.1.287.** If a
+  sandboxed Bash command resolved a tracked symlink to a path outside its
+  writable area and modified the symlink's target with no permission dialog,
+  that was this gap. On this public, fork-PR-driven repo a malicious
+  contribution could commit a symlink inside the checkout pointing at a path
+  meant to stay protected — the same class of file the 2.1.247 fix above
+  guards, such as a `PM_ACCESS_TOKEN` credentials file living outside the
+  checkout. Update to 2.1.287+; no change to the credentials file's location
+  or any existing deny/mask entry is needed.
+- **Sandboxed Bash deny/ask rules could miss a command prefixed with an
+  environment-variable assignment under auto-mode's sandbox auto-allow —
+  fixed in 2.1.289.** Before 2.1.289, a command shaped like `FOO=bar git push
+  --force origin main` could evade a deny rule written as `Bash(git push
+  --force *)` — exactly one of this repo's two
+  [`.claude/settings.json`](../../.claude/settings.json) deny entries
+  (`Bash(git push --force *)`, `Bash(git push -f *)`), there so an auto-mode
+  session can never force-push to `main` ([constraint
+  #2](../../.claude/rules/constraints.md)). Update to 2.1.289+; the deny
+  entries themselves need no change.
 
 ## Command arguments (Claude Code)
 
@@ -257,6 +277,27 @@ Two related Claude Code notes:
   first, so a freshly published plugin version installs without a manual
   `/plugin marketplace update` (2.1.221–2.1.231 refresh a stale catalog and
   retry only after a failed lookup).
+- **Recorded commit missing after `/plugin marketplace update`.** Before
+  2.1.280, updating a GitHub-repo-sourced plugin — this plugin's install path
+  — could drop its recorded commit from `installed_plugins.json`, even though
+  the plugin itself stayed installed and working. Update Claude Code; no
+  reinstall needed, and no change to
+  [`.claude-plugin/marketplace.json`](../../.claude-plugin/marketplace.json)
+  is required.
+- **A Bash approval prompt appears on every `/investigate`, `/connect`,
+  `/update`, `/login`, or `/logout` in a managed organization, where it
+  didn't before.** Each command in [`commands/`](../../commands) declares
+  `allowed-tools: Bash` to pre-approve the one tool it needs. As of Claude
+  Code 2.1.284, that pre-approval is no longer honored under an
+  organization's managed `allowManagedPermissionRulesOnly` policy unless
+  the plugin comes from an official Anthropic source or one the
+  organization's managed settings explicitly vouch for — this repo's
+  marketplace is neither by default. This isn't a bug in the plugin or a
+  regression to fix here: if your organization runs
+  `allowManagedPermissionRulesOnly` and you want the pre-approval back, ask
+  your Claude Code admin to vouch for
+  `ProductionMasterAI/production-master` in managed settings; otherwise,
+  approve the Bash prompt once per command as usual.
 
 ### The client registers but fails to start
 

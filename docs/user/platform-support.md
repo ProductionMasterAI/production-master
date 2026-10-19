@@ -6,11 +6,11 @@ The editor and agent platforms this client is validated against.
 |---|---|---|
 | Claude Code | pending | 2.1.300 |
 | Cursor | pending | 3.11 (+ changelog 2026-10-16) |
-| Codex | pending | 0.155.1 |
+| Codex | pending | 0.163.0 |
 | OpenCode | pending | pending |
 
 All four adapter packages now ship a runnable `dist/cli.js`, so each client is
-usable today. The Codex release this repo targets is **0.155.1** and the Cursor
+usable today. The Codex release this repo targets is **0.163.0** and the Cursor
 release is **3.11** (changelog covered through 2026-10-16; desktop CLI observed at **3.25.9**): for each, the
 compatibility delta was reviewed against the existing adapter and its registration
 shape (`.codex/config.toml` for Codex, `.cursor/mcp.json` for Cursor), and nothing
@@ -36,6 +36,18 @@ The tracked pins live at the repo root:
 [`.claude-code-version`](../../.claude-code-version),
 [`.codex-version`](../../.codex-version), and
 [`.cursor-version`](../../.cursor-version).
+
+Codex 0.156.0 through 0.159.2 were reviewed cumulatively against this adapter. Native
+worktree/task lifecycle, usage reporting, background-server recovery, stronger proxy and
+network-policy enforcement, MCP OAuth/client-secret handling, opt-in instant interruption,
+thread-history improvements, and GPT-6.1 Sol becoming the bundled default do not change this
+repo's `.codex/config.toml` registration or thin-client command contract. The removals of
+`tui.prompt_suggestions` and the bundled `plugin-creator` skill are also host-side for this
+adapter. Prefer these native Codex capabilities over custom wrappers when future Codex-specific
+orchestration needs them. The 0.159.2 Windows background-console fix is consumed upstream; no
+repository-specific workaround is carried here.
+
+Codex 0.160.0 through 0.163.0 were reviewed for compatibility and useful low-risk adoption. Native projectless sessions, managed worktrees, `/mcp login`, custom provider capability overrides, default instant steering and Code Mode cancellation, parallel read-only tools, `/config`, `/keymap`, `/daemon` restart, and restored thread/network permissions do not change this thin client's stdio MCP registration or command contract. Codex 0.163.0 removes the bundled patched `zsh` and retired shell flags; this repo uses `node` as its MCP command and does not set those flags. Stronger proxy checks, Windows remote MCP environment fixes and background-server recovery are consumed upstream. Prefer native Codex capabilities to custom wrappers; no speculative host configuration or MCP protocol claim is added. Direct host validation remains pending.
 
 Codex 0.150.0 adds native task references, improved task naming/copy ergonomics, and an
 `Interrupt` hook that can invoke commands or MCP handlers when a top-level turn is
@@ -1699,7 +1711,7 @@ Enable **Update stale builds** and set the **Staleness threshold** (default
 **24 hours**; `0` = always pull latest default-branch at agent start). Phase
 split: durable work in `install` (Build-time), fresh services in `start`, shared
 app processes in `terminals` (both at agent start). Desktop download line
-**3.23.12** (stable download API **2026-10-01**; desktop 3.23 adds MCP allowlists / service tokens — see Desktop 3.23.12 note above; public feature changelog still through 2026-09-23).
+**3.25.9** (stable download API **2026-10-18**; desktop 3.23 added MCP allowlists / service tokens — see Desktop 3.23.12 note above; public feature changelog through 2026-10-16).
 ([announcement](https://cursor.com/blog/builds) · [Builds docs](https://cursor.com/docs/cloud-agent/builds)).
 
 **Cursor working tips.** **Desktop 3.23.12:** confirm Team MCP allowlists; prefer service tokens for Automations. **Security Review + Rollouts (2026-09-23):** enable from Automations when on Teams/Enterprise; `/review-security` for local pre-push. **Projects (2026-09-10):** use Cursor **Projects** (left nav) for multi-week / multi-agent work — a **coordinator** plans and delegates (does not write code); **shared context** syncs across cloud and local agents; **subscriptions** can watch Slack, schedules, or all PRs. Keep one-shot adapter fixes in ordinary Agent / Cloud Agent chats. Desktop CLI observed **3.23.12** (feature changelog still **3.11**). **Self-Hosted Machines (2026-09-02):** Cursor can run Cloud Agent tool execution on **My Machines**, **Team Pools** (dynamic scale + hibernation), or partner sandboxes (AWS Lambda, Coder, Cloudflare, Daytona, Modal, Namespace, Vercel, E2B), with **computer use** on Linux/Mac ([docs](https://cursor.com/docs/cloud-agent/self-hosted)). This is **not** GitHub Actions `runs-on: [self-hosted]` — this **public** thin-client repo stays on `ubuntu-latest` only (Hard rule 4 / fork-PR RCE). Prefer Cursor-managed Cloud Agents for day-to-day plugin work; use self-hosted only for private-network or custom-hardware constraints. **Start from scratch / Origin without SCM (2026-08-27):** Cloud Agents no longer need a connected GitHub (or other SCM) to begin — pick **Start from scratch**, prompt immediately, then **Create repo** to save into an Origin repo (private/internal). Live **browser port-forward preview** (incl. design mode) and optional **Vercel publish** for a live URL are available from the agent session. GitHub remains canonical for this public thin client's installs/CI. **Subscriptions / Custom Modes / isolated-VM subagents / `/goal` (+ CreateGoal/UpdateGoal) + steering (2026-08-19):** Cloud Agents can wake on PR/Slack/schedule and auto-subscribe to PRs they open; pin any skill as a Custom Mode via ⌥⏎ / Alt+Enter from `/`; cloud subagents can run on their own VMs; use `/goal` or native **CreateGoal** / **UpdateGoal**; follow-ups wait for the next tool call. Cursor CLI **Aug 11** adds sticky skills (Option+Enter),
@@ -1708,7 +1720,7 @@ durable `/goal` (gated), and runs hooks from installed plugins once a Cursor-nat
 hooks bundle exists — irrelevant to this thin-client adapter beyond local CLI
 debugging.  Desktop CLI may report **3.16.29** while the public feature
 changelog stays on **3.11** — this repo pins the feature/date in `.cursor-version`
-and records `desktop_cli` separately. Newest covered changelog date is **2026-09-10** (Projects; prior Self-Hosted Machines / Team Pools / partner sandboxes / computer use on **2026-09-02**; subscriptions / custom modes / isolated subagent VMs / `/goal` / steering). Desktop CLI **3.23.12**. Cursor also loads the open
+and records `desktop_cli` separately. Newest covered changelog date is **2026-10-16** (Cloud Agent canvases + Environments API; prior Origin App Marketplace **2026-10-13**, Remote Control **2026-10-06**, Security Review + Rollouts **2026-09-23**, Projects **2026-09-10**; before that Self-Hosted Machines / Team Pools / partner sandboxes / computer use on **2026-09-02**; subscriptions / custom modes / isolated subagent VMs / `/goal` / steering). Desktop CLI **3.25.9**. Cursor also loads the open
 [Agent Plugins](https://agent-plugins.org) standard alongside `.cursor-plugin`
 manifests. The desktop/CLI `workspaceOpen` hook can return `pluginPaths` for
 workspace-specific plugins (not available on Cloud Agents). Use a **side chat**

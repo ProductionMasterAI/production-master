@@ -5,7 +5,7 @@ The editor and agent platforms this client is validated against.
 | Platform | Validated against | Latest known |
 |---|---|---|
 | Claude Code | pending | 2.1.278 |
-| Cursor | pending | 3.11 (+ changelog 2026-10-16; desktop 3.25.9) |
+| Cursor | pending | 3.11 (+ changelog 2026-10-16) |
 | Codex | pending | 0.155.1 |
 | OpenCode | pending | pending |
 

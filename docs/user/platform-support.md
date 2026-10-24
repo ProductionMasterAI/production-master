@@ -4,7 +4,7 @@ The editor and agent platforms this client is validated against.
 
 | Platform | Validated against | Latest known |
 |---|---|---|
-| Claude Code | pending | 2.1.300 |
+| Claude Code | pending | 2.1.306 |
 | Cursor | pending | 3.11 (+ changelog 2026-10-16) |
 | Codex | pending | 0.163.0 |
 | OpenCode | pending | pending |
@@ -73,6 +73,60 @@ stdio server intentionally continues to advertise its older supported MCP
 protocol; changing only the protocol string would be unsafe. A future SDK-backed
 upgrade should adopt the newer protocol when paginated discovery, multi-round
 requests, and non-blocking startup can be implemented and tested together.
+
+**Claude Code notes (2.1.300 → 2.1.306).** `.claude-code-version` advances to
+**2.1.306**, covering 2.1.301 through 2.1.306 (2.1.301 and 2.1.302 shipped
+together; 2.1.303 published no itemized entries beyond bug fixes and
+reliability improvements). Registration, sandboxing configuration shape, and
+command-argument handling are unchanged. Nothing here is adoptable as a
+one-line config change, and — unlike the 2.1.296/2.1.299 round above — nothing
+closes a real gap in this repo's own rules; reviewed line by line regardless:
+
+- **Reviewed, not applicable: everything mod-, hook-, MCP-server-, gateway-,
+  and managed-settings-shaped across 2.1.301–2.1.306** — `.catch` on a mod
+  hook now running only on throw or timeout, `$.env.set` resolving `{}`/
+  `{ deny }`, the 12-concurrent-hook-per-event cap, fork subagents defaulting
+  on and subagents always backgrounding in Desktop/VS Code, `-p`/SDK sessions
+  starting in `default` permission mode on third-party integrations or with
+  telemetry off, a mod's `tool.check` event gaining `decider: "person"`/
+  `e.isReadOnly`, the 1,024-hooks/16,384-character skill-source cap,
+  `sandbox.allowNestedUserNamespaces`, and the narrower `allowedMcpServers`
+  filter for a `managed-mcp.json` stdio server — this repo defines no hooks,
+  mods, subagents, or managed settings of its own
+  [constraint #4](../../.claude/rules/constraints.md); for Claude Code it
+  registers only as five plain Bash-only slash commands under
+  [`commands/`](../../commands), nothing deeper.
+- **Reviewed, not applicable: the stdio MCP protocol-2026-07-28 "no tools"
+  display fix (2.1.301/2.1.302).** Same reasoning — this plugin defines no
+  `.mcp.json` server for Claude Code at all, unlike the Cursor/Codex adapters'
+  own MCP registrations reviewed separately above.
+- **Adopted as documentation: the 2.1.302 plugin install and config-write
+  fixes.** Before 2.1.302, `claude plugin install` (and other `claude plugin`
+  subcommands) could exit before a queued settings or config write finished,
+  so an install could look successful while the registration was lost or a
+  `.tmp` file was left behind. 2.1.302 also fixes git-sourced plugins showing
+  version "unknown" and marketplaces re-cloning on every refresh when git
+  defaults to the reftable ref format, which affects this repo's own
+  `owner/repo` marketplace source. Neither needs a config change here, but
+  both change what a user on an older CLI sees after the install path in the
+  [quick start](quick-start.md), so that page now says so and the
+  [troubleshooting](troubleshooting.md) registration notes point at the
+  2.1.302 floor.
+- **Reviewed, benefits automatically / no action: the rest of 2.1.301–
+  2.1.306.** The `claude -p` cloud-session "Not logged in" false-error fix and
+  the MCP-tools-heavy "prompt is too long" false-error fix (2.1.306), `Input`'s
+  new `rows` option and hook `ask` prompts now naming the plugin that raised
+  them (2.1.301/2.1.302), `/auto-mode-setup` and `/claude-api
+  managed-agents-secure` (2.1.304), tool search on by default behind a custom
+  `ANTHROPIC_BASE_URL` (2.1.304), `CLAUDE_CODE_RETRY_WATCHDOG_USAGE_LIMIT_RECHECK_MS`
+  (2.1.305), and the `/artifacts` delete-confirmation keybinding change
+  (2.1.305) apply to any session on this repo the next time it pulls a newer
+  Claude Code, with no config change needed. 2.1.303 shipped bug fixes and
+  reliability improvements only, with no itemized entries.
+
+This repo's own `claude plugin validate .` and `claude plugin validate
+.claude-plugin/plugin.json` were re-run on the live 2.1.306 CLI: both still
+pass, with nothing new for either manifest check to flag.
 
 **Claude Code notes (2.1.293 → 2.1.300).** `.claude-code-version` advances to
 **2.1.300**, covering 2.1.294, 2.1.295, 2.1.296, 2.1.299, and 2.1.300 (2.1.297

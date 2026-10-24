@@ -44,6 +44,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Claude Code currency (2.1.300 → 2.1.306).** `.claude-code-version`
+  advances to **2.1.306**, covering 2.1.301 through 2.1.306 (2.1.301 and
+  2.1.302 shipped together; 2.1.303 published no itemized entries).
+  Registration, sandboxing configuration shape, and command-argument handling
+  are unchanged. Nothing in this delta is adopted or closes a real gap in
+  this repo's own rules: the `.catch`-on-throw-or-timeout mod-hook semantics,
+  fork-subagent default-on, `-p`/SDK default-permission-mode change, a mod's
+  `tool.check` `decider`/`isReadOnly` fields, the hooks/skill-source caps,
+  `sandbox.allowNestedUserNamespaces`, and the narrower `allowedMcpServers`
+  filter are all hook-, mod-, or managed-settings-shaped surface this repo
+  defines none of (constraint #4) — it registers for Claude Code as five
+  plain Bash-only slash commands, nothing deeper. The stdio MCP
+  protocol-2026-07-28 "no tools" display fix (2.1.301/2.1.302) is likewise
+  not applicable — this plugin defines no `.mcp.json` server for Claude Code.
+  Everything else — the `claude -p` cloud-session "Not logged in" fix and the
+  MCP-tools-heavy "prompt is too long" fix (2.1.306), and the rest of the
+  host-side reliability work — applies automatically with no config change.
+  `claude plugin validate .` and `claude plugin validate
+  .claude-plugin/plugin.json` were re-run on the live 2.1.306 CLI: both still
+  pass. See [Platform support](docs/user/platform-support.md) for the full
+  per-item review.
+
 - **Cursor 3.11 (+2026-10-16 / desktop 3.25.9):** advance `changelog_date` **2026-09-23 → 2026-10-16**; desktop CLI **3.24.12 → 3.25.9** (stable download API 2026-10-18). Public feature pin remains **3.11**. Cover date-only changelog: **Remote Control** for local agents (2026-10-06), **Origin App Marketplace** (2026-10-13), and **Cloud Agent canvases + Environments API + 300-repo / 5× faster environments** (2026-10-16). CLI still **2026-08-26**. Cursor-only; other platform nightlies untouched.
 
 - **Cursor desktop pin 3.23.12 → 3.24.12** (feature changelog still 3.11 / 2026-09-23). Document IDE 3.24 hook correlation, auto-review risky-delete approval, cloud-agent OOM recognition, and MCP OAuth hosted callback for thin-client operators.
@@ -119,6 +141,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   apps gateway additions, and the rest of the host-side reliability/UI work
   across 2.1.282–2.1.286 — is either a managed-org/gateway/model surface
   constraint #4 rules out or applies automatically with no config change.
+  One item is adopted as documentation: 2.1.302's fix for `claude plugin`
+  subcommands exiting before a queued settings/config write finished (an
+  install that looked successful but lost the registration), and for
+  git-sourced plugins showing version "unknown" under git's reftable
+  format, is now called out in the quick start and troubleshooting pages.
   See [Platform support](docs/user/platform-support.md) for the full
   per-item review.
 
@@ -766,7 +793,7 @@ and PyPI have returned 404 for these package names until now (dev#642).
   and `docs/user/platform-support.md`. The 2.1.232 delta needs no client change;
   two entries improve the install story and are now documented: **`/plugin install
 plugin@marketplace` refreshes the marketplace first** — quick-start's reload note
-  and troubleshooting's registration section carry the version-scoped behavior
+and troubleshooting's registration section carry the version-scoped behavior
   (refresh-first on 2.1.232+, refresh-and-retry on 2.1.221–2.1.231) — and the fix
   for a **startup race that could silently unregister a plugin marketplace**
   (concurrent `known_marketplaces.json` writes), which troubleshooting now names

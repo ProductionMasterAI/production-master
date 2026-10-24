@@ -39,6 +39,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (or comments on) one reused issue titled `main is red: CI`, and closes it on the next green
   run. It acts only on the newest push run on `main`, so overlapping runs finishing out of
   order cannot close a newer failure's issue or open a stale one.
+- **README: new "Data flow" section.** States where the plugin and the hosted
+  service send data, how long evidence is retained, and links the privacy policy.
 
 ### Changed
 

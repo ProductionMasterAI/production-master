@@ -30,6 +30,15 @@ The investigation itself runs entirely on the hosted service. This repository is
 - **Human-gated actions** — every proposed action that mutates a system is surfaced for explicit approval; you approve or reject before anything happens.
 - **Multi-IDE support** — one thin client, registered through each editor's native extension mechanism (plugin, MCP config, or config file).
 
+## Data flow
+
+- **From the plugin:** the plugin sends data to exactly one place, the Production Master hosted service (`PM_SERVICE_URL`, default `https://api.productionmaster.dev`), over HTTPS and authenticated by the device-code login. Everything you enter in `/investigate`, `/connect` and `/update`, and the run's progress and report, goes through that service. The plugin stores only your login token locally.
+- **On the hosted service:** an investigation (a) reads evidence from the connectors your workspace admin configured on the service side, for example Jira, GitHub, Slack, Grafana, PagerDuty and Prometheus; (b) sends that evidence and prompts to Google Vertex AI (Gemini), in Production Master's own Google Cloud project, to reason over them; and (c) stores the run, its evidence and report, and an audit trail in Production Master's database (Supabase Postgres) and evidence store (Google Cloud Storage). Proposed actions that would change a system run only after a person approves them in the plugin.
+- **Retention:** evidence is kept for 365 days by default, configurable per workspace; evidence classified as PII is capped at 30 days. Run reports and audit records are kept for the life of the account.
+- **Self-hosted (Enterprise edition):** deployments can point the service at other model providers. The hosted service uses Google Vertex AI only.
+
+See the [privacy policy](https://productionmaster.dev/privacy) for details.
+
 ## Prerequisites
 
 - **Node.js 22** (pinned in [`.nvmrc`](.nvmrc))

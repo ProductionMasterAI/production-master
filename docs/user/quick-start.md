@@ -29,6 +29,13 @@ This repo is its own plugin marketplace (`.claude-plugin/marketplace.json`), so 
 > adds the marketplace and installs the plugin from a plain shell, useful for
 > scripting a contributor's environment setup before Claude Code even opens.
 
+> **Claude Code 2.1.302+:** on older CLIs, `claude plugin install` could exit
+> before its settings write finished, so the command looked successful but the
+> plugin was missing afterwards (sometimes with a stray `.tmp` file next to the
+> settings). The same release fixes git-sourced plugins showing version
+> "unknown". If an install silently didn't stick, upgrade Claude Code to
+> 2.1.302 or newer and run the install again.
+
 > **Windows, no GitHub SSH key configured?** Before Claude Code 2.1.296, a
 > `claude plugin install`/`marketplace add` against this repo's bare
 > `owner/repo` source failed outright on Windows machines with no SSH key

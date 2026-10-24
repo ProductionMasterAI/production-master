@@ -256,8 +256,15 @@ The client didn't register. Check, in order:
 3. **Reload** — most editors read MCP config at startup; fully reload or restart after editing. (Claude Code 2.1.221+ activates plugins installed with `/plugin install` immediately when safe — no reload step.)
 4. **`npx` reachable** — the client launches via `npx`; make sure Node.js 22 is installed and `npx` is on `PATH`.
 
-Two related Claude Code notes:
+Related Claude Code notes:
 
+- **Install looked successful but the plugin is missing (fixed in 2.1.302).**
+  Before 2.1.302, `claude plugin install` and other `claude plugin` subcommands
+  could exit before a queued settings or config write finished, losing the
+  registration or leaving a `.tmp` file beside the settings file. 2.1.302 also
+  fixes git-sourced plugins showing version "unknown" (and marketplaces
+  re-cloning on every refresh) when git defaults to the reftable ref format.
+  Upgrade to 2.1.302 or newer and re-run the install.
 - **Plugin installed in more than one project?** Before 2.1.224, installing the
   same plugin in multiple projects could silently corrupt its install records.
   If this client's slash commands disappeared after you installed the plugin in

@@ -6,11 +6,11 @@ The editor and agent platforms this client is validated against.
 |---|---|---|
 | Claude Code | pending | 2.1.306 |
 | Cursor | pending | 3.11 (+ changelog 2026-10-16) |
-| Codex | pending | 0.163.0 |
+| Codex | pending | 0.164.0 |
 | OpenCode | pending | pending |
 
 All four adapter packages now ship a runnable `dist/cli.js`, so each client is
-usable today. The Codex release this repo targets is **0.163.0** and the Cursor
+usable today. The Codex release this repo targets is **0.164.0** and the Cursor
 release is **3.11** (changelog covered through 2026-10-16; desktop CLI observed at **3.25.9**): for each, the
 compatibility delta was reviewed against the existing adapter and its registration
 shape (`.codex/config.toml` for Codex, `.cursor/mcp.json` for Cursor), and nothing
@@ -47,7 +47,9 @@ adapter. Prefer these native Codex capabilities over custom wrappers when future
 orchestration needs them. The 0.159.2 Windows background-console fix is consumed upstream; no
 repository-specific workaround is carried here.
 
-Codex 0.160.0 through 0.163.0 were reviewed for compatibility and useful low-risk adoption. Native projectless sessions, managed worktrees, `/mcp login`, custom provider capability overrides, default instant steering and Code Mode cancellation, parallel read-only tools, `/config`, `/keymap`, `/daemon` restart, and restored thread/network permissions do not change this thin client's stdio MCP registration or command contract. Codex 0.163.0 removes the bundled patched `zsh` and retired shell flags; this repo uses `node` as its MCP command and does not set those flags. Stronger proxy checks, Windows remote MCP environment fixes and background-server recovery are consumed upstream. Prefer native Codex capabilities to custom wrappers; no speculative host configuration or MCP protocol claim is added. Direct host validation remains pending.
+Codex 0.160.0 through 0.164.0 were reviewed for compatibility and useful low-risk adoption. Native projectless sessions, managed worktrees, `/mcp login`, custom provider capability overrides, default instant steering and Code Mode cancellation, parallel read-only tools, `/config`, `/keymap`, `/daemon` restart, and restored thread/network permissions do not change this thin client's stdio MCP registration or command contract. Codex 0.163.0 removes the bundled patched `zsh` and retired shell flags; this repo uses `node` as its MCP command and does not set those flags. Stronger proxy checks, Windows remote MCP environment fixes and background-server recovery are consumed upstream. Prefer native Codex capabilities to custom wrappers; no speculative host configuration or MCP protocol claim is added. Direct host validation remains pending.
+
+Codex 0.164.0 adds native `/presets`, inline `/model` and `/permissions` arguments, enterprise MCP account-grant/OAuth sign-in and credential masking for remote commands. It improves session compaction/recovery, Windows proxy authentication and macOS sandbox path protections. This adapter's local stdio MCP registration and device-code login do not require a migration; no new configuration or wrapper is introduced. Prefer native Codex authentication and session recovery if a future Codex-only integration needs them. This is a changelog review, not direct CLI validation.
 
 Codex 0.150.0 adds native task references, improved task naming/copy ergonomics, and an
 `Interrupt` hook that can invoke commands or MCP handlers when a top-level turn is

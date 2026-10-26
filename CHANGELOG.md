@@ -44,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Codex 0.164.0:** native `/presets`, inline `/model` and `/permissions` arguments, enterprise MCP account-grant/OAuth sign-in and credential masking for remote commands, session compaction/recovery, Windows proxy authentication, and macOS sandbox path protections. Local stdio MCP registration and device-code login unchanged. No plugin code change.
 - **Cursor 3.11 (+2026-10-16 / desktop 3.27.12):** bump desktop CLI pin **3.25.9 → 3.27.12** (stable download API 2026-10-23). Feature pin remains **3.11** / **2026-10-16**. Document IDE **3.26** (resumable agents after extension-host crash; sticky Always Run with `permissions.json`) and **3.27** (`parent_agent_id` on subagent hooks; Mermaid preview controls; Reduce Motion; encoding fixes). No plugin code or MCP registration change. Cursor-only; other platform nightlies untouched.
 - **Claude Code currency (2.1.300 → 2.1.306).** `.claude-code-version`
   advances to **2.1.306**, covering 2.1.301 through 2.1.306 (2.1.301 and

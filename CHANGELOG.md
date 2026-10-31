@@ -815,7 +815,7 @@ and PyPI have returned 404 for these package names until now (dev#642).
   and `docs/user/platform-support.md`. The 2.1.232 delta needs no client change;
   two entries improve the install story and are now documented: **`/plugin install
 plugin@marketplace` refreshes the marketplace first** — quick-start's reload note
-  and troubleshooting's registration section carry the version-scoped behavior
+and troubleshooting's registration section carry the version-scoped behavior
   (refresh-first on 2.1.232+, refresh-and-retry on 2.1.221–2.1.231) — and the fix
   for a **startup race that could silently unregister a plugin marketplace**
   (concurrent `known_marketplaces.json` writes), which troubleshooting now names

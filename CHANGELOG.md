@@ -44,6 +44,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Claude Code currency (2.1.306 → 2.1.312).** `.claude-code-version`
+  advances to **2.1.312**, covering 2.1.307 through 2.1.312 (six releases).
+  Registration, sandboxing configuration shape, and command-argument
+  handling are unchanged. Nothing in this delta is adopted or closes a real
+  gap in this repo's own rules: fork-subagents-launched-together,
+  worktree-create's no-on-demand-fetch change, `Monitor` tool provider
+  expansion, the `-1m` model-suffix drop, and the subagent
+  `autoCompactWindow` lower-bound fix and raised hook-concurrency cap are
+  all hook-, mod-, subagent-, or model-call-shaped surface this repo defines
+  none of (constraint #4). The HTTP-MCP double-dispatch fix (2.1.307) is not
+  applicable here either — this plugin registers via `/plugin install`,
+  never an `.mcp.json` server for Claude Code — but is flagged as directly
+  relevant to `production-master-mcp`, which runs an HTTP MCP transport.
+  Also noted: this run's installed `claude` CLI reports `2.1.316`, ahead of
+  the changelog's newest published entry (2.1.312), so the pin tracks the
+  changelog rather than the local binary. `claude plugin validate .` and
+  `claude plugin validate .claude-plugin/plugin.json` were re-run on the
+  live CLI: both still pass. See [Platform
+  support](docs/user/platform-support.md) for the full per-item review.
+
 - **Codex 0.164.0:** native `/presets`, inline `/model` and `/permissions` arguments, enterprise MCP account-grant/OAuth sign-in and credential masking for remote commands, session compaction/recovery, Windows proxy authentication, and macOS sandbox path protections. Local stdio MCP registration and device-code login unchanged. No plugin code change.
 - **Cursor 3.11 (+2026-10-16 / desktop 3.27.12):** bump desktop CLI pin **3.25.9 → 3.27.12** (stable download API 2026-10-23). Feature pin remains **3.11** / **2026-10-16**. Document IDE **3.26** (resumable agents after extension-host crash; sticky Always Run with `permissions.json`) and **3.27** (`parent_agent_id` on subagent hooks; Mermaid preview controls; Reduce Motion; encoding fixes). No plugin code or MCP registration change. Cursor-only; other platform nightlies untouched.
 - **Claude Code currency (2.1.300 → 2.1.306).** `.claude-code-version`
@@ -795,7 +815,7 @@ and PyPI have returned 404 for these package names until now (dev#642).
   and `docs/user/platform-support.md`. The 2.1.232 delta needs no client change;
   two entries improve the install story and are now documented: **`/plugin install
 plugin@marketplace` refreshes the marketplace first** — quick-start's reload note
-and troubleshooting's registration section carry the version-scoped behavior
+  and troubleshooting's registration section carry the version-scoped behavior
   (refresh-first on 2.1.232+, refresh-and-retry on 2.1.221–2.1.231) — and the fix
   for a **startup race that could silently unregister a plugin marketplace**
   (concurrent `known_marketplaces.json` writes), which troubleshooting now names

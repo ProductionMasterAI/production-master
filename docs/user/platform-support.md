@@ -4,7 +4,7 @@ The editor and agent platforms this client is validated against.
 
 | Platform | Validated against | Latest known |
 |---|---|---|
-| Claude Code | pending | 2.1.306 |
+| Claude Code | pending | 2.1.312 |
 | Cursor | pending | 3.11 (+ changelog 2026-10-16) |
 | Codex | pending | 0.165.0 |
 | OpenCode | pending | pending |
@@ -77,6 +77,89 @@ stdio server intentionally continues to advertise its older supported MCP
 protocol; changing only the protocol string would be unsafe. A future SDK-backed
 upgrade should adopt the newer protocol when paginated discovery, multi-round
 requests, and non-blocking startup can be implemented and tested together.
+
+**Claude Code notes (2.1.306 → 2.1.312).** `.claude-code-version` advances to
+**2.1.312**, covering 2.1.307 through 2.1.312 (six releases, the first time
+this repo's pin has advanced since the prior pass). Registration, sandboxing
+configuration shape, and command-argument handling are unchanged. Nothing in
+this delta is adopted or closes a real gap in this repo's own rules; one
+item is flagged as relevant to a sibling repo rather than this one, and
+everything else is reviewed line by line and ruled not applicable by
+[constraint #4](../../.claude/rules/constraints.md) (no pipeline/agent
+logic, no hooks, mods, subagents, or MCP server of this repo's own for
+Claude Code) or [constraint #5](../../.claude/rules/constraints.md) (no
+self-hosted runner):
+
+- **Version-check note:** this run's installed `claude` CLI reports `claude
+  --version` → `2.1.316 (Claude Code)`, newer than the newest entry actually
+  published on the official changelog (2.1.312, dated 2026-10-27). The pin
+  advances to 2.1.312 — the changelog's newest published entry, and this
+  task's defined compatibility target — rather than to the ahead-of-changelog
+  local binary version, so a future pass should re-review 2.1.313–2.1.316 once
+  those are documented on the changelog.
+- **Reviewed, flagged for a sibling repo, not applicable here: the HTTP-MCP
+  double-dispatch fix (tool calls sent twice when the connection closed
+  mid-call, 2.1.307).** As the 2.1.268 MCP-secret-masking note and the
+  2.1.274 MCP-client-v2 note above already established, this repo's Claude
+  Code path registers via `/plugin install` and execs a binary from
+  [`commands/`](../../commands), never an `.mcp.json` server — so there is
+  no registered Claude Code MCP connection of this repo's own for the fix to
+  touch. `production-master-mcp` runs an HTTP MCP transport and is the repo
+  this fix actually matters for.
+- **Reviewed, not applicable: `/claude-api api-version`, the
+  `claude_code.safety_event` OpenTelemetry event, and `@claude review
+  stop`/`off`/`pause` for Code Review subscriptions (2.1.307).** As the
+  2.1.278 note below already established, this repo is used from a terminal
+  or from [`claude.yml`](../../.github/workflows/claude.yml)'s
+  comment-triggered `anthropics/claude-code-action@v1` job, never the
+  separate auto-PR "Code Review" product those controls govern; this repo
+  configures no OpenTelemetry exporter or Claude-apps-gateway of its own
+  (constraint #4).
+- **Reviewed, not applicable: VSCode-extension TLS/certificate handling, a
+  WebSearch-budget notice wording tweak, an `axScreenReader` settings-tier
+  restriction, and self-hosted-runner changes (2.1.307).** This repo is
+  never used from the VS Code extension (same reasoning as the 2.1.278
+  note), makes no model calls of its own, and runs CI on GitHub-hosted
+  `ubuntu-latest` runners only — constraint #4 and constraint #5.
+- **Reviewed, not applicable: fork subagents launched together now each
+  know which launch is their own (2.1.307).** This repo's five commands
+  spawn no subagents of their own (constraint #4) — there is no "launched
+  together" case here.
+- **Reviewed, not applicable: a worktree-create change that no longer
+  fetches on demand (2.1.309).** This repo's contributor workflow is
+  fork-and-branch, per [CONTRIBUTING.md](../CONTRIBUTING.md), never `claude
+  agents` teleport/worktrees (same reasoning as the 2.1.274 note below).
+- **Reviewed, not applicable: `Monitor` tool provider expansion (2.1.310).**
+  This repo uses no `Monitor` watch or `Workflow` tool script of its own
+  (constraint #4), the same reasoning as the 2.1.269
+  `CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS` note below.
+- **Reviewed, benefits automatically / no action: a one-way `/compact`-disable
+  setting (2.1.311).** Session-level behavior with no
+  [`.claude/settings.json`](../../.claude/settings.json) field for this repo
+  to set.
+- **Reviewed, not applicable: dropping the `-1m` model-name-suffix
+  convention (2.1.311).** This repo makes no model calls of its own
+  (constraint #4) — no model name of this repo's own to rename.
+- **Reviewed, benefits automatically / no action: output-format
+  control-character escaping (2.1.311).** General correctness fix to
+  `--output-format json`/`stream-json`; this repo scripts no parsing of the
+  `claude` CLI's own output (its five commands exec the thin-client binary
+  over `Bash`, and [`claude.yml`](../../.github/workflows/claude.yml) runs
+  `anthropics/claude-code-action@v1` interactively, not via scripted output
+  parsing) — nothing here to break or to fix.
+- **Reviewed, not applicable: a lower-bound fix to subagent
+  `autoCompactWindow` (2.1.312).** This repo defines no subagents of its own
+  (constraint #4).
+- **Reviewed, not applicable: the per-event hook-concurrency cap raised from
+  12 to 24 (2.1.312).** This repo defines no hooks under `.claude/`
+  (constraint #4) — same reasoning as the 2.1.301–2.1.306 12-concurrent-hook
+  note below, just a higher number to not apply to.
+- This repo's own `claude plugin validate .` and `claude plugin validate
+  .claude-plugin/plugin.json` were re-run on the installed 2.1.316 CLI: both
+  still pass (one pre-existing, unrelated `ICON_MISSING` directory warning,
+  unchanged from prior passes and out of scope for a Claude-Code-version
+  review). `npm run build`, `npm test` (292/292 passing), and `npm run lint`
+  all ran clean on this pass.
 
 **Claude Code notes (2.1.300 → 2.1.306).** `.claude-code-version` advances to
 **2.1.306**, covering 2.1.301 through 2.1.306 (2.1.301 and 2.1.302 shipped

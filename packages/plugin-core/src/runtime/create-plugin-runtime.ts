@@ -270,7 +270,7 @@ export class PluginRuntime {
     return { ...opts, presence: { surface: this.surface } };
   }
 
-  /** Cache + persist tokens after a login or refresh. */
+  /** Cache + persist tokens after a login. */
   private async setTokens(tokens: TokenResponse): Promise<void> {
     this.currentTokens = tokens;
     this.accessToken = tokens.accessToken;
@@ -278,9 +278,11 @@ export class PluginRuntime {
   }
 
   /**
-   * Ensure a usable access token: hydrate from the store on first use and
-   * refresh proactively when within the refresh skew. Throws when the user has
-   * never logged in.
+   * Ensure a usable access token: hydrate from the store on first use. Throws
+   * "not authenticated" when the user never logged in OR the session has
+   * expired — the hosted service issues no refresh token, so an expired
+   * session is cleared and the user is told to log in again rather than being
+   * handed a token the service will reject mid-run.
    */
   private async ensureAuth(): Promise<void> {
     if (!this.currentTokens) {
@@ -290,9 +292,11 @@ export class PluginRuntime {
     if (!this.currentTokens) {
       throw new Error("not authenticated — call login() first.");
     }
-    if (this.auth.needsRefresh(this.currentTokens)) {
-      const refreshed = await this.auth.refresh(this.currentTokens.refreshToken);
-      await this.setTokens(refreshed);
+    if (this.auth.isExpired(this.currentTokens)) {
+      this.currentTokens = undefined;
+      this.accessToken = undefined;
+      await this.tokenStore.clear(this.accountId);
+      throw new Error("not authenticated — the session expired; log in again.");
     }
   }
 

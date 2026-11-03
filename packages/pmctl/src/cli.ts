@@ -133,27 +133,15 @@ async function buildDeps(
   });
 
   // Token precedence: explicit flag > env > token store. A flag/env override
-  // is used as given (the caller owns its lifetime); a stored session is
-  // refreshed proactively when within its skew of expiry, mirroring
-  // PluginRuntime#ensureAuth, so a long-lived pmctl session doesn't start
-  // failing with exit 3 the moment the access token ages out even though a
-  // valid refresh token is sitting right next to it in the store.
+  // is used as given (the caller owns its lifetime). A stored session is used
+  // until it expires; the hosted service issues no refresh token, so an
+  // expired one is dropped here and the call proceeds unauthenticated — the
+  // service 401s it and classifyError maps that to AuthError, which tells the
+  // user to `pmctl login` again.
   let token = strFlag(parsed, "token") ?? io.env.PM_ACCESS_TOKEN;
   if (!token) {
-    let stored = await tokenStore.load(accountId).catch(() => undefined);
-    if (stored && deviceAuth.needsRefresh(stored)) {
-      try {
-        stored = await deviceAuth.refresh(stored.refreshToken);
-        await tokenStore.save(accountId, stored);
-      } catch {
-        // Refresh token itself expired/revoked, or the service is
-        // unreachable — fall through with the stale access token. The
-        // service will 401 it and classifyError maps that to AuthError,
-        // which tells the user to `pmctl login` again rather than failing
-        // silently here.
-      }
-    }
-    token = stored?.accessToken;
+    const stored = await tokenStore.load(accountId).catch(() => undefined);
+    token = stored && !deviceAuth.isExpired(stored) ? stored.accessToken : undefined;
   }
 
   const idempotencyKey = strFlag(parsed, "idempotency-key");

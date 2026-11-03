@@ -30,7 +30,7 @@ describe("DeviceCodeAuth", () => {
 
     const start = await auth.start();
     expect(start.userCode).toBe("WXYZ-1234");
-    expect(start.verificationUriComplete).toContain("code=");
+    expect(start.verificationUriComplete).toContain("user_code=WXYZ-1234");
 
     // Pending until approved.
     expect((await auth.poll()).status).toBe("pending");
@@ -101,40 +101,78 @@ describe("DeviceCodeAuth", () => {
     await expect(auth.waitForTokens()).rejects.toThrow(/denied/);
   });
 
-  it("needsRefresh fires when TTL < 5 min and refresh returns new tokens", async () => {
+  it("sends exactly the RFC 8628 wire bodies the service accepts", async () => {
     const clock = fakeClock();
-    const server = new MockAuthServer({ now: clock.now });
+    const server = new MockAuthServer({ interval: 1, now: clock.now });
     const auth = new DeviceCodeAuth({
       transport: server,
-      clientId: "c",
-      scopes: [],
+      clientId: "pm-plugin",
+      scopes: ["read-investigation", "approve-action"],
       now: clock.now,
       sleep: clock.sleep,
     });
-    const tokens = {
-      accessToken: "a",
-      refreshToken: "refresh-tok-xyz",
-      expiresAt: clock.now() + 4 * 60 * 1000,
-      scopes: [] as const,
-    };
-    expect(auth.needsRefresh(tokens as any)).toBe(true);
-    const refreshed = await auth.refresh("refresh-tok-xyz");
-    expect(refreshed.accessToken).toBe("access-tok-abc");
+    await auth.start();
+    server.approve();
+    const tokens = await auth.waitForTokens();
+    expect(server.received[0]).toEqual({
+      path: "/v1/oauth/device",
+      body: { client_id: "pm-plugin", scope: "read-investigation approve-action" },
+    });
+    expect(server.received[1]).toEqual({
+      path: "/v1/oauth/token",
+      body: {
+        grant_type: "urn:ietf:params:oauth:grant-type:device_code",
+        device_code: "dev-code-1",
+        client_id: "pm-plugin",
+      },
+    });
+    // expires_in (seconds) becomes an absolute expiry; scope string -> list.
+    expect(tokens.expiresAt).toBe(clock.now() + 30 * 60 * 1000);
+    expect(tokens.scopes).toEqual(["read-investigation", "write-investigation", "approve-action"]);
+    expect(tokens.refreshToken).toBe("");
   });
 
-  it("revoke invalidates the refresh token", async () => {
+  it("omits scope when none are requested", async () => {
+    const server = new MockAuthServer();
+    const auth = new DeviceCodeAuth({ transport: server, clientId: "c", scopes: [] });
+    await auth.start();
+    expect(server.received[0].body).toEqual({ client_id: "c" });
+  });
+
+  it("fails loudly on a non-OAuth poll error instead of polling until expiry", async () => {
     const clock = fakeClock();
-    const server = new MockAuthServer({ now: clock.now });
+    const server = new MockAuthServer({ interval: 1, now: clock.now });
+    const auth = new DeviceCodeAuth({ transport: server, clientId: "c", scopes: [], now: clock.now, sleep: clock.sleep });
+    await auth.start();
+    // Corrupt the stored device code so the server answers invalid_grant.
+    (auth as unknown as { deviceCode: string }).deviceCode = "not-a-real-code";
+    await expect(auth.poll()).rejects.toThrow(/device token poll failed: 400 \(invalid_grant\)/);
+  });
+
+  it("rejects a malformed start response instead of carrying undefined fields", async () => {
     const auth = new DeviceCodeAuth({
-      transport: server,
+      transport: { request: async () => ({ status: 200, body: { deviceCode: "x", userCode: "y" } }) },
       clientId: "c",
       scopes: [],
-      now: clock.now,
-      sleep: clock.sleep,
     });
-    await auth.revoke("refresh-tok-xyz");
-    expect(server.isRevoked("refresh-tok-xyz")).toBe(true);
-    await expect(auth.refresh("refresh-tok-xyz")).rejects.toThrow();
+    await expect(auth.start()).rejects.toThrow(/missing or empty "device_code"/);
+  });
+
+  it("surfaces the OAuth error code when start fails", async () => {
+    const auth = new DeviceCodeAuth({
+      transport: { request: async () => ({ status: 500, body: { error: "internal_error" } }) },
+      clientId: "c",
+      scopes: [],
+    });
+    await expect(auth.start()).rejects.toThrow("device start failed: 500 (internal_error)");
+  });
+
+  it("isExpired is true within the skew of expiry and false well before it", () => {
+    const clock = fakeClock();
+    const auth = new DeviceCodeAuth({ transport: new MockAuthServer(), clientId: "c", scopes: [], now: clock.now });
+    expect(auth.isExpired({ expiresAt: clock.now() + 30_000 })).toBe(true);
+    expect(auth.isExpired({ expiresAt: clock.now() - 1 })).toBe(true);
+    expect(auth.isExpired({ expiresAt: clock.now() + 10 * 60_000 })).toBe(false);
   });
 });
 
@@ -145,7 +183,7 @@ function setTimeoutApprove(server: MockAuthServer, n: number) {
   (server as any).request = async (req: any) => {
     if (
       req.path === "/v1/oauth/token" &&
-      req.body?.grantType?.includes("device_code")
+      req.body?.grant_type?.includes("device_code")
     ) {
       polls++;
       if (polls >= n) server.approve();

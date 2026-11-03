@@ -2,15 +2,23 @@
 
 Mirrors the TS ``DeviceCodeAuth`` (``packages/plugin-core/src/auth/device-code.ts``):
 the same endpoints, the same poll/slow_down semantics, the same provider and
-scopes used by the plugin/CLI. Tokens are cached to a file under
+scopes used by the plugin/CLI. The HTTP wire format is RFC 8628 snake_case
+(``client_id``, ``scope``, ``device_code``, ``grant_type``; responses
+``device_code``/``user_code``/``verification_uri``/``access_token``/
+``expires_in``), as defined by the service's OpenAPI spec. Until #89 this
+module sent a camelCase dialect the service never accepted. The dicts this
+module RETURNS keep their camelCase keys (``deviceCode``, ``accessToken``,
+``expiresAt`` ...) — that is the SDK's API, not the wire. Tokens are cached to a file under
 ``~/.config/production-master/`` with ``0600`` permissions (the directory is
 created ``0700``).
 
 Endpoints:
 
 * ``POST /v1/oauth/device``  -- begin the device flow
-* ``POST /v1/oauth/token``    -- poll for / refresh tokens
-* ``POST /v1/oauth/revoke``   -- revoke a refresh token
+* ``POST /v1/oauth/token``    -- poll for the access token
+
+The service issues no refresh token (it implements no refresh grant), so a
+cached session ends at ``expiresAt`` and the user logs in again.
 
 Clock and sleep are injectable so the flow is deterministic in tests against a
 fake transport (no real network, no lockout).
@@ -33,7 +41,8 @@ from .transport import (
 DEFAULT_CLIENT_ID = "production-master-cli"
 DEFAULT_SCOPES: Sequence[str] = ("read-investigation", "write-investigation")
 
-_FIVE_MIN_MS = 5 * 60 * 1000
+_ONE_MIN_MS = 60 * 1000
+_DEVICE_CODE_GRANT = "urn:ietf:params:oauth:grant-type:device_code"
 
 
 class DeviceAuthError(Exception):
@@ -50,7 +59,7 @@ class DeviceCodeAuth:
         scopes: Sequence[str] = DEFAULT_SCOPES,
         now: Optional[Callable[[], float]] = None,
         sleep: Optional[Callable[[float], None]] = None,
-        refresh_skew_ms: int = _FIVE_MIN_MS,
+        expiry_skew_ms: int = _ONE_MIN_MS,
     ) -> None:
         self._transport = transport
         self._client_id = client_id
@@ -58,7 +67,7 @@ class DeviceCodeAuth:
         # now() returns epoch milliseconds (matches the TS token expiry units).
         self._now = now or (lambda: time.time() * 1000.0)
         self._sleep = sleep or (lambda ms: time.sleep(ms / 1000.0))
-        self._refresh_skew_ms = refresh_skew_ms
+        self._expiry_skew_ms = expiry_skew_ms
 
         self._device_code: Optional[str] = None
         self._interval = 5  # seconds
@@ -71,16 +80,16 @@ class DeviceCodeAuth:
             Request(
                 method="POST",
                 path="/v1/oauth/device",
-                body={"clientId": self._client_id, "scope": " ".join(self._scopes)},
+                body=_device_request(self._client_id, self._scopes),
             )
         )
         if not (200 <= res.status < 300):
-            raise DeviceAuthError(f"device start failed: {res.status}")
-        body = res.body if isinstance(res.body, dict) else {}
-        self._device_code = body.get("deviceCode")
-        self._interval = max(1, int(body.get("interval", 5)))
-        self._device_expires_at = self._now() + int(body.get("expiresIn", 0)) * 1000
-        return body
+            raise DeviceAuthError(f"device start failed: {res.status}{_error_suffix(res.body)}")
+        start = _parse_device_response(res.body)
+        self._device_code = start["deviceCode"]
+        self._interval = max(1, start["interval"])
+        self._device_expires_at = self._now() + start["expiresIn"] * 1000
+        return start
 
     def poll(self) -> Dict[str, Any]:
         """One poll tick. Never call faster than ``interval`` seconds yourself."""
@@ -95,14 +104,14 @@ class DeviceCodeAuth:
                 method="POST",
                 path="/v1/oauth/token",
                 body={
-                    "grantType": "urn:ietf:params:oauth:grant-type:device_code",
-                    "deviceCode": self._device_code,
-                    "clientId": self._client_id,
+                    "grant_type": _DEVICE_CODE_GRANT,
+                    "device_code": self._device_code,
+                    "client_id": self._client_id,
                 },
             )
         )
         if 200 <= res.status < 300:
-            return {"status": "tokens", "tokens": res.body}
+            return {"status": "tokens", "tokens": _parse_token_response(res.body, self._now(), self._scopes)}
         err = res.body.get("error") if isinstance(res.body, dict) else None
         if err == "authorization_pending":
             return {"status": "pending"}
@@ -113,7 +122,9 @@ class DeviceCodeAuth:
             return {"status": "denied"}
         if err == "expired_token":
             return {"status": "expired"}
-        return {"status": "pending"}
+        # Anything else is a real failure; treating it as "pending" turned a
+        # contract mismatch into a silent poll-until-expiry.
+        raise DeviceAuthError(f"device token poll failed: {res.status}{_error_suffix(res.body)}")
 
     def wait_for_tokens(self) -> Dict[str, Any]:
         """Drive :meth:`poll` to a terminal state, honoring the poll interval."""
@@ -131,33 +142,59 @@ class DeviceCodeAuth:
             if status == "expired":
                 raise DeviceAuthError("device code expired")
 
-    def needs_refresh(self, tokens: Dict[str, Any]) -> bool:
-        return tokens["expiresAt"] - self._now() < self._refresh_skew_ms
+    def is_expired(self, tokens: Dict[str, Any]) -> bool:
+        """True when a session is at (or within the skew of) its expiry."""
 
-    def refresh(self, refresh_token: str) -> Dict[str, Any]:
-        res = self._transport.request(
-            Request(
-                method="POST",
-                path="/v1/oauth/token",
-                body={
-                    "grantType": "refresh_token",
-                    "refreshToken": refresh_token,
-                    "clientId": self._client_id,
-                },
-            )
-        )
-        if not (200 <= res.status < 300):
-            raise DeviceAuthError(f"refresh failed: {res.status}")
-        return res.body if isinstance(res.body, dict) else {}
+        return tokens["expiresAt"] - self._now() <= self._expiry_skew_ms
 
-    def revoke(self, refresh_token: str) -> None:
-        self._transport.request(
-            Request(
-                method="POST",
-                path="/v1/oauth/revoke",
-                body={"token": refresh_token, "clientId": self._client_id},
-            )
-        )
+
+def _error_suffix(body: Any) -> str:
+    err = body.get("error") if isinstance(body, dict) else None
+    return f" ({err})" if isinstance(err, str) else ""
+
+
+def _device_request(client_id: str, scopes: Sequence[str]) -> Dict[str, Any]:
+    body: Dict[str, Any] = {"client_id": client_id}
+    if scopes:
+        body["scope"] = " ".join(scopes)
+    return body
+
+
+def _require(body: Dict[str, Any], key: str, kind: type, what: str) -> Any:
+    value = body.get(key)
+    if not isinstance(value, kind) or isinstance(value, bool) or value in ("", None):
+        raise DeviceAuthError(f'{what}: missing or invalid "{key}"')
+    return value
+
+
+def _parse_device_response(body: Any) -> Dict[str, Any]:
+    what = "device start response"
+    if not isinstance(body, dict):
+        raise DeviceAuthError(f"{what}: expected a JSON object")
+    return {
+        "deviceCode": _require(body, "device_code", str, what),
+        "userCode": _require(body, "user_code", str, what),
+        "verificationUri": _require(body, "verification_uri", str, what),
+        "verificationUriComplete": _require(body, "verification_uri_complete", str, what),
+        "interval": _require(body, "interval", int, what),
+        "expiresIn": _require(body, "expires_in", int, what),
+    }
+
+
+def _parse_token_response(body: Any, now_ms: float, requested: Sequence[str]) -> Dict[str, Any]:
+    what = "token response"
+    if not isinstance(body, dict):
+        raise DeviceAuthError(f"{what}: expected a JSON object")
+    token_type = _require(body, "token_type", str, what)
+    if token_type.lower() != "bearer":
+        raise DeviceAuthError(f'{what}: unsupported token_type "{token_type}"')
+    scope = body.get("scope")
+    return {
+        "accessToken": _require(body, "access_token", str, what),
+        "refreshToken": "",
+        "expiresAt": int(now_ms + _require(body, "expires_in", int, what) * 1000),
+        "scopes": scope.split() if isinstance(scope, str) and scope.strip() else list(requested),
+    }
 
 
 # -- token cache (0600, under ~/.config/production-master) ------------------

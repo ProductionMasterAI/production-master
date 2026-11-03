@@ -1029,15 +1029,71 @@ var HttpMcpToolTransport = class {
   }
 };
 
+// packages/plugin-core/src/auth/wire.ts
+var DEVICE_CODE_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:device_code";
+function deviceAuthorizationRequest(clientId, scopes) {
+  const body = { client_id: clientId };
+  if (scopes.length > 0) body.scope = scopes.join(" ");
+  return body;
+}
+function deviceTokenRequest(clientId, deviceCode) {
+  return { grant_type: DEVICE_CODE_GRANT_TYPE, device_code: deviceCode, client_id: clientId };
+}
+function record(body, what) {
+  if (typeof body !== "object" || body === null || Array.isArray(body)) {
+    throw new Error(`${what}: expected a JSON object, got ${body === null ? "null" : typeof body}`);
+  }
+  return body;
+}
+function str2(o, key, what) {
+  const v = o[key];
+  if (typeof v !== "string" || v === "") throw new Error(`${what}: missing or empty "${key}"`);
+  return v;
+}
+function int(o, key, what) {
+  const v = o[key];
+  if (typeof v !== "number" || !Number.isFinite(v) || v < 0) {
+    throw new Error(`${what}: missing or invalid "${key}"`);
+  }
+  return v;
+}
+function parseDeviceAuthorizationResponse(body) {
+  const what = "device start response";
+  const o = record(body, what);
+  return {
+    deviceCode: str2(o, "device_code", what),
+    userCode: str2(o, "user_code", what),
+    verificationUri: str2(o, "verification_uri", what),
+    // Required by our contract (optional in RFC 8628): hosts open it directly
+    // and have no surface to display user_code separately.
+    verificationUriComplete: str2(o, "verification_uri_complete", what),
+    interval: int(o, "interval", what),
+    expiresIn: int(o, "expires_in", what)
+  };
+}
+function parseTokenResponse(body, now, requestedScopes) {
+  const what = "token response";
+  const o = record(body, what);
+  const tokenType = str2(o, "token_type", what);
+  if (tokenType.toLowerCase() !== "bearer") throw new Error(`${what}: unsupported token_type "${tokenType}"`);
+  const scope = typeof o["scope"] === "string" ? o["scope"].trim() : "";
+  return {
+    accessToken: str2(o, "access_token", what),
+    refreshToken: "",
+    expiresAt: now + int(o, "expires_in", what) * 1e3,
+    scopes: scope ? scope.split(/\s+/) : [...requestedScopes]
+  };
+}
+
 // packages/plugin-core/src/auth/device-code.ts
-var FIVE_MIN_MS = 5 * 60 * 1e3;
+var ONE_MIN_MS = 60 * 1e3;
 var DeviceCodeAuth = class {
   transport;
   clientId;
   scopes;
   now;
   sleep;
-  refreshSkewMs;
+  expirySkewMs;
   deviceCode;
   interval = 5;
   // seconds
@@ -1048,22 +1104,22 @@ var DeviceCodeAuth = class {
     this.scopes = opts.scopes;
     this.now = opts.now ?? (() => Date.now());
     this.sleep = opts.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
-    this.refreshSkewMs = opts.refreshSkewMs ?? FIVE_MIN_MS;
+    this.expirySkewMs = opts.expirySkewMs ?? ONE_MIN_MS;
   }
   async start() {
     const res = await this.transport.request({
       method: "POST",
       path: "/v1/oauth/device",
-      body: { clientId: this.clientId, scope: this.scopes.join(" ") }
+      body: deviceAuthorizationRequest(this.clientId, this.scopes)
     });
     if (res.status < 200 || res.status >= 300) {
-      throw new Error(`device start failed: ${res.status}`);
+      throw new Error(`device start failed: ${res.status}${oauthErrorSuffix(res.body)}`);
     }
-    const body = res.body;
-    this.deviceCode = body.deviceCode;
-    this.interval = Math.max(1, body.interval);
-    this.deviceExpiresAt = this.now() + body.expiresIn * 1e3;
-    return body;
+    const start = parseDeviceAuthorizationResponse(res.body);
+    this.deviceCode = start.deviceCode;
+    this.interval = Math.max(1, start.interval);
+    this.deviceExpiresAt = this.now() + start.expiresIn * 1e3;
+    return start;
   }
   /** One poll tick. Never call faster than `this.interval` seconds yourself. */
   async poll() {
@@ -1072,14 +1128,10 @@ var DeviceCodeAuth = class {
     const res = await this.transport.request({
       method: "POST",
       path: "/v1/oauth/token",
-      body: {
-        grantType: "urn:ietf:params:oauth:grant-type:device_code",
-        deviceCode: this.deviceCode,
-        clientId: this.clientId
-      }
+      body: deviceTokenRequest(this.clientId, this.deviceCode)
     });
     if (res.status >= 200 && res.status < 300) {
-      return { status: "tokens", tokens: res.body };
+      return { status: "tokens", tokens: parseTokenResponse(res.body, this.now(), this.scopes) };
     }
     const err = res.body?.error;
     switch (err) {
@@ -1093,12 +1145,12 @@ var DeviceCodeAuth = class {
       case "expired_token":
         return { status: "expired" };
       default:
-        return { status: "pending" };
+        throw new Error(`device token poll failed: ${res.status}${oauthErrorSuffix(res.body)}`);
     }
   }
   /**
    * Drive poll() to a terminal state, sleeping `interval` between attempts
-   * (honoring slow_down). Returns tokens or throws on denied/expired/timeout.
+   * (honoring slow_down). Returns tokens or throws on denied/expired/failure.
    */
   async waitForTokens() {
     for (; ; ) {
@@ -1119,33 +1171,15 @@ var DeviceCodeAuth = class {
       }
     }
   }
-  /** True when the access token is within the refresh skew of expiry. */
-  needsRefresh(tokens) {
-    return tokens.expiresAt - this.now() < this.refreshSkewMs;
-  }
-  async refresh(refreshToken) {
-    const res = await this.transport.request({
-      method: "POST",
-      path: "/v1/oauth/token",
-      body: {
-        grantType: "refresh_token",
-        refreshToken,
-        clientId: this.clientId
-      }
-    });
-    if (res.status < 200 || res.status >= 300) {
-      throw new Error(`refresh failed: ${res.status}`);
-    }
-    return res.body;
-  }
-  async revoke(refreshToken) {
-    await this.transport.request({
-      method: "POST",
-      path: "/v1/oauth/revoke",
-      body: { token: refreshToken, clientId: this.clientId }
-    });
+  /** True when the session is at (or within the skew of) its expiry. */
+  isExpired(tokens) {
+    return tokens.expiresAt - this.now() <= this.expirySkewMs;
   }
 };
+function oauthErrorSuffix(body) {
+  const err = body?.error;
+  return typeof err === "string" ? ` (${err})` : "";
+}
 
 // packages/plugin-core/src/auth/token-store.ts
 var InMemorySecretBackend = class {
@@ -1577,16 +1611,18 @@ var PluginRuntime = class {
     if (opts.presence) return opts;
     return { ...opts, presence: { surface: this.surface } };
   }
-  /** Cache + persist tokens after a login or refresh. */
+  /** Cache + persist tokens after a login. */
   async setTokens(tokens) {
     this.currentTokens = tokens;
     this.accessToken = tokens.accessToken;
     await this.tokenStore.save(this.accountId, tokens);
   }
   /**
-   * Ensure a usable access token: hydrate from the store on first use and
-   * refresh proactively when within the refresh skew. Throws when the user has
-   * never logged in.
+   * Ensure a usable access token: hydrate from the store on first use. Throws
+   * "not authenticated" when the user never logged in OR the session has
+   * expired — the hosted service issues no refresh token, so an expired
+   * session is cleared and the user is told to log in again rather than being
+   * handed a token the service will reject mid-run.
    */
   async ensureAuth() {
     if (!this.currentTokens) {
@@ -1596,9 +1632,11 @@ var PluginRuntime = class {
     if (!this.currentTokens) {
       throw new Error("not authenticated — call login() first.");
     }
-    if (this.auth.needsRefresh(this.currentTokens)) {
-      const refreshed = await this.auth.refresh(this.currentTokens.refreshToken);
-      await this.setTokens(refreshed);
+    if (this.auth.isExpired(this.currentTokens)) {
+      this.currentTokens = void 0;
+      this.accessToken = void 0;
+      await this.tokenStore.clear(this.accountId);
+      throw new Error("not authenticated — the session expired; log in again.");
     }
   }
   /** Mint (or reuse) a scoped session covering the given investigation ids. */

@@ -61,7 +61,8 @@ export class McpTools {
    * service response body on success.
    */
   async invoke(tool: string, args: Record<string, unknown>): Promise<unknown> {
-    const session = this.deps.sessions.getActiveSession();
+    // Re-mint shortly before the session's `exp` (the service default is 5 min).
+    const session = (await this.deps.sessions.ensureFresh()) ?? this.deps.sessions.getActiveSession();
     if (!session) throw new ToolError('PERMISSION_DENIED', 'no active MCP session');
 
     const investigationId = (args.investigationId as string) ?? session.investigationIds[0];
@@ -74,20 +75,40 @@ export class McpTools {
     }
 
     if (isMutationTool(tool)) {
+      // The service is the authority. This only avoids asking the user to approve
+      // a change when the service has ALREADY refused this login's write scope.
+      if (session.readOnlyFallback) {
+        throw new ToolError(
+          'PERMISSION_DENIED',
+          `${tool} needs write access, but this session is read-only (the account does not hold ` +
+            'runs:write; the engineer role or above grants it).',
+        );
+      }
       await this.gateMutation(tool, investigationId, args);
     }
 
     const idempotencyKey = isMutationTool(tool) ? this.deps.newIdempotencyKey?.() : undefined;
-    const res = await this.deps.transport.call({
-      endpoint: session.grant.endpoint,
-      sessionJwt: session.grant.sessionJwt,
-      tool,
-      args,
-      idempotencyKey,
-    });
+    const call = (s: { grant: { endpoint: string; sessionJwt: string } }) =>
+      this.deps.transport.call({
+        endpoint: s.grant.endpoint,
+        sessionJwt: s.grant.sessionJwt,
+        tool,
+        args,
+        idempotencyKey,
+      });
+    let res = await call(session);
+    if (res.status === 401) {
+      // The session JWT expired (or was revoked) mid-flight: re-mint once and
+      // retry with the same idempotency key. A second 401 is surfaced below.
+      const fresh = await this.deps.sessions.refresh();
+      if (fresh) res = await call(fresh);
+    }
 
     if (res.status >= 200 && res.status < 300) return res.body;
     const message = (res.body as { message?: string } | undefined)?.message ?? `tool ${tool} failed`;
+    if (res.status === 401) {
+      throw new ToolError('PERMISSION_DENIED', `${message} (session rejected after re-mint; run /login again)`);
+    }
     if (res.status === 403) throw new ToolError('PERMISSION_DENIED', message);
     if (res.status === 404) throw new ToolError('NOT_FOUND', message);
     if (res.status === 409) throw new ToolError('IDEMPOTENCY_CONFLICT', message);

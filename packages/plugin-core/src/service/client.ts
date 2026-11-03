@@ -9,6 +9,7 @@ import type { InvestigationEventEnvelope, Scope } from "../types.js";
 import type { McpSessionGrant } from "../mcp/types.js";
 import {
   IdempotencyConflict,
+  InsufficientScopeError,
   ServiceError,
   type ActionRef,
   type CreateRunRequest,
@@ -50,6 +51,28 @@ function toServiceScopes(scopes: Scope[]): Array<"read" | "mutate"> {
   return [...new Set(scopes.map((s) => SERVICE_SCOPE[s]))];
 }
 
+/** User-facing text for a refused scope, naming what grants it. */
+function describeMissingScope(
+  requiredScope: string | undefined,
+  serviceMessage: string,
+): string {
+  if (requiredScope === "runs:write") {
+    return (
+      `Your account does not hold runs:write, so it cannot make changes to investigations ` +
+      `(the engineer role or above grants it). ${serviceMessage}`
+    );
+  }
+  if (requiredScope === "runs:read") {
+    return (
+      `Your account does not hold runs:read, so it cannot open investigations ` +
+      `(the viewer role or above grants it; ask an org admin). ${serviceMessage}`
+    );
+  }
+  return `Your account is missing a required permission${
+    requiredScope ? ` (${requiredScope})` : ""
+  }. ${serviceMessage}`;
+}
+
 function defaultIdempotencyKey(): string {
   // RFC4122-ish; crypto.randomUUID is available in Node 18+ and browsers.
   return (
@@ -83,6 +106,20 @@ export class ServiceClient {
     if (res.status === 409) return new IdempotencyConflict(message);
     if (res.status === 404) return new ServiceError("NOT_FOUND", 404, message);
     if (res.status === 403) {
+      // A scope refusal is not an enumeration risk: it names a missing
+      // permission, not a missing resource. Surface it as itself, before the
+      // generic 403 rewrite below.
+      const body = res.body as
+        | { error?: unknown; requiredScope?: unknown }
+        | undefined;
+      if (body?.error === "insufficient_scope") {
+        const requiredScope =
+          typeof body.requiredScope === "string" ? body.requiredScope : undefined;
+        return new InsufficientScopeError(
+          requiredScope,
+          describeMissingScope(requiredScope, message),
+        );
+      }
       // No-enumeration rule: a forbidden singleton is indistinguishable from
       // not-found to the client. Translate 403 -> NOT_FOUND.
       return new ServiceError("NOT_FOUND", 404, message);

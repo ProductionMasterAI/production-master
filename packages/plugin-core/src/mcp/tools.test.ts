@@ -6,6 +6,7 @@ import { NoopHostAdapter } from '../host/__fixtures__/noop-host-adapter.js';
 import { ToolError } from './types.js';
 import type { McpSessionGrant } from './types.js';
 import { SessionTrustGrantStore } from '../trust/session-grants.js';
+import { InsufficientScopeError } from '../service/types.js';
 
 const grant: McpSessionGrant = { endpoint: 'https://mcp/s', audience: 'pm-mcp', sessionJwt: 'jwt-1', ttlSeconds: 600 };
 
@@ -159,5 +160,86 @@ describe('McpTools trust-grant gating (Q9)', () => {
     expect(audit).toHaveBeenCalledWith({ type: 'user.mutation_rejected', tool: 'investigation.add_evidence', investigationId: 'inv_1' });
     expect(trust.listActive('inv_1')).toHaveLength(0);
     expect(emitTrustExpansion).not.toHaveBeenCalled();
+  });
+});
+
+describe('McpTools session expiry and read-only fallback', () => {
+  function mkSessions(host: NoopHostAdapter, clock: { t: number }, create?: (scopes: string[]) => Promise<McpSessionGrant>) {
+    let n = 0;
+    return new McpSessionManager({
+      client: {} as any,
+      host,
+      now: () => clock.t,
+      notify: () => {},
+      createServiceSession: async (_ids, scopes) =>
+        create ? create(scopes) : { ...grant, sessionJwt: `jwt-${++n}`, ttlSeconds: 300 },
+    });
+  }
+
+  it('re-mints before exp so the call carries the fresh session JWT', async () => {
+    const host = new NoopHostAdapter();
+    const clock = { t: 0 };
+    const sessions = mkSessions(host, clock);
+    await sessions.createSession(['inv_1'], ['read-investigation']);
+    const transport = new FakeMcpTransport();
+    const tools = new McpTools({ sessions, host, transport });
+    clock.t = 290_000;
+    await tools.invoke('investigation.get_summary', { investigationId: 'inv_1' });
+    expect(transport.calls.map((c) => c.sessionJwt)).toEqual(['jwt-2']);
+  });
+
+  it('on a 401 re-mints once and retries with the new JWT and the same idempotency key', async () => {
+    const host = new NoopHostAdapter('approve');
+    const sessions = mkSessions(host, { t: 0 });
+    await sessions.createSession(['inv_1'], ['read-investigation', 'write-investigation']);
+    const calls: Array<{ jwt: string; key?: string }> = [];
+    const transport = {
+      async call(o: { sessionJwt: string; idempotencyKey?: string }) {
+        calls.push({ jwt: o.sessionJwt, key: o.idempotencyKey });
+        return o.sessionJwt === 'jwt-1'
+          ? { status: 401, body: { message: 'expired' } }
+          : { status: 200, body: { ok: true } };
+      },
+    };
+    const tools = new McpTools({ sessions, host, transport, newIdempotencyKey: () => 'idem-1' });
+    const out = await tools.invoke('investigation.add_evidence', { investigationId: 'inv_1', text: 'x' });
+    expect(out).toEqual({ ok: true });
+    expect(calls).toEqual([
+      { jwt: 'jwt-1', key: 'idem-1' },
+      { jwt: 'jwt-2', key: 'idem-1' },
+    ]);
+    // The user was asked once, not once per attempt.
+    expect(host.mutationPreviews).toHaveLength(1);
+  });
+
+  it('a 401 that survives the re-mint is surfaced (not retried forever, not "not found")', async () => {
+    const host = new NoopHostAdapter();
+    const sessions = mkSessions(host, { t: 0 });
+    await sessions.createSession(['inv_1'], ['read-investigation']);
+    const transport = new FakeMcpTransport().on('investigation.get_summary', 401, { message: 'bad token' });
+    const tools = new McpTools({ sessions, host, transport });
+    await expect(
+      tools.invoke('investigation.get_summary', { investigationId: 'inv_1' }),
+    ).rejects.toMatchObject({ code: 'PERMISSION_DENIED', message: expect.stringMatching(/\/login/) });
+    expect(transport.calls).toHaveLength(2);
+  });
+
+  it('refuses a mutation locally once the service has refused the write scope, without prompting', async () => {
+    const host = new NoopHostAdapter('approve');
+    const sessions = mkSessions(host, { t: 0 }, async (scopes) => {
+      if (scopes.includes('write-investigation')) throw new InsufficientScopeError('runs:write', 'x');
+      return grant;
+    });
+    await sessions.createSession(['inv_1'], ['read-investigation', 'write-investigation']);
+    const transport = new FakeMcpTransport();
+    const tools = new McpTools({ sessions, host, transport });
+    await expect(
+      tools.invoke('investigation.add_evidence', { investigationId: 'inv_1', text: 'x' }),
+    ).rejects.toMatchObject({ code: 'PERMISSION_DENIED', message: expect.stringMatching(/engineer role/) });
+    expect(host.mutationPreviews).toHaveLength(0);
+    expect(transport.calls).toHaveLength(0);
+    // Reads still work on the same session.
+    await tools.invoke('investigation.get_summary', { investigationId: 'inv_1' });
+    expect(transport.calls).toHaveLength(1);
   });
 });

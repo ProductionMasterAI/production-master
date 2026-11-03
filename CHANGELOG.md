@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Plugin directory readiness — the plugin is now the self-contained
+  [`plugin/`](plugin/) folder** (#84, #85, #86, #88). Submit it to the Claude
+  plugin directory with **Plugin path = `plugin`**. It carries the manifest,
+  the five commands, a 1024×1024 PNG icon, and
+  [`plugin/bin/production-master.mjs`](plugin/bin/production-master.mjs) — a
+  readable, generated bundle of `adapter-claude-code` + `plugin-core` (~63 KB,
+  `node:*` imports only) built by `npm run build:plugin`. New
+  `npm run check:plugin` (in CI) fails on bundle drift and on every finding
+  that held v0.1.1: a `package.json`/lockfile in the plugin, broad
+  `allowed-tools`, credential env reads, download-and-run commands, a missing
+  icon, binary or >256 KiB files. Mutation-tested in
+  `tests/check-plugin-folder.test.ts`.
 - **New `verify` skill, run automatically before each commit (Claude Code
   2.1.286).** 2.1.286 tells Claude to run a project or user skill named
   `verify` right before committing (skipped for docs-only and tests-only
@@ -44,6 +56,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Claude Code plugin layout and permissions** (#84, #88). The marketplace
+  entry's `source` is now `./plugin`, so the repo-root `package.json` +
+  lockfile, `docs/`, `sdk/` and `scripts/` are no longer part of the plugin
+  (Claude Code no longer runs `npm ci` on install). Commands moved to
+  `plugin/commands/`; each runs one line,
+  `node ${CLAUDE_PLUGIN_ROOT}/bin/production-master.mjs <command>`, and
+  pre-approves only that — `allowed-tools: Bash` became
+  `Bash(node ${CLAUDE_PLUGIN_ROOT}/bin/production-master.mjs <command>:*)`.
+  Plugin manifest version 0.1.2.
+- **The Claude Code CLI no longer reads `PM_ACCESS_TOKEN`** (#88). A bearer
+  token is accepted only as an explicit `--token`; headless and CI callers use
+  `pmctl` or the Python SDK. The public service URL is now the built-in default
+  (`--service` / `PM_SERVICE_URL` still override it), and `--help` exits 0.
 - **Cursor 3.11 (+2026-10-20 / desktop 3.27.22):** advance `changelog_date` **2026-10-16 → 2026-10-20**; desktop CLI **3.27.12 → 3.27.22**. Document **Agent SDK** GA (orthogonal to thin-client IP boundary). Feature pin remains **3.11**. CLI still **2026-08-26**. Cursor-only.
 - **Claude Code currency (2.1.306 → 2.1.312).** `.claude-code-version`
   advances to **2.1.312**, covering 2.1.307 through 2.1.312 (six releases).
@@ -628,6 +653,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The Claude Code plugin could not run from a fresh install.** Every command
+  executed `packages/adapter-claude-code/dist/cli.js`, which is gitignored and
+  was never built at install time. The plugin now ships its runtime prebuilt.
+- **macOS logins never persisted.** The keychain probe ran
+  `security --version`, an option macOS `security` does not have (exit 2), so
+  every session silently fell back to in-memory storage and the next command
+  was unauthenticated. The probe is now `security list-keychains`, and a new
+  seam test runs it against the real binary.
+- **The CLI silently did nothing when its path contained a space or a
+  symlink.** Entry-point detection now compares realpath file URLs.
 - **`docs/user/platform-support.md` claimed Codex 0.147.0; the pin
   (`.codex-version`) has held 0.148.0 since #35.** The pin-doc guard added
   above caught this live drift on the current tree; the doc now reads

@@ -104,8 +104,9 @@ Related notes for recent Claude Code versions:
   restarted. In a CI job that triggers investigations, this looked like the
   whole run's auth "going bad" mid-flight. Updating Claude Code rules this bug
   out, but **it does not rule out the Production Master credential**, which
-  produces the same shape: a token supplied via `--token` / `PM_ACCESS_TOKEN` is
-  seeded with no refresh token and a far-future local expiry, so the client never
+  produces the same shape: a token supplied via `--token` (or, for `pmctl` and
+  the Python SDK, `PM_ACCESS_TOKEN` — the Claude Code plugin reads no token from
+  the environment) is seeded with no refresh token and a far-future local expiry, so the client never
   refreshes it and a genuinely expired or revoked token first surfaces as a
   service-side 401 part-way through the run. Distinguish by what fails: if
   non-Production-Master requests are also 401ing, it is the host bug (update); if
@@ -232,9 +233,10 @@ Related notes for recent Claude Code versions:
 
 ### A description or payload with `$`-looking text behaves oddly
 
-Every command in `commands/` (`/login`, `/investigate`, `/connect`, `/update`)
-interpolates the argument text as `$ARGUMENTS` — both in the command's prose
-and in the Bash block that execs the CLI (`node "$CLI" investigate --input
+Every command in `plugin/commands/` (`/login`, `/investigate`, `/connect`,
+`/update`) interpolates the argument text as `$ARGUMENTS` — both in the
+command's prose and in the Bash line that runs the CLI (`node
+${CLAUDE_PLUGIN_ROOT}/bin/production-master.mjs investigate --input
 "$ARGUMENTS"`, and similarly for the others). Before Claude Code 2.1.233, an
 argument value that itself contained something shaped like a template marker
 — for instance an incident description pasted from another prompt, or a raw
@@ -293,8 +295,9 @@ Related Claude Code notes:
   is required.
 - **A Bash approval prompt appears on every `/investigate`, `/connect`,
   `/update`, `/login`, or `/logout` in a managed organization, where it
-  didn't before.** Each command in [`commands/`](../../commands) declares
-  `allowed-tools: Bash` to pre-approve the one tool it needs. As of Claude
+  didn't before.** Each command in [`plugin/commands/`](../../plugin/commands)
+  declares `allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/bin/production-master.mjs <command>:*)`
+  to pre-approve only its own subcommand of the bundled CLI. As of Claude
   Code 2.1.284, that pre-approval is no longer honored under an
   organization's managed `allowManagedPermissionRulesOnly` policy unless
   the plugin comes from an official Anthropic source or one the

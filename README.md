@@ -57,7 +57,7 @@ nvm use && npm ci && npm run build
 
 ### Claude Code
 
-Claude Code is wired end-to-end. This repo is its own plugin marketplace (`.claude-plugin/marketplace.json`), so a fresh clone or a bare `owner/repo` reference is all `/plugin marketplace add` needs — no separate marketplace repo to find first. Add the marketplace, install the plugin (`.claude-plugin/plugin.json` + [`commands/`](commands/), backed by [`packages/adapter-claude-code`](packages/adapter-claude-code)), then use the slash commands:
+Claude Code is wired end-to-end. This repo is its own plugin marketplace (`.claude-plugin/marketplace.json`), so a fresh clone or a bare `owner/repo` reference is all `/plugin marketplace add` needs — no separate marketplace repo to find first. Add the marketplace, install the plugin (the self-contained [`plugin/`](plugin/) folder — manifest, [`commands/`](plugin/commands/), and a generated, readable bundle of [`packages/adapter-claude-code`](packages/adapter-claude-code) at [`plugin/bin/production-master.mjs`](plugin/bin/production-master.mjs)), then use the slash commands:
 
 ```
 /plugin marketplace add ProductionMasterAI/production-master
@@ -66,7 +66,7 @@ Claude Code is wired end-to-end. This repo is its own plugin marketplace (`.clau
 /investigate PROJ-1234
 ```
 
-`/connect <id>`, `/update <id> <tool> [jsonArgs]`, and `/logout` are also available. Each command execs the built thin-client binary; nothing about the investigation runs locally.
+`/connect <id>`, `/update <id> <tool> [jsonArgs]`, and `/logout` are also available. Each command runs the bundled thin-client binary with Node.js 22+ and pre-approves only its own subcommand; the plugin installs no packages, and nothing about the investigation runs locally. After changing `packages/adapter-claude-code` or `packages/plugin-core`, run `npm run build:plugin` and commit the regenerated bundle — CI (`npm run check:plugin`) fails when it drifts.
 
 On Claude Code 2.1.224+, the plugin can also be installed from an `archive` source — a zip fetched over HTTPS, with optional SHA-256 pinning — for machines without git or npm; see the note in the [quick start](docs/user/quick-start.md#claude-code).
 

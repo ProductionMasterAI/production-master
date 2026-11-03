@@ -1,7 +1,7 @@
 ---
 description: Authenticate with the Production Master hosted service via device-code (RFC 8628) login and store the session in your OS keychain.
 argument-hint: "[--service <url>]"
-allowed-tools: Bash
+allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/bin/production-master.mjs login:*)
 ---
 
 Authenticate this editor with the Production Master hosted service.
@@ -12,14 +12,9 @@ composition root every command uses — so the session is stored exactly where
 verification URL, polls to completion, and persists the encrypted session. No
 investigation logic runs locally.
 
-Run this to log in (pass `--service <url>` to override; otherwise it uses
-`$PM_SERVICE_URL` or the public default):
+Run this to log in (pass `--service <url>` to point at a self-hosted service;
+otherwise it uses the public hosted service):
 
 ```bash
-set -euo pipefail
-PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(pwd)}"
-CLI="${PLUGIN_ROOT}/packages/adapter-claude-code/dist/cli.js"
-[ -f "$CLI" ] || CLI="${PLUGIN_ROOT}/dist/cli.js"
-export PM_SERVICE_URL="${PM_SERVICE_URL:-https://api.productionmaster.dev}"
-node "$CLI" login $ARGUMENTS
+node ${CLAUDE_PLUGIN_ROOT}/bin/production-master.mjs login $ARGUMENTS
 ```

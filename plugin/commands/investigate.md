@@ -1,7 +1,7 @@
 ---
 description: Start a Production Master investigation on the hosted service and stream live progress into the editor. The investigation runs entirely server-side.
 argument-hint: "[JIRA-TICKET or bug description]"
-allowed-tools: Bash
+allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/bin/production-master.mjs investigate:*)
 ---
 
 Trigger an investigation for: **$ARGUMENTS**
@@ -12,10 +12,5 @@ and relays any approve/reject decisions — no analysis happens locally. If you 
 not logged in, run `/login` first.
 
 ```bash
-set -euo pipefail
-PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(pwd)}"
-CLI="${PLUGIN_ROOT}/packages/adapter-claude-code/dist/cli.js"
-[ -f "$CLI" ] || CLI="${PLUGIN_ROOT}/dist/cli.js"
-export PM_SERVICE_URL="${PM_SERVICE_URL:-https://api.productionmaster.dev}"
-node "$CLI" investigate --input "$ARGUMENTS"
+node ${CLAUDE_PLUGIN_ROOT}/bin/production-master.mjs investigate --input "$ARGUMENTS"
 ```

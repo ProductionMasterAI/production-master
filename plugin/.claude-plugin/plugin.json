@@ -1,7 +1,8 @@
 {
   "name": "production-master",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Thin client for the Production Master hosted incident-investigation service — device-code login, trigger a run, stream live progress, and approve/reject proposed actions from inside Claude Code. No investigation logic runs locally.",
+  "icon": "./assets/icon.png",
   "author": {
     "name": "ProductionMasterAI",
     "url": "https://github.com/ProductionMasterAI"

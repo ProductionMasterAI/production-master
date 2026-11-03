@@ -1378,22 +1378,16 @@ async function winDelete(service, account) {
   ]).catch(() => {
   });
 }
+var KEYCHAIN_PROBES = {
+  darwin: ["security", ["list-keychains"]],
+  linux: ["secret-tool", ["--version"]],
+  win32: ["powershell", ["-NoProfile", "-NonInteractive", "-Command", "exit 0"]]
+};
 async function isAvailable(platform) {
+  const probe = KEYCHAIN_PROBES[platform];
+  if (!probe) return false;
   try {
-    if (platform === "darwin") {
-      await exec("security", ["--version"]);
-    } else if (platform === "linux") {
-      await exec("secret-tool", ["--version"]);
-    } else if (platform === "win32") {
-      await exec("powershell", [
-        "-NoProfile",
-        "-NonInteractive",
-        "-Command",
-        "exit 0"
-      ]);
-    } else {
-      return false;
-    }
+    await exec(probe[0], [...probe[1]]);
     return true;
   } catch {
     return false;

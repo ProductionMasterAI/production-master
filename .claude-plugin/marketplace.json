@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "production-master",
-      "source": "./",
+      "source": "./plugin",
       "description": "Thin client for the Production Master hosted incident-investigation service — device-code login, trigger a run, stream live progress, and approve/reject proposed actions from inside Claude Code. No investigation logic runs locally."
     }
   ]

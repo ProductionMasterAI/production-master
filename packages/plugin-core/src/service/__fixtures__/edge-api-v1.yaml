@@ -107,8 +107,8 @@ paths:
                   maxLength: 253
                 repoUrl:
                   type: string
-                  description: Optional GitHub repository context for the signal, used to ground evidence. Accepts a github.com URL (optionally pointing at an issue or PR) or the bare owner/repo[#n] form; anything else is rejected with 400 rather than being silently dropped. Omit it for a run with no repo context.
-                  example: https://github.com/acme/web/issues/42
+                  description: Optional GitHub repository the run is about. Accepts a github.com URL (optionally pointing at an issue or PR) or the bare owner/repo[#n] form; anything else is rejected with 400 rather than being silently dropped. Omit it for a run with no repository.
+                  example: https://github.com/example-org/web/issues/42
                 visibility:
                   type: object
       responses:

@@ -3,7 +3,7 @@
  *
  * Source of truth: the `/oauth/*` paths of the service's OpenAPI contract
  * (`tools/openapi/edge-api-v1.yaml`, vendored at
- * `src/service/__fixtures__/edge-api-v1.yaml`) and Design Book part-08 §03.
+ * `src/service/__fixtures__/edge-api-v1.yaml`).
  * Field names are RFC 8628 / RFC 6749 snake_case. The rest of plugin-core uses
  * the camelCase domain types in `./types.ts`; this module is the ONLY place the
  * two meet, and `oauth-contract.test.ts` checks it against the vendored spec.

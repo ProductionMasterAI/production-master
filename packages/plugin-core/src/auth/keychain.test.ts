@@ -15,7 +15,7 @@ const mockExec = vi.mocked(execFile);
 const PROBE_RESULT = { stdout: "security-2.0\n", stderr: "" };
 
 function setupMacProbe() {
-  // First call is the probe (`security --version`); subsequent calls are operations.
+  // First call is the probe (`security list-keychains`); subsequent calls are operations.
   mockExec.mockResolvedValueOnce(PROBE_RESULT as never);
 }
 

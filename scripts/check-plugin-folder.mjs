@@ -111,6 +111,24 @@ for (const [f, text] of textFiles) {
   }
 }
 
+// --- quoted plugin paths in command/skill bodies ---------------------------
+// An unquoted ${CLAUDE_PLUGIN_ROOT}/… is split by the shell when the install
+// path contains a space (MODULE_NOT_FOUND). Bodies must quote it; the
+// allowed-tools rule may stay unquoted — Claude Code normalises quoting when it
+// matches (verified against 2.1.317 with a spaced install path, PR #89).
+for (const [f, text] of textFiles) {
+  if (!/\.md$/i.test(f)) continue;
+  const body = text.replace(/^---\n[\s\S]*?\n---\n/, '');
+  for (const m of body.matchAll(/(^|[^"'])\$\{CLAUDE_PLUGIN_ROOT\}\//g)) {
+    // Skip prose/inline-code mentions (`…`); only shell lines are run.
+    const lineStart = body.lastIndexOf('\n', m.index) + 1;
+    const lineEnd = body.indexOf('\n', m.index);
+    const line = body.slice(lineStart, lineEnd === -1 ? undefined : lineEnd);
+    if (line.includes('`')) continue;
+    err('UNQUOTED_PLUGIN_ROOT', `${rel(f)}: "${line.trim()}" — quote "\${CLAUDE_PLUGIN_ROOT}/…" so install paths with spaces work`);
+  }
+}
+
 // --- credentials from the environment & download-and-run ------------------
 const CRED_ENV = /process\.env(?:\.|\[['"])([A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|API_KEY|ACCESS_KEY|PRIVATE_KEY))\b|os\.environ(?:\.get)?[[(]['"]([A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|KEY))['"]|\$\{?([A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|API_KEY))\}?/g;
 const FETCH_EXEC = /\b(?:curl|wget)\b[^\n|]*\|\s*(?:ba|z|da)?sh\b|\b(?:npx|bunx|uvx|pipx run)\s+[^\s`]|\birm\b[^\n|]*\|\s*iex\b/;

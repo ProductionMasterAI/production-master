@@ -11,5 +11,5 @@ authenticated MCP session; the service decides what it does. This client only
 transports the request. Run `/login` first if you are not authenticated.
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/bin/production-master.mjs update $ARGUMENTS
+node "${CLAUDE_PLUGIN_ROOT}/bin/production-master.mjs" update $ARGUMENTS
 ```

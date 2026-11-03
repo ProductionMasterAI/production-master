@@ -12,5 +12,5 @@ and relays any approve/reject decisions — no analysis happens locally. If you 
 not logged in, run `/login` first.
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/bin/production-master.mjs investigate --input "$ARGUMENTS"
+node "${CLAUDE_PLUGIN_ROOT}/bin/production-master.mjs" investigate --input "$ARGUMENTS"
 ```

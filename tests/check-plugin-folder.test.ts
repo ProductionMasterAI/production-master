@@ -67,6 +67,15 @@ describe('check-plugin-folder', () => {
     expect(check(dir).out).not.toContain('ALLOWED_TOOLS_BROAD');
   });
 
+  it('flags an unquoted ${CLAUDE_PLUGIN_ROOT} path in a command body (UNQUOTED_PLUGIN_ROOT)', () => {
+    const dir = copyPlugin();
+    const f = join(dir, 'commands/connect.md');
+    writeFileSync(f, readFileSync(f, 'utf8').replace('node "${CLAUDE_PLUGIN_ROOT}/bin/production-master.mjs"', 'node ${CLAUDE_PLUGIN_ROOT}/bin/production-master.mjs'));
+    const r = check(dir);
+    expect(r.code).toBe(1);
+    expect(r.out).toContain('UNQUOTED_PLUGIN_ROOT');
+  });
+
   it('flags a credential read from the environment (MCP_FORWARDS_CREDENTIAL_ENV)', () => {
     const dir = copyPlugin();
     appendFileSync(join(dir, 'bin/production-master.mjs'), '\nconst t = process.env.PM_ACCESS_TOKEN;\n');

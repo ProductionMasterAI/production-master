@@ -236,7 +236,7 @@ Related notes for recent Claude Code versions:
 Every command in `plugin/commands/` (`/login`, `/investigate`, `/connect`,
 `/update`) interpolates the argument text as `$ARGUMENTS` — both in the
 command's prose and in the Bash line that runs the CLI (`node
-${CLAUDE_PLUGIN_ROOT}/bin/production-master.mjs investigate --input
+"${CLAUDE_PLUGIN_ROOT}/bin/production-master.mjs" investigate --input
 "$ARGUMENTS"`, and similarly for the others). Before Claude Code 2.1.233, an
 argument value that itself contained something shaped like a template marker
 — for instance an incident description pasted from another prompt, or a raw

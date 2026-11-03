@@ -16,5 +16,5 @@ Run this to log in (pass `--service <url>` to point at a self-hosted service;
 otherwise it uses the public hosted service):
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/bin/production-master.mjs login $ARGUMENTS
+node "${CLAUDE_PLUGIN_ROOT}/bin/production-master.mjs" login $ARGUMENTS
 ```

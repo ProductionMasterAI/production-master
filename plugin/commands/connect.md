@@ -11,5 +11,5 @@ stream — the same fold/render path `investigate` uses, so nothing is
 re-computed locally. Run `/login` first if you are not authenticated.
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/bin/production-master.mjs connect $ARGUMENTS
+node "${CLAUDE_PLUGIN_ROOT}/bin/production-master.mjs" connect $ARGUMENTS
 ```

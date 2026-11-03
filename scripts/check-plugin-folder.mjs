@@ -51,10 +51,9 @@ const LOCKFILES = new Set([
 const errors = [];
 const err = (code, msg) => errors.push(`${code}: ${msg}`);
 
-if (!existsSync(join(PLUGIN, '.claude-plugin/plugin.json'))) {
-  console.error(`check-plugin-folder: ${relative(ROOT, PLUGIN)}/.claude-plugin/plugin.json not found`);
-  process.exit(1);
-}
+const MANIFEST = join(PLUGIN, '.claude-plugin/plugin.json');
+const hasManifest = existsSync(MANIFEST);
+if (!hasManifest) err('MANIFEST', `${relative(ROOT, MANIFEST)} not found`);
 
 function walk(dir) {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -128,8 +127,10 @@ for (const [f, text] of textFiles) {
 }
 
 // --- icon -----------------------------------------------------------------
-const manifest = JSON.parse(readFileSync(join(PLUGIN, '.claude-plugin/plugin.json'), 'utf8'));
-if (!manifest.icon) {
+const manifest = hasManifest ? JSON.parse(readFileSync(MANIFEST, 'utf8')) : undefined;
+if (!manifest) {
+  // Already reported as MANIFEST; the icon and marketplace checks need it.
+} else if (!manifest.icon) {
   err('ICON_MISSING', 'plugin.json has no "icon"');
 } else {
   const icon = join(PLUGIN, manifest.icon);
@@ -165,15 +166,20 @@ if (!manifest.icon) {
 }
 
 // --- marketplace points at this folder ------------------------------------
-const marketplace = JSON.parse(readFileSync(join(ROOT, '.claude-plugin/marketplace.json'), 'utf8'));
-const entry = marketplace.plugins?.find((p) => p.name === manifest.name);
-const expected = `./${relative(ROOT, PLUGIN)}`;
-if (!entry) err('MARKETPLACE', `marketplace.json lists no plugin named ${manifest.name}`);
-else if (entry.source !== expected) err('MARKETPLACE', `marketplace.json source is ${JSON.stringify(entry.source)}, expected "${expected}"`);
+if (manifest) {
+  const marketplace = JSON.parse(readFileSync(join(ROOT, '.claude-plugin/marketplace.json'), 'utf8'));
+  const entry = marketplace.plugins?.find((p) => p.name === manifest.name);
+  const expected = `./${relative(ROOT, PLUGIN)}`;
+  if (!entry) err('MARKETPLACE', `marketplace.json lists no plugin named ${manifest.name}`);
+  else if (entry.source !== expected) err('MARKETPLACE', `marketplace.json source is ${JSON.stringify(entry.source)}, expected "${expected}"`);
+}
 
+// exitCode, not process.exit(): on macOS a piped stderr is asynchronous and
+// exit() can truncate the list of findings.
 if (errors.length) {
   console.error(`check-plugin-folder: ${errors.length} problem(s) in ${rel(PLUGIN)}/`);
   for (const e of errors) console.error(`  ✗ ${e}`);
-  process.exit(1);
+  process.exitCode = 1;
+} else {
+  console.log(`check-plugin-folder: ${rel(PLUGIN)}/ clean — ${files.length} files, no directory findings.`);
 }
-console.log(`check-plugin-folder: ${rel(PLUGIN)}/ clean — ${files.length} files, no directory findings.`);

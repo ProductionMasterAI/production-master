@@ -1839,7 +1839,7 @@ function usage(err) {
 }
 async function main(argv = process.argv.slice(2)) {
   const { positionals, flags } = parseArgs(argv);
-  if (flags.help === "true" || positionals[0] === "help") {
+  if ("help" in flags || positionals[0] === "help") {
     usage(process.stdout);
     return 0;
   }

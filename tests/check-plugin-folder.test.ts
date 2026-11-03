@@ -94,6 +94,15 @@ describe('check-plugin-folder', () => {
     expect(r.out).toContain('ICON_MISSING');
   });
 
+  it('reports a missing manifest as a finding, not a crash (MANIFEST)', () => {
+    const dir = copyPlugin();
+    rmSync(join(dir, '.claude-plugin/plugin.json'));
+    const r = check(dir);
+    expect(r.code).toBe(1);
+    expect(r.out).toContain('MANIFEST');
+    expect(r.out).not.toContain('TypeError');
+  });
+
   it('flags a non-text, non-image file (BINARY_FILE)', () => {
     const dir = copyPlugin();
     writeFileSync(join(dir, 'blob.bin'), Buffer.from([0, 1, 2, 3]));

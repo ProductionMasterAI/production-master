@@ -55,34 +55,47 @@ async function bundle() {
   return file.text;
 }
 
+// Failures throw and the top level sets process.exitCode instead of calling
+// process.exit(): on macOS a piped stderr is asynchronous, so exit() can
+// truncate the very message that says why the build failed.
+class BuildPluginError extends Error {}
 function fail(msg) {
-  process.stderr.write(`build-plugin: ${msg}\n`);
-  process.exit(1);
+  throw new BuildPluginError(msg);
 }
 
-const check = process.argv.includes('--check');
-const text = await bundle();
-const bytes = Buffer.byteLength(text, 'utf8');
-const rel = relative(ROOT, OUT);
+async function run() {
+  const check = process.argv.includes('--check');
+  const text = await bundle();
+  const bytes = Buffer.byteLength(text, 'utf8');
+  const rel = relative(ROOT, OUT);
 
-if (bytes >= MAX_BYTES) {
-  fail(`${rel} would be ${bytes} bytes — over the ${MAX_BYTES}-byte plugin directory limit.`);
-}
-// The bundle must stay dependency-free: any bare import left in it would need
-// node_modules at run time, which the plugin folder deliberately does not have.
-const bare = [...text.matchAll(/^\s*import\s[^'"]*['"]([^'"]+)['"]/gm)]
-  .map((m) => m[1])
-  .filter((spec) => !spec.startsWith('node:'));
-if (bare.length) fail(`bundle has non-builtin imports: ${[...new Set(bare)].join(', ')}`);
-
-if (check) {
-  if (!existsSync(OUT)) fail(`${rel} is missing — run \`npm run build:plugin\` and commit it.`);
-  if (readFileSync(OUT, 'utf8') !== text) {
-    fail(`${rel} is stale — run \`npm run build:plugin\` and commit the result.`);
+  if (bytes >= MAX_BYTES) {
+    fail(`${rel} would be ${bytes} bytes — over the ${MAX_BYTES}-byte plugin directory limit.`);
   }
-  process.stdout.write(`build-plugin: ${rel} is up to date (${bytes} bytes).\n`);
-} else {
-  mkdirSync(dirname(OUT), { recursive: true });
-  writeFileSync(OUT, text);
-  process.stdout.write(`build-plugin: wrote ${rel} (${bytes} bytes).\n`);
+  // The bundle must stay dependency-free: any bare import left in it would need
+  // node_modules at run time, which the plugin folder deliberately does not have.
+  const bare = [...text.matchAll(/^\s*import\s[^'"]*['"]([^'"]+)['"]/gm)]
+    .map((m) => m[1])
+    .filter((spec) => !spec.startsWith('node:'));
+  if (bare.length) fail(`bundle has non-builtin imports: ${[...new Set(bare)].join(', ')}`);
+
+  if (check) {
+    if (!existsSync(OUT)) fail(`${rel} is missing — run \`npm run build:plugin\` and commit it.`);
+    if (readFileSync(OUT, 'utf8') !== text) {
+      fail(`${rel} is stale — run \`npm run build:plugin\` and commit the result.`);
+    }
+    process.stdout.write(`build-plugin: ${rel} is up to date (${bytes} bytes).\n`);
+  } else {
+    mkdirSync(dirname(OUT), { recursive: true });
+    writeFileSync(OUT, text);
+    process.stdout.write(`build-plugin: wrote ${rel} (${bytes} bytes).\n`);
+  }
+}
+
+try {
+  await run();
+} catch (e) {
+  if (!(e instanceof BuildPluginError)) throw e;
+  process.stderr.write(`build-plugin: ${e.message}\n`);
+  process.exitCode = 1;
 }

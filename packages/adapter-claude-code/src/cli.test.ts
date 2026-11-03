@@ -45,6 +45,19 @@ describe('cli argument + exit-code contract', () => {
     }
   });
 
+  it.each([[['--help']], [['help']], [['--help', 'login']], [['login', '--help']]])(
+    'prints usage and exits 0 for %j',
+    async (argv) => {
+      const out = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+      try {
+        expect(await main(argv)).toBe(0);
+        expect(out.mock.calls.map((c) => String(c[0])).join('')).toContain('Usage:');
+      } finally {
+        out.mockRestore();
+      }
+    },
+  );
+
   it('never reads a bearer token from PM_ACCESS_TOKEN (plugin directory policy)', async () => {
     // A token in the environment must NOT authenticate the run: with a fresh
     // keychain slot the runtime still reports "not authenticated" (4) instead of

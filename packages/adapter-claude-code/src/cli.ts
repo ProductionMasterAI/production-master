@@ -156,7 +156,8 @@ function usage(err: NodeJS.WritableStream): void {
 
 export async function main(argv = process.argv.slice(2)): Promise<number> {
   const { positionals, flags } = parseArgs(argv);
-  if (flags.help === 'true' || positionals[0] === 'help') {
+  // Presence, not value: `--help login` stores 'login' as the flag's value.
+  if ('help' in flags || positionals[0] === 'help') {
     usage(process.stdout);
     return 0;
   }

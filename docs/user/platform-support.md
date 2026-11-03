@@ -4,13 +4,13 @@ The editor and agent platforms this client is validated against.
 
 | Platform | Validated against | Latest known |
 |---|---|---|
-| Claude Code | pending | 2.1.306 |
+| Claude Code | pending | 2.1.312 |
 | Cursor | pending | 3.11 (+ changelog 2026-10-20) |
-| Codex | pending | 0.165.0 |
+| Codex | pending | 0.166.0 |
 | OpenCode | pending | pending |
 
 All four adapter packages now ship a runnable `dist/cli.js`, so each client is
-usable today. The Codex release this repo targets is **0.165.0** and the Cursor
+usable today. The Codex release this repo targets is **0.166.0** and the Cursor
 release is **3.11** (changelog covered through 2026-10-20; desktop CLI observed at **3.27.22**): for each, the
 compatibility delta was reviewed against the existing adapter and its registration
 shape (`.codex/config.toml` for Codex, `.cursor/mcp.json` for Cursor), and nothing
@@ -53,6 +53,8 @@ Codex 0.160.0 through 0.164.0 were reviewed for compatibility and useful low-ris
 
 Codex 0.164.0 adds native `/presets`, inline `/model` and `/permissions` arguments, enterprise MCP account-grant/OAuth sign-in and credential masking for remote commands. It improves session compaction/recovery, Windows proxy authentication and macOS sandbox path protections. This adapter's local stdio MCP registration and device-code login do not require a migration; no new configuration or wrapper is introduced. Prefer native Codex authentication and session recovery if a future Codex-only integration needs them. This is a changelog review, not direct CLI validation.
 
+Codex 0.166.0 (2026-10-29) adds `codex doctor --network-only` and `codex queue --resume`; the first is the preferred native network/WebSocket diagnostic and the second is a host-native unloaded-thread recovery path. Keyboard transcript selection, Markdown in async questions, Terra catalog expansion and safer follow-up prompts are host-only. Approval/permission persistence across resume/fork, app-server lifecycle, reasoning-token accounting and reconnection fixes require no change to this adapter's local stdio MCP registration. No new config keys, SDK/protocol claims or cross-platform changes were introduced. Direct validation remains pending.
+
 Codex 0.165.0 (2026-10-27) adds built-in Google Cloud Vertex AI provider support, GPT-6.1 Terra catalog entries, session repository filtering and agent directory grouping, in-conversation reasoning-effort changes, and memory v2 defaults for new profiles. Experimental app-server attached thread forks are not used by this thin client. Dropped remote MCP requests now cancel, queued agent messages no longer restart work after interruption or Plan-mode switching, provider model-not-found errors stop retrying, default approval-reviewer behavior is corrected, and marketplace URL validation is tightened. These changes are host-side: this adapter's existing local stdio MCP registration, Node CLI command and device-code login remain unchanged. Prefer native provider/session/MCP handling instead of custom wrappers. No speculative config or protocol migration is needed; direct Codex CLI validation is still pending.
 
 Codex 0.150.0 adds native task references, improved task naming/copy ergonomics, and an
@@ -79,6 +81,89 @@ stdio server intentionally continues to advertise its older supported MCP
 protocol; changing only the protocol string would be unsafe. A future SDK-backed
 upgrade should adopt the newer protocol when paginated discovery, multi-round
 requests, and non-blocking startup can be implemented and tested together.
+
+**Claude Code notes (2.1.306 → 2.1.312).** `.claude-code-version` advances to
+**2.1.312**, covering 2.1.307 through 2.1.312 (six releases, the first time
+this repo's pin has advanced since the prior pass). Registration, sandboxing
+configuration shape, and command-argument handling are unchanged. Nothing in
+this delta is adopted or closes a real gap in this repo's own rules; one
+item is flagged as relevant to a sibling repo rather than this one, and
+everything else is reviewed line by line and ruled not applicable by
+[constraint #4](../../.claude/rules/constraints.md) (no pipeline/agent
+logic, no hooks, mods, subagents, or MCP server of this repo's own for
+Claude Code) or [constraint #5](../../.claude/rules/constraints.md) (no
+self-hosted runner):
+
+- **Version-check note:** this run's installed `claude` CLI reports `claude
+  --version` → `2.1.316 (Claude Code)`, newer than the newest entry actually
+  published on the official changelog (2.1.312, dated 2026-10-27). The pin
+  advances to 2.1.312 — the changelog's newest published entry, and this
+  task's defined compatibility target — rather than to the ahead-of-changelog
+  local binary version, so a future pass should re-review 2.1.313–2.1.316 once
+  those are documented on the changelog.
+- **Reviewed, flagged for a sibling repo, not applicable here: the HTTP-MCP
+  double-dispatch fix (tool calls sent twice when the connection closed
+  mid-call, 2.1.307).** As the 2.1.268 MCP-secret-masking note and the
+  2.1.274 MCP-client-v2 note above already established, this repo's Claude
+  Code path registers via `/plugin install` and execs a binary from
+  [`commands/`](../../commands), never an `.mcp.json` server — so there is
+  no registered Claude Code MCP connection of this repo's own for the fix to
+  touch. `production-master-mcp` runs an HTTP MCP transport and is the repo
+  this fix actually matters for.
+- **Reviewed, not applicable: `/claude-api api-version`, the
+  `claude_code.safety_event` OpenTelemetry event, and `@claude review
+  stop`/`off`/`pause` for Code Review subscriptions (2.1.307).** As the
+  2.1.278 note below already established, this repo is used from a terminal
+  or from [`claude.yml`](../../.github/workflows/claude.yml)'s
+  comment-triggered `anthropics/claude-code-action@v1` job, never the
+  separate auto-PR "Code Review" product those controls govern; this repo
+  configures no OpenTelemetry exporter or Claude-apps-gateway of its own
+  (constraint #4).
+- **Reviewed, not applicable: VSCode-extension TLS/certificate handling, a
+  WebSearch-budget notice wording tweak, an `axScreenReader` settings-tier
+  restriction, and self-hosted-runner changes (2.1.307).** This repo is
+  never used from the VS Code extension (same reasoning as the 2.1.278
+  note), makes no model calls of its own, and runs CI on GitHub-hosted
+  `ubuntu-latest` runners only — constraint #4 and constraint #5.
+- **Reviewed, not applicable: fork subagents launched together now each
+  know which launch is their own (2.1.307).** This repo's five commands
+  spawn no subagents of their own (constraint #4) — there is no "launched
+  together" case here.
+- **Reviewed, not applicable: a worktree-create change that no longer
+  fetches on demand (2.1.309).** This repo's contributor workflow is
+  fork-and-branch, per [CONTRIBUTING.md](../CONTRIBUTING.md), never `claude
+  agents` teleport/worktrees (same reasoning as the 2.1.274 note below).
+- **Reviewed, not applicable: `Monitor` tool provider expansion (2.1.310).**
+  This repo uses no `Monitor` watch or `Workflow` tool script of its own
+  (constraint #4), the same reasoning as the 2.1.269
+  `CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS` note below.
+- **Reviewed, benefits automatically / no action: a one-way `/compact`-disable
+  setting (2.1.311).** Session-level behavior with no
+  [`.claude/settings.json`](../../.claude/settings.json) field for this repo
+  to set.
+- **Reviewed, not applicable: dropping the `-1m` model-name-suffix
+  convention (2.1.311).** This repo makes no model calls of its own
+  (constraint #4) — no model name of this repo's own to rename.
+- **Reviewed, benefits automatically / no action: output-format
+  control-character escaping (2.1.311).** General correctness fix to
+  `--output-format json`/`stream-json`; this repo scripts no parsing of the
+  `claude` CLI's own output (its five commands exec the thin-client binary
+  over `Bash`, and [`claude.yml`](../../.github/workflows/claude.yml) runs
+  `anthropics/claude-code-action@v1` interactively, not via scripted output
+  parsing) — nothing here to break or to fix.
+- **Reviewed, not applicable: a lower-bound fix to subagent
+  `autoCompactWindow` (2.1.312).** This repo defines no subagents of its own
+  (constraint #4).
+- **Reviewed, not applicable: the per-event hook-concurrency cap raised from
+  12 to 24 (2.1.312).** This repo defines no hooks under `.claude/`
+  (constraint #4) — same reasoning as the 2.1.301–2.1.306 12-concurrent-hook
+  note below, just a higher number to not apply to.
+- This repo's own `claude plugin validate .` and `claude plugin validate
+  .claude-plugin/plugin.json` were re-run on the installed 2.1.316 CLI: both
+  still pass (one pre-existing, unrelated `ICON_MISSING` directory warning,
+  unchanged from prior passes and out of scope for a Claude-Code-version
+  review). `npm run build`, `npm test` (292/292 passing), and `npm run lint`
+  all ran clean on this pass.
 
 **Claude Code notes (2.1.300 → 2.1.306).** `.claude-code-version` advances to
 **2.1.306**, covering 2.1.301 through 2.1.306 (2.1.301 and 2.1.302 shipped

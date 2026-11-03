@@ -45,6 +45,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Cursor 3.11 (+2026-10-20 / desktop 3.27.22):** advance `changelog_date` **2026-10-16 → 2026-10-20**; desktop CLI **3.27.12 → 3.27.22**. Document **Agent SDK** GA (orthogonal to thin-client IP boundary). Feature pin remains **3.11**. CLI still **2026-08-26**. Cursor-only.
+- **Claude Code currency (2.1.306 → 2.1.312).** `.claude-code-version`
+  advances to **2.1.312**, covering 2.1.307 through 2.1.312 (six releases).
+  Registration, sandboxing configuration shape, and command-argument
+  handling are unchanged. Nothing in this delta is adopted or closes a real
+  gap in this repo's own rules: fork-subagents-launched-together,
+  worktree-create's no-on-demand-fetch change, `Monitor` tool provider
+  expansion, the `-1m` model-suffix drop, and the subagent
+  `autoCompactWindow` lower-bound fix and raised hook-concurrency cap are
+  all hook-, mod-, subagent-, or model-call-shaped surface this repo defines
+  none of (constraint #4). The HTTP-MCP double-dispatch fix (2.1.307) is not
+  applicable here either — this plugin registers via `/plugin install`,
+  never an `.mcp.json` server for Claude Code — but is flagged as directly
+  relevant to `production-master-mcp`, which runs an HTTP MCP transport.
+  Also noted: this run's installed `claude` CLI reports `2.1.316`, ahead of
+  the changelog's newest published entry (2.1.312), so the pin tracks the
+  changelog rather than the local binary. `claude plugin validate .` and
+  `claude plugin validate .claude-plugin/plugin.json` were re-run on the
+  live CLI: both still pass. See [Platform
+  support](docs/user/platform-support.md) for the full per-item review.
+
+- **Codex 0.166.0:** pin-only bump in `.codex-version` (from 0.165.0), tracking Codex's published changelog (2026-10-29); not a live validation run. `codex doctor --network-only` is the preferred native network diagnostic; no adapter or registration change.
 - **Codex 0.164.0:** native `/presets`, inline `/model` and `/permissions` arguments, enterprise MCP account-grant/OAuth sign-in and credential masking for remote commands, session compaction/recovery, Windows proxy authentication, and macOS sandbox path protections. Local stdio MCP registration and device-code login unchanged. No plugin code change.
 - **Cursor 3.11 (+2026-10-16 / desktop 3.27.12):** bump desktop CLI pin **3.25.9 → 3.27.12** (stable download API 2026-10-23). Feature pin remains **3.11** / **2026-10-16**. Document IDE **3.26** (resumable agents after extension-host crash; sticky Always Run with `permissions.json`) and **3.27** (`parent_agent_id` on subagent hooks; Mermaid preview controls; Reduce Motion; encoding fixes). No plugin code or MCP registration change. Cursor-only; other platform nightlies untouched.
 - **Claude Code currency (2.1.300 → 2.1.306).** `.claude-code-version`

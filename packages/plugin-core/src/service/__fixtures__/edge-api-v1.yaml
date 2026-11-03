@@ -1,12 +1,50 @@
+# VENDORED SUBSET of ProductionMasterAI/production-master-service tools/openapi/edge-api-v1.yaml.
+# Do not edit by hand. Every path/component here must deep-equal the service's (its CI job
+# "Plugin spec sync" fails otherwise); internal /admin and /operator surfaces are deliberately
+# omitted (Hard rule 15). Regenerate from the service spec when it changes.
 openapi: 3.1.0
 info:
   title: Production Master Edge API
-  version: 1.5.0
+  version: 1.6.0
   description: |
     REST surface for investigations (runs). v1.5 adds MCP session minting,
-    modes, fork/branch, comments list, and trigger provenance fields.
+    modes, fork/branch, comments list, and trigger provenance fields. v1.6
+    adds the RFC 8628 device-code login (`/oauth/device`, `/oauth/token`,
+    `/oauth/revoke`) with RFC snake_case wire names.
 servers:
   - url: /v1
+components:
+  parameters:
+    RunId:
+      name: id
+      in: path
+      required: true
+      description: Investigation (run) id.
+      schema:
+        type: string
+  responses:
+    OAuthError:
+      description: RFC 6749 §5.2 / RFC 8628 §3.5 error
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - error
+            properties:
+              error:
+                type: string
+                enum:
+                  - invalid_request
+                  - invalid_client
+                  - invalid_grant
+                  - invalid_scope
+                  - authorization_pending
+                  - slow_down
+                  - access_denied
+                  - expired_token
+              error_description:
+                type: string
 paths:
   /runs:
     post:
@@ -16,64 +54,234 @@ paths:
           application/json:
             schema:
               type: object
-              required: [source]
+              required:
+                - source
               properties:
                 source:
                   oneOf:
                     - type: object
-                      required: [kind, ticket]
+                      required:
+                        - kind
+                        - ticket
                       properties:
-                        kind: { const: jira }
-                        ticket: { type: string }
+                        kind:
+                          const: jira
+                        ticket:
+                          type: string
                     - type: object
-                      required: [kind, description]
+                      required:
+                        - kind
+                        - description
                       properties:
-                        kind: { const: free-form }
-                        description: { type: string }
+                        kind:
+                          const: free-form
+                        description:
+                          type: string
                 mode:
                   type: string
-                  enum: [deep, triage, fast]
-                  default: deep
-                service: { type: string }
-                pipeline: { type: string }
-                visibility: { type: object }
+                  enum:
+                    - triage
+                    - deep
+                  default: triage
+                  description: Investigation depth. Omitted means triage, the one standard mode (it bills at the standard rate and draws on the plan's included investigations). Deep runs only when passed explicitly, bills at the deep rate, and never draws on them. The former `fast` and `standard` modes are retired and are rejected with 400.
+                service:
+                  type: string
+                pipeline:
+                  type: string
+                incidentAt:
+                  type: string
+                  format: date-time
+                  description: When the incident itself happened (an alert's firing time), ISO-8601 with an offset or `Z`. Optional; when absent the run has no incident time (evidence windows fall back to the run's creation time, they do not invent one).
+                labels:
+                  type: object
+                  maxProperties: 32
+                  additionalProperties:
+                    type: string
+                    maxLength: 256
+                  description: Alert labels (`service`, `app`, `job`, `container`, ...), at most 32 entries; keys up to 128 characters, no control characters.
+                namespace:
+                  type: string
+                  maxLength: 63
+                node:
+                  type: string
+                  maxLength: 253
+                repoUrl:
+                  type: string
+                  description: Optional GitHub repository context for the signal, used to ground evidence. Accepts a github.com URL (optionally pointing at an issue or PR) or the bare owner/repo[#n] form; anything else is rejected with 400 rather than being silently dropped. Omit it for a run with no repo context.
+                  example: https://github.com/acme/web/issues/42
+                visibility:
+                  type: object
       responses:
-        '202':
+        "202":
           description: Accepted
+        "403":
+          description: "Refused at the write boundary. `SOURCE_NOT_APPROVED` (source gate, dev#1350): the run would read a CONFIGURED connector, or a resource in it (a repository, a Jira project), that the org has not approved. A connector the org has not configured is not checked. Nothing is queued. Approve the source with `PUT /v1/admin/workspace-config/tools/{toolName}/instances/{instance}` (`approvedResources`; approval is per instance, and the body carries `instance`) and retry; the idempotency key is not consumed by this refusal. `RESIDENCY_REGION_BLOCKED` is the other 403 this route returns."
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                properties:
+                  error:
+                    type: string
+                    example: SOURCE_NOT_APPROVED
+                  connector:
+                    type: string
+                    description: Workspace-config connector, or `*` when the org has approved no source at all.
+                  instance:
+                    type:
+                      - string
+                      - "null"
+                    description: The connector instance the refusal is about (approval is per instance); `null` when none is named.
+                  resource:
+                    type:
+                      - string
+                      - "null"
+                  reason:
+                    type: string
+                    enum:
+                      - connector_not_approved
+                      - resource_not_approved
+                      - no_approved_sources
+                      - approval_identity_mismatch
     get:
       summary: List runs
+      description: "One page of the runs the caller may read, newest first (`created_at` desc, then id desc), for the caller's own tenant. Paged by an opaque cursor, never an offset: pass the `nextCursor` of one page back as `cursor`. `nextCursor` is always present and is `null` only when the list is exhausted; a page can be shorter than `limit` without being the last. A request examines a bounded number of the tenant's runs, so for a caller who can read few of them a page may be short, or empty, while `nextCursor` is set and `partial` is `true`: keep following `nextCursor`, which resumes where the walk stopped and reaches every readable run exactly once. A bad parameter is a 400, and a page that could not be produced is a 503, never an empty 200. `createdAt` on each item is the database column the list is ordered by."
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: Page size, 1 to 200. Out of range is a 400, not a clamp.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+        - name: cursor
+          in: query
+          required: false
+          description: Opaque; the `nextCursor` of the previous page. Do not construct or parse it.
+          schema:
+            type: string
+            maxLength: 512
+        - name: scope
+          in: query
+          required: false
+          description: Narrows what the caller may already read; never a grant. `mine` is runs the caller owns or created; `groups` is runs readable through, or owned by, one of the caller's groups.
+          schema:
+            type: string
+            enum:
+              - all
+              - mine
+              - groups
+            default: all
+      responses:
+        "200":
+          description: A page of runs
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                  - nextCursor
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                  nextCursor:
+                    type:
+                      - string
+                      - "null"
+                  partial:
+                    type: boolean
+                    const: true
+                    description: This page is not the whole answer from where it started. Either a run the caller may be allowed to see could not be read as a summary and was left out (it is not named), or the request reached its scan budget or time limit before the page filled, in which case `nextCursor` resumes where the walk stopped and no run is skipped.
+        "400":
+          description: A query parameter is invalid
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - invalid_limit
+                      - invalid_cursor
+                      - invalid_scope
+        "401":
+          description: unauthenticated
+        "503":
+          description: "The page could not be produced (`run_list_timeout`: the statement hit its time budget; `run_list_incomplete`: the visibility gate refused every candidate in several consecutive pages). Retry; the response is never an empty page."
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - run_list_timeout
+                      - run_list_incomplete
   /runs/counts:
     get:
       summary: Run status counts
   /runs/{id}:
+    parameters:
+      - $ref: "#/components/parameters/RunId"
     get:
       summary: Run detail projection
   /runs/{id}/events:
+    parameters:
+      - $ref: "#/components/parameters/RunId"
     get:
       summary: Paginated event log
     post:
       summary: Append user event (evidence, correction, comment)
   /runs/{id}/comments:
+    parameters:
+      - $ref: "#/components/parameters/RunId"
     get:
       summary: Chronological comments (v1.5)
   /runs/{id}/snapshots:
+    parameters:
+      - $ref: "#/components/parameters/RunId"
     post:
       summary: Create named snapshot (v1.5)
     get:
       summary: List snapshots (v1.5)
   /runs/{id}/fork:
+    parameters:
+      - $ref: "#/components/parameters/RunId"
     post:
       summary: Fork daughter investigation from snapshot (v1.5)
   /runs/{id}/branches:
+    parameters:
+      - $ref: "#/components/parameters/RunId"
     get:
       summary: List branch lineage (v1.5)
   /runs/{id}/rerun:
+    parameters:
+      - $ref: "#/components/parameters/RunId"
     post:
       summary: Rerun investigation
   /runs/{id}/rerun-from-step:
+    parameters:
+      - $ref: "#/components/parameters/RunId"
     post:
       summary: Rerun from pipeline step
   /runs/{id}/stream:
+    parameters:
+      - $ref: "#/components/parameters/RunId"
     get:
       summary: SSE event stream
   /mcp/sessions:
@@ -84,18 +292,32 @@ paths:
           application/json:
             schema:
               type: object
-              required: [investigationIds]
+              required:
+                - investigationIds
               properties:
                 investigationIds:
                   type: array
-                  items: { type: string }
+                  items:
+                    type: string
                 scopes:
                   type: array
-                  items: { type: string, enum: [read, mutate] }
-                ttlSeconds: { type: integer }
+                  items:
+                    type: string
+                    enum:
+                      - read
+                      - mutate
+                ttlSeconds:
+                  type: integer
+                callerKey:
+                  type: string
+                  description: One-time secret issued by POST /v1/admin/mcp-callers. Required to invoke execute-capability tools (fork / rerun_from_phase / resume); AD-10 Amendment 1. An unregistered key fails the mint outright.
       responses:
-        '201':
+        "201":
           description: Session created
+        "401":
+          description: mcp_caller_not_registered — the callerKey matched no live entry
+        "503":
+          description: caller_allowlist_unavailable — the allowlist could not be read
   /me/tokens:
     get:
       summary: List API tokens for authenticated user
@@ -104,6 +326,149 @@ paths:
   /triggers/pagerduty:
     post:
       summary: PagerDuty webhook (edge-triggers)
+      security:
+        - pagerDutySignature: []
   /triggers/oncall:
     post:
       summary: Example OnCall webhook (v1.5, edge-triggers)
+      security:
+        - onCallSignature: []
+  /oauth/device:
+    post:
+      summary: Start a device-code login (RFC 8628 §3.1)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - client_id
+              properties:
+                client_id:
+                  type: string
+                  description: Public client id, e.g. pm-plugin.
+                scope:
+                  type: string
+                  description: Space-delimited scopes (RFC 6749 §3.3). Omitted means no narrowing — the grant carries the user's own scopes.
+      responses:
+        "200":
+          description: Device code issued
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - device_code
+                  - user_code
+                  - verification_uri
+                  - verification_uri_complete
+                  - interval
+                  - expires_in
+                properties:
+                  device_code:
+                    type: string
+                  user_code:
+                    type: string
+                  verification_uri:
+                    type: string
+                    format: uri
+                    description: Absolute URL of the browser page where the user enters user_code.
+                  verification_uri_complete:
+                    type: string
+                    format: uri
+                    description: "verification_uri with user_code pre-filled. Required here (optional in RFC 8628): clients open it directly and have no surface to display user_code separately."
+                  interval:
+                    type: integer
+                    description: Minimum seconds between polls.
+                  expires_in:
+                    type: integer
+                    description: Seconds until device_code expires.
+        "400":
+          $ref: "#/components/responses/OAuthError"
+  /oauth/token:
+    post:
+      summary: Poll for the access token (RFC 8628 §3.4)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - grant_type
+                - device_code
+                - client_id
+              properties:
+                grant_type:
+                  const: urn:ietf:params:oauth:grant-type:device_code
+                device_code:
+                  type: string
+                client_id:
+                  type: string
+      responses:
+        "200":
+          description: Approved — access token minted
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - access_token
+                  - token_type
+                  - expires_in
+                properties:
+                  access_token:
+                    type: string
+                  token_type:
+                    const: Bearer
+                  expires_in:
+                    type: integer
+                    description: Seconds until access_token expires.
+                  scope:
+                    type: string
+                    description: Space-delimited scopes actually granted.
+        "400":
+          $ref: "#/components/responses/OAuthError"
+        "403":
+          $ref: "#/components/responses/OAuthError"
+        "429":
+          $ref: "#/components/responses/OAuthError"
+  /oauth/revoke:
+    post:
+      summary: Revoke a device code (pending or approved)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - device_code
+              properties:
+                device_code:
+                  type: string
+      responses:
+        "200":
+          description: Revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - revoked
+                properties:
+                  revoked:
+                    type: boolean
+        "400":
+          $ref: "#/components/responses/OAuthError"
+        "404":
+          description: Unknown device code

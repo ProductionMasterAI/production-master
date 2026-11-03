@@ -653,6 +653,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Login could never complete against the hosted service** (plugin, pmctl,
+  Python SDK). The device-code client sent a camelCase dialect (`clientId`,
+  `deviceCode`, `grantType`) the service never accepted, and expected a
+  refresh token it never issued. Every test passed because the client was only
+  ever tested against its own camelCase mock. The client now speaks the
+  service's RFC 8628 wire format (`client_id`, `scope`, `device_code`,
+  `grant_type`; `access_token`/`token_type`/`expires_in`). Unknown poll errors
+  fail loudly instead of polling until expiry. The never-served
+  `refresh()`/`revoke()` calls are gone: a session ends at `expires_in` and
+  you log in again (refresh support: production-master-service#1691). New
+  `oauth-contract.test.ts` checks request and response bodies against the
+  vendored spec, which now carries the `/oauth/*` contract. The service's CI
+  holds that vendored subset to its source, replacing an in-repo freshness
+  test that always skipped in CI.
 - **The Claude Code plugin could not run from a fresh install.** Every command
   executed `packages/adapter-claude-code/dist/cli.js`, which is gitignored and
   was never built at install time. The plugin now ships its runtime prebuilt.

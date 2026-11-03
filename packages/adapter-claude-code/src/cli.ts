@@ -26,7 +26,9 @@
  * PM_OAUTH_CLIENT_ID / PM_CLIENT_ID, PM_ACCOUNT_ID).
  */
 import { spawn } from 'node:child_process';
+import { realpathSync } from 'node:fs';
 import { createInterface } from 'node:readline';
+import { pathToFileURL } from 'node:url';
 import { createPluginRuntime, TokenStore, InMemorySecretBackend } from '@production-master/plugin-core';
 import type {
   MutationPreviewV1,
@@ -40,6 +42,9 @@ import { ClaudeCodeHostAdapter } from './host.js';
 import type { ClaudeCodeHostSinks } from './host.js';
 
 const DEFAULT_SCOPES: Scope[] = ['read-investigation', 'write-investigation', 'approve-action'];
+
+/** The public hosted service; overridden by `--service` or PM_SERVICE_URL. */
+export const DEFAULT_SERVICE_URL = 'https://api.productionmaster.dev';
 
 /**
  * Terminal-backed Claude Code sinks. Everything the adapter needs is a real
@@ -141,23 +146,27 @@ const KNOWN = new Set(['login', 'investigate', 'connect', 'update', 'logout']);
 
 function usage(err: NodeJS.WritableStream): void {
   err.write(
-    'Usage: cli <login|investigate|connect|update|logout> [args] --service <url>\n' +
+    'Usage: cli <login|investigate|connect|update|logout> [args] [--service <url>]\n' +
       '  investigate --input <ticket>\n' +
       '  connect <investigationId>\n' +
-      '  update <investigationId> <tool> [jsonArgs]\n',
+      '  update <investigationId> <tool> [jsonArgs]\n' +
+      `  --service defaults to PM_SERVICE_URL, then ${DEFAULT_SERVICE_URL}\n`,
   );
 }
 
 export async function main(argv = process.argv.slice(2)): Promise<number> {
   const { positionals, flags } = parseArgs(argv);
+  if (flags.help === 'true' || positionals[0] === 'help') {
+    usage(process.stdout);
+    return 0;
+  }
   // Default subcommand is `investigate`; a leading bare word selects another.
   const command = positionals[0] && KNOWN.has(positionals[0]) ? positionals.shift()! : 'investigate';
 
-  const serviceUrl = flags.service ?? process.env.PM_SERVICE_URL;
-  if (!serviceUrl) {
-    process.stderr.write('cli: --service <url> (or PM_SERVICE_URL) is required.\n');
-    return 2;
-  }
+  // The public hosted service is the default, so plugin commands need no shell
+  // `export` preamble; `--service` / PM_SERVICE_URL (a URL, not a credential)
+  // still point a self-hosted install elsewhere.
+  const serviceUrl = flags.service ?? process.env.PM_SERVICE_URL ?? DEFAULT_SERVICE_URL;
 
   // Bridge the `PM_OAUTH_CLIENT_ID` env name the skills document to the
   // runtime's `clientId`; the runtime also honours PM_CLIENT_ID on its own.
@@ -167,14 +176,20 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   if (flags.gateway) config.mcpGatewayUrl = flags.gateway;
   if (clientId) config.clientId = clientId;
 
-  // Non-interactive auth: a pre-provisioned bearer token (`--token` or
-  // PM_ACCESS_TOKEN) is seeded into the token store so headless / CI /
-  // automation callers can trigger runs without the interactive device flow.
-  // This is real auth against the real service (NOT a mock stand-in) and still
-  // passes through the same ensureAuth gate. Never for `login`, which
-  // establishes and persists its own session via the default keychain store.
+  // Non-interactive auth: a pre-provisioned bearer token passed EXPLICITLY as
+  // `--token` is seeded into the token store so a caller can trigger runs
+  // without the interactive device flow. This is real auth against the real
+  // service (NOT a mock stand-in) and still passes through the same ensureAuth
+  // gate. Never for `login`, which establishes and persists its own session via
+  // the default keychain store.
+  //
+  // Deliberately NO environment-variable fallback (e.g. PM_ACCESS_TOKEN): this
+  // binary ships inside the Claude Code plugin, and the plugin directory policy
+  // forbids reading a credential from the user's environment and sending it to
+  // a server (MCP_FORWARDS_CREDENTIAL_ENV). Headless / CI callers use `pmctl` or
+  // the Python SDK, which are not part of the plugin folder.
   const deps: PluginRuntimeDeps = {};
-  const presetToken = flags.token ?? process.env.PM_ACCESS_TOKEN;
+  const presetToken = flags.token;
   if (presetToken && command !== 'login') {
     const store = new TokenStore({ backend: new InMemorySecretBackend(), issuer: serviceUrl });
     await store.save(accountId, {
@@ -259,11 +274,24 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   }
 }
 
+/**
+ * True when this module is the process entry point. Node loads the entry via
+ * its realpath, so compare against the realpath of argv[1] as a proper file
+ * URL — a naive `file://${argv[1]}` misses paths with spaces (percent-encoded in
+ * the URL) and symlinked plugin caches, and the binary would silently no-op.
+ */
+function isEntryPoint(): boolean {
+  const entry = typeof process !== 'undefined' ? process.argv[1] : undefined;
+  if (!entry) return false;
+  try {
+    return import.meta.url === pathToFileURL(realpathSync(entry)).href;
+  } catch {
+    return false;
+  }
+}
+
 // Execute when run directly as a CLI.
-const isMain =
-  typeof process !== 'undefined' &&
-  process.argv[1] !== undefined &&
-  import.meta.url === `file://${process.argv[1]}`;
+const isMain = isEntryPoint();
 if (isMain) {
   main().then(
     (code) => process.exit(code),

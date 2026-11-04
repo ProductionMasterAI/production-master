@@ -21,6 +21,14 @@ var ServiceError = class extends Error {
   code;
   httpStatus;
 };
+var InsufficientScopeError = class extends ServiceError {
+  constructor(requiredScope, message) {
+    super("PERMISSION_DENIED", 403, message);
+    this.requiredScope = requiredScope;
+    this.name = "InsufficientScopeError";
+  }
+  requiredScope;
+};
 var IdempotencyConflict = class extends ServiceError {
   constructor(message = "Idempotency key already used") {
     super("IDEMPOTENCY_CONFLICT", 409, message);
@@ -36,6 +44,15 @@ var SERVICE_SCOPE = {
 };
 function toServiceScopes(scopes) {
   return [...new Set(scopes.map((s) => SERVICE_SCOPE[s]))];
+}
+function describeMissingScope(requiredScope, serviceMessage) {
+  if (requiredScope === "runs:write") {
+    return `Your account does not hold runs:write, so it cannot make changes to investigations (the engineer role or above grants it). ${serviceMessage}`;
+  }
+  if (requiredScope === "runs:read") {
+    return `Your account does not hold runs:read, so it cannot open investigations (the viewer role or above grants it; ask an org admin). ${serviceMessage}`;
+  }
+  return `Your account is missing a required permission${requiredScope ? ` (${requiredScope})` : ""}. ${serviceMessage}`;
 }
 function defaultIdempotencyKey() {
   return globalThis.crypto?.randomUUID?.() ?? `idem-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -60,6 +77,14 @@ var ServiceClient = class {
     if (res.status === 409) return new IdempotencyConflict(message);
     if (res.status === 404) return new ServiceError("NOT_FOUND", 404, message);
     if (res.status === 403) {
+      const body = res.body;
+      if (body?.error === "insufficient_scope") {
+        const requiredScope = typeof body.requiredScope === "string" ? body.requiredScope : void 0;
+        return new InsufficientScopeError(
+          requiredScope,
+          describeMissingScope(requiredScope, message)
+        );
+      }
       return new ServiceError("NOT_FOUND", 404, message);
     }
     if (res.status === 402)
@@ -798,12 +823,26 @@ function classifyMutation(tool) {
 
 // packages/plugin-core/src/mcp/session-manager.ts
 var WRITE_SCOPES = ["write-investigation", "approve-action"];
+var DEFAULT_REFRESH_SKEW_MS = 3e4;
+var READ_ONLY_NOTICE = "Production Master: your account is read-only (it does not hold runs:write), so this session can read investigations but not change them. The engineer role or above grants write access; ask an org admin if you need it.";
+function jwtExpiryMs(jwt) {
+  const part = jwt.split(".")[1];
+  if (!part) return void 0;
+  try {
+    const claims = JSON.parse(Buffer.from(part, "base64url").toString("utf8"));
+    return typeof claims.exp === "number" && Number.isFinite(claims.exp) ? claims.exp * 1e3 : void 0;
+  } catch {
+    return void 0;
+  }
+}
 var McpSessionManager = class {
   constructor(deps) {
     this.deps = deps;
   }
   deps;
   active;
+  refreshing;
+  lastGeneration = 0;
   getActiveSession() {
     return this.active;
   }
@@ -812,28 +851,148 @@ var McpSessionManager = class {
    * Any prior session is discarded first so it can never be reused. A session
    * requesting a write scope expands capability past read-only, so it is backed
    * by a baseline trust grant (audited locally and mirrored to the service).
+   *
+   * Mint by what the caller holds: if the service refuses the write scope
+   * (`insufficient_scope` / `runs:write`) the mint is retried ONCE read-only and
+   * the user is told. Any other refusal propagates.
    */
   async createSession(investigationIds, scopes) {
     if (this.active) this.discard();
-    const grant = await this.deps.createServiceSession(investigationIds, scopes);
+    const session = await this.mint(investigationIds, scopes, true, ++this.lastGeneration);
+    this.active = session;
+    try {
+      await this.register(session);
+    } catch (err) {
+      if (this.active === session) this.active = void 0;
+      throw err;
+    }
+    this.issueGrantsFor(session);
+    return session;
+  }
+  /**
+   * Re-mint the active session if it is within the refresh skew of expiry.
+   * Returns the (possibly new) active session. Cheap when nothing is due.
+   */
+  async ensureFresh() {
+    const active = this.active;
+    if (!active) return void 0;
+    if (active.refreshAtMs !== void 0 && this.now() >= active.refreshAtMs) {
+      return this.refresh();
+    }
+    return active;
+  }
+  /**
+   * Re-mint the active session for the same investigations and the originally
+   * requested scopes (e.g. after a 401, or shortly before `exp`). Concurrent
+   * callers share one mint. The trust grants the user already approved are kept
+   * across a refresh; they are revoked only if the refresh comes back read-only.
+   *
+   * A refresh only ever acts for the session it started from. The minted result
+   * is registered with the host only if that session is STILL the active one;
+   * if the active investigation switched meanwhile, the result is discarded and
+   * the host configuration is left alone. Pass `expectedGeneration` to refuse to
+   * refresh at all (returns undefined) when the active session is not the one
+   * the caller is working for.
+   */
+  async refresh(expectedGeneration) {
+    const prev = this.active;
+    if (!prev) return void 0;
+    if (expectedGeneration !== void 0 && prev.generation !== expectedGeneration) return void 0;
+    if (this.refreshing?.prev === prev) return this.refreshing.promise;
+    const entry = {
+      prev,
+      promise: (async () => {
+        try {
+          const next = await this.mint(
+            prev.investigationIds,
+            prev.requestedScopes,
+            !prev.readOnlyFallback,
+            prev.generation
+          );
+          if (this.active !== prev) return this.active;
+          this.active = next;
+          try {
+            await this.register(next);
+          } catch (err) {
+            if (this.active === next) this.active = prev;
+            throw err;
+          }
+          if (next.readOnly && !prev.readOnly) this.revokeGrantsFor(prev.investigationIds);
+          return next;
+        } finally {
+          if (this.refreshing?.prev === prev) this.refreshing = void 0;
+        }
+      })()
+    };
+    this.refreshing = entry;
+    return entry.promise;
+  }
+  now() {
+    return this.deps.now?.() ?? Date.now();
+  }
+  /**
+   * Mint a grant (with the read-only fallback). Minting has no side effect on
+   * the host: the caller registers the result only once it knows it still owns
+   * the active session (see register()).
+   */
+  async mint(investigationIds, requested, announce, generation) {
+    let scopes = requested;
+    let grant;
+    try {
+      grant = await this.deps.createServiceSession(investigationIds, requested);
+    } catch (err) {
+      const refusedWrite = err instanceof InsufficientScopeError && err.requiredScope === "runs:write" && requested.some((s) => WRITE_SCOPES.includes(s));
+      if (!refusedWrite) throw err;
+      scopes = requested.filter((s) => !WRITE_SCOPES.includes(s));
+      if (scopes.length === 0) scopes = ["read-investigation"];
+      if (announce) this.deps.notify?.(READ_ONLY_NOTICE);
+      grant = await this.deps.createServiceSession(investigationIds, scopes);
+    }
+    const issuedAt = this.now();
+    const candidates = [
+      grant.ttlSeconds > 0 ? issuedAt + grant.ttlSeconds * 1e3 : void 0,
+      jwtExpiryMs(grant.sessionJwt)
+    ].filter((v) => v !== void 0);
+    const expiresAtMs = candidates.length > 0 ? Math.min(...candidates) : void 0;
+    const skew = Math.min(
+      this.deps.refreshSkewMs ?? DEFAULT_REFRESH_SKEW_MS,
+      expiresAtMs !== void 0 ? (expiresAtMs - issuedAt) / 2 : Infinity
+    );
+    return {
+      generation,
+      grant,
+      investigationIds,
+      scopes,
+      requestedScopes: requested,
+      readOnly: !scopes.some((s) => WRITE_SCOPES.includes(s)),
+      readOnlyFallback: scopes !== requested,
+      expiresAtMs,
+      refreshAtMs: expiresAtMs !== void 0 ? expiresAtMs - skew : void 0
+    };
+  }
+  /** Point the host at this session. Call only while it is the active session. */
+  async register(session) {
     await this.deps.host.registerMcpServer({
-      endpoint: grant.endpoint,
-      audience: grant.audience,
-      sessionJwt: grant.sessionJwt,
-      scopes
+      endpoint: session.grant.endpoint,
+      audience: session.grant.audience,
+      sessionJwt: session.grant.sessionJwt,
+      scopes: session.scopes
     });
-    this.active = { grant, investigationIds, scopes };
-    if (this.deps.trust && scopes.some((s) => WRITE_SCOPES.includes(s))) {
-      for (const investigationId of investigationIds) {
+  }
+  issueGrantsFor(session) {
+    if (this.deps.trust && !session.readOnly) {
+      for (const investigationId of session.investigationIds) {
         void this.issueGrant(investigationId);
       }
     }
-    return this.active;
   }
   /** Discard the active session and revoke any grants it minted (on exit). */
   discard() {
     const investigationIds = this.active?.investigationIds ?? [];
     this.active = void 0;
+    this.revokeGrantsFor(investigationIds);
+  }
+  revokeGrantsFor(investigationIds) {
     const { trust } = this.deps;
     if (!trust) return;
     for (const investigationId of investigationIds) {
@@ -921,9 +1080,51 @@ var McpTools = class {
    * service response body on success.
    */
   async invoke(tool, args) {
-    const session = this.deps.sessions.getActiveSession();
+    const session = await this.deps.sessions.ensureFresh() ?? this.deps.sessions.getActiveSession();
     if (!session) throw new ToolError("PERMISSION_DENIED", "no active MCP session");
     const investigationId = args.investigationId ?? session.investigationIds[0];
+    await this.authorize(session, tool, investigationId, args, true);
+    const idempotencyKey = isMutationTool(tool) ? this.deps.newIdempotencyKey?.() : void 0;
+    const call = (s) => this.deps.transport.call({
+      endpoint: s.grant.endpoint,
+      sessionJwt: s.grant.sessionJwt,
+      tool,
+      args,
+      idempotencyKey
+    });
+    let res = await call(session);
+    if (res.status === 401) {
+      const switched = () => new ToolError(
+        "PERMISSION_DENIED",
+        `${tool} on ${investigationId} was not retried: the active investigation switched while the call was in flight. Run it again for the current investigation.`
+      );
+      if (this.deps.sessions.getActiveSession()?.generation !== session.generation) throw switched();
+      const fresh = await this.deps.sessions.refresh(session.generation);
+      if (!fresh || fresh.generation !== session.generation || this.deps.sessions.getActiveSession() !== fresh) {
+        throw switched();
+      }
+      await this.authorize(fresh, tool, investigationId, args, false);
+      res = await call(fresh);
+    }
+    if (res.status >= 200 && res.status < 300) return res.body;
+    const message = res.body?.message ?? `tool ${tool} failed`;
+    if (res.status === 401) {
+      throw new ToolError("PERMISSION_DENIED", `${message} (session rejected after re-mint; run /login again)`);
+    }
+    if (res.status === 403) throw new ToolError("PERMISSION_DENIED", message);
+    if (res.status === 404) throw new ToolError("NOT_FOUND", message);
+    if (res.status === 409) throw new ToolError("IDEMPOTENCY_CONFLICT", message);
+    if (res.status === 402) throw new ToolError("BUDGET_EXHAUSTED", message);
+    throw new ToolError("NOT_FOUND", message);
+  }
+  /**
+   * Scope, tool-name and mutation checks for one attempt of a call. Run before
+   * the first send and again before any retry. `firstAttempt` is false on a
+   * retry: with a trust store the grant gate is re-evaluated (a grant revoked by
+   * a demoting refresh must not be bypassed); without one, the user already
+   * approved this exact call and is not asked a second time.
+   */
+  async authorize(session, tool, investigationId, args, firstAttempt) {
     if (!this.deps.sessions.isInScope(investigationId)) {
       throw new ToolError("PERMISSION_DENIED", `investigation ${investigationId} out of session scope`);
     }
@@ -931,23 +1132,14 @@ var McpTools = class {
       throw new ToolError("NOT_FOUND", `unknown tool ${tool}`);
     }
     if (isMutationTool(tool)) {
-      await this.gateMutation(tool, investigationId, args);
+      if (session.readOnlyFallback) {
+        throw new ToolError(
+          "PERMISSION_DENIED",
+          `${tool} needs write access, but this session is read-only (the account does not hold runs:write; the engineer role or above grants it).`
+        );
+      }
+      if (firstAttempt || this.deps.trust) await this.gateMutation(tool, investigationId, args);
     }
-    const idempotencyKey = isMutationTool(tool) ? this.deps.newIdempotencyKey?.() : void 0;
-    const res = await this.deps.transport.call({
-      endpoint: session.grant.endpoint,
-      sessionJwt: session.grant.sessionJwt,
-      tool,
-      args,
-      idempotencyKey
-    });
-    if (res.status >= 200 && res.status < 300) return res.body;
-    const message = res.body?.message ?? `tool ${tool} failed`;
-    if (res.status === 403) throw new ToolError("PERMISSION_DENIED", message);
-    if (res.status === 404) throw new ToolError("NOT_FOUND", message);
-    if (res.status === 409) throw new ToolError("IDEMPOTENCY_CONFLICT", message);
-    if (res.status === 402) throw new ToolError("BUDGET_EXHAUSTED", message);
-    throw new ToolError("NOT_FOUND", message);
   }
   /**
    * Trust-gate a mutation. A mutation covered by an active grant proceeds
@@ -1533,7 +1725,10 @@ var PluginRuntime = class {
     this.sessions = new McpSessionManager({
       client: this.client,
       host: this.host,
-      createServiceSession
+      createServiceSession,
+      notify: deps.notify ?? ((message) => void process.stderr.write(`${message}
+`)),
+      ...deps.now ? { now: deps.now } : {}
     });
     const mcpToolTransport = deps.mcpToolTransport ?? new HttpMcpToolTransport(gatewayUrl, () => this.accessToken);
     this.tools = new McpTools({
@@ -1645,6 +1840,8 @@ var PluginRuntime = class {
     const covered = active !== void 0 && investigationIds.every((id) => this.sessions.isInScope(id));
     if (!covered) {
       await this.sessions.createSession(investigationIds, this.scopes);
+    } else {
+      await this.sessions.ensureFresh();
     }
   }
 };

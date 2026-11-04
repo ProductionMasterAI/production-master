@@ -33,7 +33,11 @@ export type {
 // Service client
 export { ServiceClient } from "./service/client.js";
 export type { ServiceClientOptions } from "./service/client.js";
-export { ServiceError, IdempotencyConflict } from "./service/types.js";
+export {
+  ServiceError,
+  IdempotencyConflict,
+  InsufficientScopeError,
+} from "./service/types.js";
 export type {
   CreateRunRequest,
   RunMode,

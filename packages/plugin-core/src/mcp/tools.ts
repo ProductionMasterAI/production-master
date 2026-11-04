@@ -61,10 +61,75 @@ export class McpTools {
    * service response body on success.
    */
   async invoke(tool: string, args: Record<string, unknown>): Promise<unknown> {
-    const session = this.deps.sessions.getActiveSession();
+    // Re-mint shortly before the session's `exp` (the service default is 5 min).
+    const session = (await this.deps.sessions.ensureFresh()) ?? this.deps.sessions.getActiveSession();
     if (!session) throw new ToolError('PERMISSION_DENIED', 'no active MCP session');
 
+    // The investigation this call is bound to. Fixed here and used for every
+    // check and for any retry, so a call that omitted investigationId keeps the
+    // binding it started with even if the active session changes underneath it.
     const investigationId = (args.investigationId as string) ?? session.investigationIds[0];
+    await this.authorize(session, tool, investigationId, args, true);
+
+    const idempotencyKey = isMutationTool(tool) ? this.deps.newIdempotencyKey?.() : undefined;
+    const call = (s: { grant: { endpoint: string; sessionJwt: string } }) =>
+      this.deps.transport.call({
+        endpoint: s.grant.endpoint,
+        sessionJwt: s.grant.sessionJwt,
+        tool,
+        args,
+        idempotencyKey,
+      });
+    let res = await call(session);
+    if (res.status === 401) {
+      // The session JWT expired (or was revoked) mid-flight: re-mint once and
+      // retry with the same idempotency key. A second 401 is surfaced below.
+      // The retry is bound to the session that sent the call: if the active
+      // investigation has switched, it is aborted rather than re-sent under
+      // another investigation's credentials.
+      const switched = () =>
+        new ToolError(
+          'PERMISSION_DENIED',
+          `${tool} on ${investigationId} was not retried: the active investigation switched while ` +
+            'the call was in flight. Run it again for the current investigation.',
+        );
+      if (this.deps.sessions.getActiveSession()?.generation !== session.generation) throw switched();
+      const fresh = await this.deps.sessions.refresh(session.generation);
+      if (!fresh || fresh.generation !== session.generation || this.deps.sessions.getActiveSession() !== fresh) {
+        throw switched();
+      }
+      // Re-run the scope / read-only / trust checks against the re-minted
+      // session before anything is re-sent (it may now be narrower).
+      await this.authorize(fresh, tool, investigationId, args, false);
+      res = await call(fresh);
+    }
+
+    if (res.status >= 200 && res.status < 300) return res.body;
+    const message = (res.body as { message?: string } | undefined)?.message ?? `tool ${tool} failed`;
+    if (res.status === 401) {
+      throw new ToolError('PERMISSION_DENIED', `${message} (session rejected after re-mint; run /login again)`);
+    }
+    if (res.status === 403) throw new ToolError('PERMISSION_DENIED', message);
+    if (res.status === 404) throw new ToolError('NOT_FOUND', message);
+    if (res.status === 409) throw new ToolError('IDEMPOTENCY_CONFLICT', message);
+    if (res.status === 402) throw new ToolError('BUDGET_EXHAUSTED', message);
+    throw new ToolError('NOT_FOUND', message);
+  }
+
+  /**
+   * Scope, tool-name and mutation checks for one attempt of a call. Run before
+   * the first send and again before any retry. `firstAttempt` is false on a
+   * retry: with a trust store the grant gate is re-evaluated (a grant revoked by
+   * a demoting refresh must not be bypassed); without one, the user already
+   * approved this exact call and is not asked a second time.
+   */
+  private async authorize(
+    session: { readOnlyFallback: boolean },
+    tool: string,
+    investigationId: string,
+    args: Record<string, unknown>,
+    firstAttempt: boolean,
+  ): Promise<void> {
     if (!this.deps.sessions.isInScope(investigationId)) {
       throw new ToolError('PERMISSION_DENIED', `investigation ${investigationId} out of session scope`);
     }
@@ -74,25 +139,17 @@ export class McpTools {
     }
 
     if (isMutationTool(tool)) {
-      await this.gateMutation(tool, investigationId, args);
+      // The service is the authority. This only avoids asking the user to approve
+      // a change when the service has ALREADY refused this login's write scope.
+      if (session.readOnlyFallback) {
+        throw new ToolError(
+          'PERMISSION_DENIED',
+          `${tool} needs write access, but this session is read-only (the account does not hold ` +
+            'runs:write; the engineer role or above grants it).',
+        );
+      }
+      if (firstAttempt || this.deps.trust) await this.gateMutation(tool, investigationId, args);
     }
-
-    const idempotencyKey = isMutationTool(tool) ? this.deps.newIdempotencyKey?.() : undefined;
-    const res = await this.deps.transport.call({
-      endpoint: session.grant.endpoint,
-      sessionJwt: session.grant.sessionJwt,
-      tool,
-      args,
-      idempotencyKey,
-    });
-
-    if (res.status >= 200 && res.status < 300) return res.body;
-    const message = (res.body as { message?: string } | undefined)?.message ?? `tool ${tool} failed`;
-    if (res.status === 403) throw new ToolError('PERMISSION_DENIED', message);
-    if (res.status === 404) throw new ToolError('NOT_FOUND', message);
-    if (res.status === 409) throw new ToolError('IDEMPOTENCY_CONFLICT', message);
-    if (res.status === 402) throw new ToolError('BUDGET_EXHAUSTED', message);
-    throw new ToolError('NOT_FOUND', message);
   }
 
   /**

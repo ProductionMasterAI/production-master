@@ -6,6 +6,7 @@ import { NoopHostAdapter } from '../host/__fixtures__/noop-host-adapter.js';
 import { ToolError } from './types.js';
 import type { McpSessionGrant } from './types.js';
 import { SessionTrustGrantStore } from '../trust/session-grants.js';
+import { InsufficientScopeError } from '../service/types.js';
 
 const grant: McpSessionGrant = { endpoint: 'https://mcp/s', audience: 'pm-mcp', sessionJwt: 'jwt-1', ttlSeconds: 600 };
 
@@ -159,5 +160,188 @@ describe('McpTools trust-grant gating (Q9)', () => {
     expect(audit).toHaveBeenCalledWith({ type: 'user.mutation_rejected', tool: 'investigation.add_evidence', investigationId: 'inv_1' });
     expect(trust.listActive('inv_1')).toHaveLength(0);
     expect(emitTrustExpansion).not.toHaveBeenCalled();
+  });
+});
+
+describe('McpTools session expiry and read-only fallback', () => {
+  function mkSessions(host: NoopHostAdapter, clock: { t: number }, create?: (scopes: string[]) => Promise<McpSessionGrant>) {
+    let n = 0;
+    return new McpSessionManager({
+      client: {} as any,
+      host,
+      now: () => clock.t,
+      notify: () => {},
+      createServiceSession: async (_ids, scopes) =>
+        create ? create(scopes) : { ...grant, sessionJwt: `jwt-${++n}`, ttlSeconds: 300 },
+    });
+  }
+
+  it('re-mints before exp so the call carries the fresh session JWT', async () => {
+    const host = new NoopHostAdapter();
+    const clock = { t: 0 };
+    const sessions = mkSessions(host, clock);
+    await sessions.createSession(['inv_1'], ['read-investigation']);
+    const transport = new FakeMcpTransport();
+    const tools = new McpTools({ sessions, host, transport });
+    clock.t = 290_000;
+    await tools.invoke('investigation.get_summary', { investigationId: 'inv_1' });
+    expect(transport.calls.map((c) => c.sessionJwt)).toEqual(['jwt-2']);
+  });
+
+  it('on a 401 re-mints once and retries with the new JWT and the same idempotency key', async () => {
+    const host = new NoopHostAdapter('approve');
+    const sessions = mkSessions(host, { t: 0 });
+    await sessions.createSession(['inv_1'], ['read-investigation', 'write-investigation']);
+    const calls: Array<{ jwt: string; key?: string }> = [];
+    const transport = {
+      async call(o: { sessionJwt: string; idempotencyKey?: string }) {
+        calls.push({ jwt: o.sessionJwt, key: o.idempotencyKey });
+        return o.sessionJwt === 'jwt-1'
+          ? { status: 401, body: { message: 'expired' } }
+          : { status: 200, body: { ok: true } };
+      },
+    };
+    const tools = new McpTools({ sessions, host, transport, newIdempotencyKey: () => 'idem-1' });
+    const out = await tools.invoke('investigation.add_evidence', { investigationId: 'inv_1', text: 'x' });
+    expect(out).toEqual({ ok: true });
+    expect(calls).toEqual([
+      { jwt: 'jwt-1', key: 'idem-1' },
+      { jwt: 'jwt-2', key: 'idem-1' },
+    ]);
+    // The user was asked once, not once per attempt.
+    expect(host.mutationPreviews).toHaveLength(1);
+  });
+
+  it('a 401 that survives the re-mint is surfaced (not retried forever, not "not found")', async () => {
+    const host = new NoopHostAdapter();
+    const sessions = mkSessions(host, { t: 0 });
+    await sessions.createSession(['inv_1'], ['read-investigation']);
+    const transport = new FakeMcpTransport().on('investigation.get_summary', 401, { message: 'bad token' });
+    const tools = new McpTools({ sessions, host, transport });
+    await expect(
+      tools.invoke('investigation.get_summary', { investigationId: 'inv_1' }),
+    ).rejects.toMatchObject({ code: 'PERMISSION_DENIED', message: expect.stringMatching(/\/login/) });
+    expect(transport.calls).toHaveLength(2);
+  });
+
+  it('refuses a mutation locally once the service has refused the write scope, without prompting', async () => {
+    const host = new NoopHostAdapter('approve');
+    const sessions = mkSessions(host, { t: 0 }, async (scopes) => {
+      if (scopes.includes('write-investigation')) throw new InsufficientScopeError('runs:write', 'x');
+      return grant;
+    });
+    await sessions.createSession(['inv_1'], ['read-investigation', 'write-investigation']);
+    const transport = new FakeMcpTransport();
+    const tools = new McpTools({ sessions, host, transport });
+    await expect(
+      tools.invoke('investigation.add_evidence', { investigationId: 'inv_1', text: 'x' }),
+    ).rejects.toMatchObject({ code: 'PERMISSION_DENIED', message: expect.stringMatching(/engineer role/) });
+    expect(host.mutationPreviews).toHaveLength(0);
+    expect(transport.calls).toHaveLength(0);
+    // Reads still work on the same session.
+    await tools.invoke('investigation.get_summary', { investigationId: 'inv_1' });
+    expect(transport.calls).toHaveLength(1);
+  });
+});
+
+describe('McpTools 401 retry stays bound to the original investigation', () => {
+  /** A mint that tags each JWT with its investigation and a running count. */
+  function mkManager(host: NoopHostAdapter, extra?: (ids: string[], scopes: string[], n: number) => void) {
+    const mints: Array<{ ids: string[]; scopes: string[] }> = [];
+    const sessions = new McpSessionManager({
+      client: {} as any,
+      host,
+      notify: () => {},
+      createServiceSession: async (ids, scopes) => {
+        mints.push({ ids, scopes });
+        extra?.(ids, scopes, mints.length);
+        return { ...grant, sessionJwt: `jwt-${ids[0]}-${mints.length}`, ttlSeconds: 600 };
+      },
+    });
+    return { sessions, mints };
+  }
+
+  function deferredTransport() {
+    const calls: Array<{ jwt: string; investigationId: unknown }> = [];
+    let release: ((r: { status: number; body: unknown }) => void) | undefined;
+    const transport = {
+      call(o: { sessionJwt: string; args: Record<string, unknown> }) {
+        calls.push({ jwt: o.sessionJwt, investigationId: o.args.investigationId });
+        if (calls.length === 1) return new Promise<{ status: number; body: unknown }>((r) => (release = r));
+        return Promise.resolve({ status: 200, body: { ok: true } });
+      },
+    };
+    return { transport, calls, release: (r: { status: number; body: unknown }) => release?.(r) };
+  }
+
+  it.each([
+    ['explicit investigationId', { investigationId: 'inv_A' }],
+    ['investigationId omitted (bound to the session default)', {}],
+  ])('a 401 after a switch to another investigation aborts, never retrying with its JWT (%s)', async (_n, args) => {
+    const host = new NoopHostAdapter();
+    const { sessions, mints } = mkManager(host);
+    await sessions.createSession(['inv_A'], ['read-investigation']);
+    const { transport, calls, release } = deferredTransport();
+    const tools = new McpTools({ sessions, host, transport });
+
+    const inflight = tools.invoke('investigation.get_summary', args);
+    const settled = inflight.then(
+      () => ({ ok: true as const }),
+      (e: unknown) => ({ ok: false as const, e }),
+    );
+    await new Promise((r) => setImmediate(r));
+    await sessions.createSession(['inv_B'], ['read-investigation']); // switch while A is in flight
+    release({ status: 401, body: { message: 'expired' } });
+
+    const out = await settled;
+    expect(out.ok).toBe(false);
+    expect((out as { e: ToolError }).e).toMatchObject({
+      code: 'PERMISSION_DENIED',
+      message: expect.stringMatching(/switched/),
+    });
+    // One wire call only, with A's JWT; B's credentials never carried A's call.
+    expect(calls).toEqual([{ jwt: 'jwt-inv_A-1', investigationId: (args as { investigationId?: string }).investigationId }]);
+    // No re-mint was performed on A's behalf either (only A's create and B's create).
+    expect(mints.map((m) => m.ids)).toEqual([['inv_A'], ['inv_B']]);
+  });
+
+  it('a mutation retry re-runs the checks: a refresh that comes back read-only is refused, not re-sent', async () => {
+    const host = new NoopHostAdapter('approve');
+    let mintCount = 0;
+    const trust = new SessionTrustGrantStore();
+    const sessionsWithTrust = new McpSessionManager({
+      client: {} as any,
+      host,
+      trust,
+      notify: () => {},
+      newGrantId: () => 'g1',
+      createServiceSession: async (_ids, scopes) => {
+        mintCount++;
+        if (mintCount > 1 && scopes.includes('write-investigation')) throw new InsufficientScopeError('runs:write', 'x');
+        return { ...grant, sessionJwt: `jwt-${mintCount}`, ttlSeconds: 600 };
+      },
+    });
+    await sessionsWithTrust.createSession(['inv_1'], ['read-investigation', 'write-investigation']);
+    const transport = new FakeMcpTransport().on('investigation.add_evidence', 401, { message: 'expired' });
+    const tools = new McpTools({ sessions: sessionsWithTrust, host, transport, trust });
+
+    await expect(
+      tools.invoke('investigation.add_evidence', { investigationId: 'inv_1', text: 'x' }),
+    ).rejects.toMatchObject({ code: 'PERMISSION_DENIED', message: expect.stringMatching(/read-only/) });
+    // The first (401) attempt went out; the retry was refused locally.
+    expect(transport.calls).toHaveLength(1);
+  });
+
+  it('with no switch, a 401 still re-mints once and retries with the new JWT', async () => {
+    const host = new NoopHostAdapter();
+    const { sessions } = mkManager(host);
+    await sessions.createSession(['inv_A'], ['read-investigation']);
+    const { transport, calls, release } = deferredTransport();
+    const tools = new McpTools({ sessions, host, transport });
+    const inflight = tools.invoke('investigation.get_summary', { investigationId: 'inv_A' });
+    await new Promise((r) => setImmediate(r));
+    release({ status: 401, body: { message: 'expired' } });
+    await expect(inflight).resolves.toEqual({ ok: true });
+    expect(calls.map((c) => c.jwt)).toEqual(['jwt-inv_A-1', 'jwt-inv_A-2']);
   });
 });

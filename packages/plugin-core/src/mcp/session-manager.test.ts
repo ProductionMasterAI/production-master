@@ -315,6 +315,48 @@ describe('McpSessionManager', () => {
       expect(trust.listActive('inv_1')).toHaveLength(0);
     });
 
+    it('a refresh that resolves after a switch never registers the stale session with the host', async () => {
+      const host = new NoopHostAdapter();
+      let release: ((g: McpSessionGrant) => void) | undefined;
+      let deferNext = false;
+      const mgr = new McpSessionManager({
+        client: {} as any,
+        host,
+        createServiceSession: (ids) => {
+          if (deferNext) {
+            deferNext = false;
+            return new Promise<McpSessionGrant>((resolve) => (release = resolve));
+          }
+          return Promise.resolve(grant(`jwt-${ids[0]}`));
+        },
+      });
+      await mgr.createSession(['inv_A'], ['read-investigation']);
+      deferNext = true;
+      const staleRefresh = mgr.refresh(); // A's re-mint is now in flight
+      await mgr.createSession(['inv_B'], ['read-investigation']); // switch to B
+      release?.(grant('jwt-inv_A-refreshed')); // A's mint resolves late
+      await staleRefresh;
+
+      const registered = host.calls
+        .filter((c) => c.method === 'registerMcpServer')
+        .map((c) => (c.arg as { sessionJwt: string }).sessionJwt);
+      expect(registered).toEqual(['jwt-inv_A', 'jwt-inv_B']);
+      expect(mgr.getActiveSession()?.grant.sessionJwt).toBe('jwt-inv_B');
+      expect(mgr.getActiveSession()?.investigationIds).toEqual(['inv_B']);
+    });
+
+    it('refresh(expectedGeneration) refuses to refresh a session the manager has moved past', async () => {
+      const mgr = new McpSessionManager({
+        client: {} as any,
+        host: new NoopHostAdapter(),
+        createServiceSession: async (ids) => grant(`jwt-${ids[0]}`),
+      });
+      const a = await mgr.createSession(['inv_A'], ['read-investigation']);
+      await mgr.createSession(['inv_B'], ['read-investigation']);
+      expect(await mgr.refresh(a.generation)).toBeUndefined();
+      expect(mgr.getActiveSession()?.grant.sessionJwt).toBe('jwt-inv_B');
+    });
+
     it('refresh() and ensureFresh() are no-ops without an active session', async () => {
       const { mgr, calls } = expiring(300);
       expect(await mgr.refresh()).toBeUndefined();

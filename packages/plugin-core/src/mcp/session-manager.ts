@@ -67,6 +67,12 @@ export interface CreateSessionDeps {
 }
 
 export interface ActiveSession {
+  /**
+   * Which createSession() this session belongs to. A refresh keeps the value;
+   * a switch (or re-create) takes a new one. Callers bind work to it so they
+   * can tell "my session, re-minted" from "a different investigation's session".
+   */
+  generation: number;
   grant: McpSessionGrant;
   investigationIds: string[];
   /** Scopes the service actually granted (read-only after a write refusal). */
@@ -85,7 +91,8 @@ export interface ActiveSession {
 
 export class McpSessionManager {
   private active: ActiveSession | undefined;
-  private refreshing: Promise<ActiveSession | undefined> | undefined;
+  private refreshing: { prev: ActiveSession; promise: Promise<ActiveSession | undefined> } | undefined;
+  private lastGeneration = 0;
 
   constructor(private readonly deps: CreateSessionDeps) {}
 
@@ -106,8 +113,14 @@ export class McpSessionManager {
   async createSession(investigationIds: string[], scopes: Scope[]): Promise<ActiveSession> {
     // Discard the previous session (and revoke its grants) BEFORE the new one.
     if (this.active) this.discard();
-    const session = await this.mint(investigationIds, scopes, true);
+    const session = await this.mint(investigationIds, scopes, true, ++this.lastGeneration);
     this.active = session;
+    try {
+      await this.register(session);
+    } catch (err) {
+      if (this.active === session) this.active = undefined;
+      throw err;
+    }
     this.issueGrantsFor(session);
     return session;
   }
@@ -130,35 +143,64 @@ export class McpSessionManager {
    * requested scopes (e.g. after a 401, or shortly before `exp`). Concurrent
    * callers share one mint. The trust grants the user already approved are kept
    * across a refresh; they are revoked only if the refresh comes back read-only.
+   *
+   * A refresh only ever acts for the session it started from. The minted result
+   * is registered with the host only if that session is STILL the active one;
+   * if the active investigation switched meanwhile, the result is discarded and
+   * the host configuration is left alone. Pass `expectedGeneration` to refuse to
+   * refresh at all (returns undefined) when the active session is not the one
+   * the caller is working for.
    */
-  async refresh(): Promise<ActiveSession | undefined> {
+  async refresh(expectedGeneration?: number): Promise<ActiveSession | undefined> {
     const prev = this.active;
     if (!prev) return undefined;
-    if (this.refreshing) return this.refreshing;
-    this.refreshing = (async () => {
-      try {
-        const next = await this.mint(prev.investigationIds, prev.requestedScopes, !prev.readOnlyFallback);
-        // Another createSession/discard won the race: do not resurrect old state.
-        if (this.active !== prev) return this.active;
-        this.active = next;
-        if (next.readOnly && !prev.readOnly) this.revokeGrantsFor(prev.investigationIds);
-        return next;
-      } finally {
-        this.refreshing = undefined;
-      }
-    })();
-    return this.refreshing;
+    if (expectedGeneration !== undefined && prev.generation !== expectedGeneration) return undefined;
+    if (this.refreshing?.prev === prev) return this.refreshing.promise;
+    const entry: { prev: ActiveSession; promise: Promise<ActiveSession | undefined> } = {
+      prev,
+      promise: (async () => {
+        try {
+          const next = await this.mint(
+            prev.investigationIds,
+            prev.requestedScopes,
+            !prev.readOnlyFallback,
+            prev.generation,
+          );
+          // Another createSession/discard won the race: drop this result, never
+          // register it, and do not resurrect old state.
+          if (this.active !== prev) return this.active;
+          this.active = next;
+          try {
+            await this.register(next);
+          } catch (err) {
+            if (this.active === next) this.active = prev;
+            throw err;
+          }
+          if (next.readOnly && !prev.readOnly) this.revokeGrantsFor(prev.investigationIds);
+          return next;
+        } finally {
+          if (this.refreshing?.prev === prev) this.refreshing = undefined;
+        }
+      })(),
+    };
+    this.refreshing = entry;
+    return entry.promise;
   }
 
   private now(): number {
     return this.deps.now?.() ?? Date.now();
   }
 
-  /** Mint a grant (with the read-only fallback) and register it with the host. */
+  /**
+   * Mint a grant (with the read-only fallback). Minting has no side effect on
+   * the host: the caller registers the result only once it knows it still owns
+   * the active session (see register()).
+   */
   private async mint(
     investigationIds: string[],
     requested: Scope[],
     announce: boolean,
+    generation: number,
   ): Promise<ActiveSession> {
     let scopes = requested;
     let grant: McpSessionGrant;
@@ -176,12 +218,6 @@ export class McpSessionManager {
       // One retry only: a second refusal (e.g. runs:read) propagates as-is.
       grant = await this.deps.createServiceSession(investigationIds, scopes);
     }
-    await this.deps.host.registerMcpServer({
-      endpoint: grant.endpoint,
-      audience: grant.audience,
-      sessionJwt: grant.sessionJwt,
-      scopes,
-    });
 
     // Expiry is what the SERVER granted (JWT exp / returned ttlSeconds), never
     // what we asked for; the sooner of the two wins.
@@ -196,6 +232,7 @@ export class McpSessionManager {
       expiresAtMs !== undefined ? (expiresAtMs - issuedAt) / 2 : Infinity,
     );
     return {
+      generation,
       grant,
       investigationIds,
       scopes,
@@ -205,6 +242,16 @@ export class McpSessionManager {
       expiresAtMs,
       refreshAtMs: expiresAtMs !== undefined ? expiresAtMs - skew : undefined,
     };
+  }
+
+  /** Point the host at this session. Call only while it is the active session. */
+  private async register(session: ActiveSession): Promise<void> {
+    await this.deps.host.registerMcpServer({
+      endpoint: session.grant.endpoint,
+      audience: session.grant.audience,
+      sessionJwt: session.grant.sessionJwt,
+      scopes: session.scopes,
+    });
   }
 
   private issueGrantsFor(session: ActiveSession): void {

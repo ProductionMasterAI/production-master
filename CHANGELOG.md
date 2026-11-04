@@ -654,6 +654,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     call with the same idempotency key. Trust grants you already approved are
     kept across a refresh. `sessionTtlSeconds` is sent as `ttlSeconds`; the
     service still caps it.
+    A refresh or retry is tied to the investigation it started for: if you switch
+    investigations while a call is in flight, a late refresh is discarded and a
+    call that gets a 401 is not re-sent under the new investigation's session.
 
 ## [0.1.1] - 2026-08-20
 

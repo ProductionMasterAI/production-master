@@ -20,15 +20,16 @@
  *   allowed = OPENAPI_ROUTES ∪ CROSS_SERVICE_ROUTES.
  *
  * Vendored fixture provenance:
- *   `src/service/__fixtures__/edge-api-v1.yaml` is a byte-identical copy of
- *   `production-master-service/tools/openapi/edge-api-v1.yaml` (the sibling
- *   backend repo, not checked out in CI). The freshness test below asserts the
- *   copy is current whenever the sibling source is present; when it is absent
- *   (CI, where only this repo is checked out) it skips cleanly. Re-vendor with:
- *     cp ../production-master-service/tools/openapi/edge-api-v1.yaml \
- *        packages/plugin-core/src/service/__fixtures__/edge-api-v1.yaml
+ *   `src/service/__fixtures__/edge-api-v1.yaml` is the SUBSET of
+ *   `production-master-service/tools/openapi/edge-api-v1.yaml` this client
+ *   uses (public paths + the device-code `/oauth/*` contract; the internal
+ *   `/admin` and `/operator` surfaces are omitted — Hard rule 15). Freshness is
+ *   enforced on the SERVICE side: its "Plugin spec sync" CI job fetches this
+ *   public file and fails unless every path/component here deep-equals the
+ *   source. This repo is public and cannot read the private service, which is
+ *   why the old in-repo freshness test only ever skipped in CI (#89).
  */
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { describe, it, expect } from 'vitest';
@@ -38,12 +39,6 @@ import type { HttpRequest, HttpResponse, HttpTransport } from './types.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const VENDORED_SPEC = resolve(HERE, './__fixtures__/edge-api-v1.yaml');
-// packages/plugin-core/src/service -> repo root is four levels up.
-const PLUGIN_REPO_ROOT = resolve(HERE, '../../../..');
-const SIBLING_SPEC = resolve(
-  PLUGIN_REPO_ROOT,
-  '../production-master-service/tools/openapi/edge-api-v1.yaml',
-);
 
 /** Stand-in for path params; encodeURIComponent leaves it unchanged. */
 const SENTINEL_ID = '__pmid__';
@@ -207,23 +202,5 @@ describe('ServiceClient <-> pm-service route parity', () => {
       overlap,
       `CROSS_SERVICE_ROUTES now in the OpenAPI spec (delete the allowlist entry):\n${overlap.join('\n')}`,
     ).toEqual([]);
-  });
-
-  it('vendored OpenAPI fixture is byte-identical to the sibling source (when present)', () => {
-    if (!existsSync(SIBLING_SPEC)) {
-      // Sibling backend repo not checked out (e.g. CI runs this repo alone).
-      // Skip cleanly — never fail — and log why.
-      console.info(
-        `[parity] freshness check skipped: sibling spec not found at ${SIBLING_SPEC} ` +
-          '(production-master-service not checked out — expected in single-repo CI).',
-      );
-      return;
-    }
-    const vendored = readFileSync(VENDORED_SPEC, 'utf8');
-    const sibling = readFileSync(SIBLING_SPEC, 'utf8');
-    expect(
-      vendored,
-      'Vendored edge-api-v1.yaml is stale. Re-copy from production-master-service/tools/openapi/edge-api-v1.yaml.',
-    ).toBe(sibling);
   });
 });

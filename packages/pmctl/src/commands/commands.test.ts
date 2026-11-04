@@ -314,22 +314,23 @@ describe("login", () => {
     const transport = new FakeTransport()
       .on("POST", "/v1/oauth/device", () => ({
         status: 200,
+        // RFC 8628 wire shape — what the service actually returns.
         body: {
-          deviceCode: "dc",
-          userCode: "WXYZ-1234",
-          verificationUri: "https://pm.test/device",
-          verificationUriComplete: "https://pm.test/device?code=WXYZ-1234",
+          device_code: "dc",
+          user_code: "WXYZ-1234",
+          verification_uri: "https://pm.test/device",
+          verification_uri_complete: "https://pm.test/device?user_code=WXYZ-1234",
           interval: 1,
-          expiresIn: 600,
+          expires_in: 600,
         },
       }))
       .on("POST", "/v1/oauth/token", () => ({
         status: 200,
         body: {
-          accessToken: SECRET,
-          refreshToken: "rt",
-          expiresAt: Date.now() + 3_600_000,
-          scopes: ["read-investigation"] as Scope[],
+          access_token: SECRET,
+          token_type: "Bearer",
+          expires_in: 3600,
+          scope: "read-investigation",
         },
       }));
     const { deps, cap } = makeDeps({ transport, output: "json" });

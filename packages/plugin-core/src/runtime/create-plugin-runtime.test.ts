@@ -19,7 +19,6 @@ import { NoopHostAdapter } from "../host/__fixtures__/noop-host-adapter.js";
 import { InMemorySecretBackend, TokenStore } from "../auth/token-store.js";
 import { ToolError } from "../mcp/types.js";
 import type { HttpRequest, HttpResponse, HttpTransport } from "../service/types.js";
-import type { TokenResponse } from "../auth/types.js";
 
 const INV = "inv_demo";
 
@@ -40,24 +39,27 @@ class FakeService implements HttpTransport {
       case "POST /v1/oauth/device":
         return {
           status: 200,
+          // RFC 8628 wire shape — what the service actually returns.
           body: {
-            deviceCode: "dev-code",
-            userCode: "WXYZ-1234",
-            verificationUri: "https://pm.example/device",
-            verificationUriComplete: "https://pm.example/device?code=WXYZ-1234",
+            device_code: "dev-code",
+            user_code: "WXYZ-1234",
+            verification_uri: "https://pm.example/device",
+            verification_uri_complete: "https://pm.example/device?user_code=WXYZ-1234",
             interval: 0,
-            expiresIn: 900,
+            expires_in: 900,
           },
         };
       case "POST /v1/oauth/token": {
         this.tokenGrants += 1;
-        const tokens: TokenResponse = {
-          accessToken: `access-${this.tokenGrants}`,
-          refreshToken: `refresh-${this.tokenGrants}`,
-          expiresAt: this.now + this.accessTtlMs,
-          scopes: ["read-investigation", "write-investigation", "approve-action"],
+        return {
+          status: 200,
+          body: {
+            access_token: `access-${this.tokenGrants}`,
+            token_type: "Bearer",
+            expires_in: Math.floor(this.accessTtlMs / 1000),
+            scope: "read-investigation write-investigation approve-action",
+          },
         };
-        return { status: 200, body: tokens };
       }
       case "POST /v1/runs":
         return { status: 202, body: { investigationId: INV } };
@@ -141,7 +143,7 @@ describe("createPluginRuntime", () => {
     expect(result.scopes).toContain("write-investigation");
     // The verification URL was opened via the host sink.
     const opened = host.calls.find((c) => c.method === "openExternalUrl");
-    expect(opened?.arg).toBe("https://pm.example/device?code=WXYZ-1234");
+    expect(opened?.arg).toBe("https://pm.example/device?user_code=WXYZ-1234");
     // A device-start + a token grant reached the service.
     expect(service.received.some((r) => r.path === "/v1/oauth/device")).toBe(true);
     expect(service.tokenGrants).toBe(1);
@@ -198,24 +200,25 @@ describe("createPluginRuntime", () => {
     expect(runReq?.headers?.["Authorization"]).toBe("Bearer stored-access");
   });
 
-  it("refreshes an access token that is within the refresh skew", async () => {
+  it("treats an expired stored session as logged out and clears it", async () => {
     const service = new FakeService();
     const backend = new InMemorySecretBackend();
     const store = new TokenStore({ backend, issuer: "test", now: () => service.now });
-    // Stored token already inside the 5-min refresh skew.
+    // The hosted service issues no refresh token: an expiring session is over.
     await store.save("default", {
       accessToken: "stale-access",
-      refreshToken: "stale-refresh",
-      expiresAt: service.now + 60_000, // 1 min left
+      refreshToken: "",
+      expiresAt: service.now + 30_000, // inside the 60 s expiry skew
       scopes: ["read-investigation", "write-investigation", "approve-action"],
     });
     const runtime = newRuntime(service, new NoopHostAdapter(), { tokenStore: store });
 
-    await runtime.investigate({ ticket: "INC-1" });
-    // A refresh grant was issued and the new token used.
-    expect(service.tokenGrants).toBe(1);
-    const runReq = service.received.find((r) => r.path === "/v1/runs");
-    expect(runReq?.headers?.["Authorization"]).toBe("Bearer access-1");
+    await expect(runtime.investigate({ ticket: "INC-1" })).rejects.toThrow(/not authenticated/);
+    // No token grant was attempted, nothing was sent with the stale token,
+    // and the dead session is gone from the store.
+    expect(service.tokenGrants).toBe(0);
+    expect(service.received.find((r) => r.path === "/v1/runs")).toBeUndefined();
+    expect(await store.load("default")).toBeUndefined();
   });
 
   it("connect() mints a session, replays the durable slice, and streams", async () => {

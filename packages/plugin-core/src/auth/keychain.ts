@@ -220,22 +220,26 @@ async function winDelete(service: string, account: string): Promise<void> {
 // Probe: check whether the native CLI is available
 // ---------------------------------------------------------------------------
 
+/**
+ * The read-only command each platform runs to prove its keychain CLI works.
+ *
+ * macOS: `security list-keychains` — NOT `security --version`. macOS
+ * `security` has no `--version` option (it prints usage and exits 2), so that
+ * probe failed on every Mac and silently dropped every session into in-memory
+ * storage: `/login` "succeeded" and the next command was unauthenticated.
+ * keychain.probe.test.ts runs this table against the real binary.
+ */
+export const KEYCHAIN_PROBES: Partial<Record<Platform, readonly [string, readonly string[]]>> = {
+  darwin: ["security", ["list-keychains"]],
+  linux: ["secret-tool", ["--version"]],
+  win32: ["powershell", ["-NoProfile", "-NonInteractive", "-Command", "exit 0"]],
+};
+
 async function isAvailable(platform: Platform): Promise<boolean> {
+  const probe = KEYCHAIN_PROBES[platform];
+  if (!probe) return false;
   try {
-    if (platform === "darwin") {
-      await exec("security", ["--version"]);
-    } else if (platform === "linux") {
-      await exec("secret-tool", ["--version"]);
-    } else if (platform === "win32") {
-      await exec("powershell", [
-        "-NoProfile",
-        "-NonInteractive",
-        "-Command",
-        "exit 0",
-      ]);
-    } else {
-      return false;
-    }
+    await exec(probe[0], [...probe[1]]);
     return true;
   } catch {
     return false;

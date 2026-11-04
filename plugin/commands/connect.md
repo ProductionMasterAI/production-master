@@ -1,7 +1,7 @@
 ---
 description: Re-attach to an in-flight or completed Production Master investigation and stream its progress/report into the editor.
 argument-hint: "<investigationId>"
-allowed-tools: Bash
+allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/bin/production-master.mjs connect:*)
 ---
 
 Re-attach to investigation **$ARGUMENTS** and stream it to completion.
@@ -11,10 +11,5 @@ stream — the same fold/render path `investigate` uses, so nothing is
 re-computed locally. Run `/login` first if you are not authenticated.
 
 ```bash
-set -euo pipefail
-PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(pwd)}"
-CLI="${PLUGIN_ROOT}/packages/adapter-claude-code/dist/cli.js"
-[ -f "$CLI" ] || CLI="${PLUGIN_ROOT}/dist/cli.js"
-export PM_SERVICE_URL="${PM_SERVICE_URL:-https://api.productionmaster.dev}"
-node "$CLI" connect $ARGUMENTS
+node "${CLAUDE_PLUGIN_ROOT}/bin/production-master.mjs" connect $ARGUMENTS
 ```

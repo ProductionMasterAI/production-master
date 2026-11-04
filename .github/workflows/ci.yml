@@ -33,6 +33,16 @@ jobs:
       # sit beneath a Keep a Changelog category header (plugin#37's
       # regression).
       - run: node scripts/check-changelog-structure.mjs
+      # Plugin directory submission (objective directory-zero-warnings, #86):
+      # the committed plugin/bin bundle must match its sources, and plugin/ --
+      # the only path the directory scans -- must carry none of the findings
+      # that held v0.1.1 (lockfile, broad allowed-tools, credential env reads,
+      # download-and-run, missing icon, binary / >256 KiB files).
+      - run: npm run check:plugin
+      # Claude Code's own plugin + marketplace validators, pinned so a CLI
+      # release can't silently change what this gate checks.
+      - run: npx --yes @anthropic-ai/claude-code@2.1.317 plugin validate ./plugin
+      - run: npx --yes @anthropic-ai/claude-code@2.1.317 plugin validate .
 
   secret-scan:
     runs-on: ubuntu-latest

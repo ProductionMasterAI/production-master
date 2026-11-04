@@ -46,11 +46,11 @@ This repo is its own plugin marketplace (`.claude-plugin/marketplace.json`), so 
 > **No git or npm on the machine?** Claude Code 2.1.224+ also supports an
 > `archive` plugin source: the plugin is installed from a zip fetched over
 > HTTPS, with optional SHA-256 pinning of the archive — no git clone and no
-> npm involved in the install itself. If you install this client that way,
-> point the archive source at a zip that already contains the built `dist/`
-> output (a release archive built with `npm run build`): the slash commands
-> exec the built thin-client binary, and an archive install performs no build
-> step. Node.js 22 is still required at runtime.
+> npm involved in the install itself. The plugin is the self-contained
+> [`plugin/`](../../plugin) folder — its runtime,
+> `plugin/bin/production-master.mjs`, is committed already built, so a zip of
+> that folder is a complete install with no build step. Node.js 22 is still
+> required at runtime.
 
 ### Cursor
 

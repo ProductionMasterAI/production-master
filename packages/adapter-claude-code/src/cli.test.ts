@@ -8,7 +8,7 @@ vi.mock('node:child_process', async (importOriginal) => ({
   spawn: vi.fn(() => ({ on: () => undefined, unref: () => undefined })),
 }));
 
-import { main, TerminalSinks } from './cli.js';
+import { main, TerminalSinks, DEFAULT_SERVICE_URL } from './cli.js';
 
 /** A capturing writable double good enough for the sinks' `.write()` calls. */
 function capture(): { sink: NodeJS.WritableStream; text: () => string } {
@@ -31,9 +31,47 @@ afterEach(() => {
 });
 
 describe('cli argument + exit-code contract', () => {
-  it('errors without a service url', async () => {
-    const code = await main(['investigate', '--input', 'INC-1']);
-    expect(code).toBe(2);
+  it('falls back to the public hosted service when no url is given', async () => {
+    const saved = process.env.PM_SERVICE_URL;
+    delete process.env.PM_SERVICE_URL;
+    try {
+      expect(DEFAULT_SERVICE_URL).toBe('https://api.productionmaster.dev');
+      // No --service and no env: the url is no longer the failure — the missing
+      // --input is (exit 2 from the investigate arg check, before any I/O).
+      const code = await main(['investigate']);
+      expect(code).toBe(2);
+    } finally {
+      if (saved !== undefined) process.env.PM_SERVICE_URL = saved;
+    }
+  });
+
+  it.each([[['--help']], [['help']], [['--help', 'login']], [['login', '--help']]])(
+    'prints usage and exits 0 for %j',
+    async (argv) => {
+      const out = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+      try {
+        expect(await main(argv)).toBe(0);
+        expect(out.mock.calls.map((c) => String(c[0])).join('')).toContain('Usage:');
+      } finally {
+        out.mockRestore();
+      }
+    },
+  );
+
+  it('never reads a bearer token from PM_ACCESS_TOKEN (plugin directory policy)', async () => {
+    // A token in the environment must NOT authenticate the run: with a fresh
+    // keychain slot the runtime still reports "not authenticated" (4) instead of
+    // seeding the env token and sending it to the service.
+    const savedToken = process.env.PM_ACCESS_TOKEN;
+    process.env.PM_ACCESS_TOKEN = 'env-token-that-must-be-ignored';
+    process.env.PM_ACCOUNT_ID = `test-envtoken-${Math.random().toString(36).slice(2)}`;
+    try {
+      const code = await main(['investigate', '--service', 'https://svc.example', '--input', 'INC-1']);
+      expect(code).toBe(4);
+    } finally {
+      if (savedToken === undefined) delete process.env.PM_ACCESS_TOKEN;
+      else process.env.PM_ACCESS_TOKEN = savedToken;
+    }
   });
 
   it('errors when investigate is missing --input', async () => {

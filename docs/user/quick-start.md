@@ -151,6 +151,8 @@ Run the login command in your editor:
 
 The client starts a **device-code** flow: it shows a short code and a URL. Open the URL in your browser, enter the code, and approve the session. Once approved, the client stores your token and you won't need to log in again until it expires.
 
+Your role decides what the client may do. With the `engineer` role or above you can approve changes to an investigation; with `viewer` you can read investigations, and the client tells you your login is read-only. See [Troubleshooting → Read-only](troubleshooting.md#read-only-notice-or-an-action-is-refused-as-read-only). Investigation sessions renew themselves, so you don't need to re-run `/login` every few minutes.
+
 If your organization runs the service at a custom URL, set it before logging in — see [Troubleshooting → Service URL](troubleshooting.md#service-url).
 
 ## 3. Run your first investigation

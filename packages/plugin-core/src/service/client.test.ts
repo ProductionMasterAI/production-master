@@ -1,7 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { ServiceClient } from "./client.js";
 import { FakeTransport } from "./__fixtures__/fake-transport.js";
-import { IdempotencyConflict, ServiceError, type Run } from "./types.js";
+import {
+  IdempotencyConflict,
+  InsufficientScopeError,
+  ServiceError,
+  type Run,
+} from "./types.js";
 
 const run: Run = {
   investigationId: "inv_1",
@@ -54,6 +59,66 @@ describe("ServiceClient", () => {
       code: "NOT_FOUND",
       httpStatus: 404,
     });
+  });
+
+  it("maps 403 insufficient_scope to a distinct error naming requiredScope, never NOT_FOUND", async () => {
+    const t = new FakeTransport().on("POST", "/v1/mcp/sessions", () => ({
+      status: 403,
+      body: {
+        error: "insufficient_scope",
+        requiredScope: "runs:write",
+        message: "The caller does not hold runs:write.",
+      },
+    }));
+    const err = await client(t)
+      .createMcpSession(["inv_1"], ["read-investigation", "write-investigation"])
+      .catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(InsufficientScopeError);
+    expect(err).toMatchObject({
+      name: "InsufficientScopeError",
+      code: "PERMISSION_DENIED",
+      httpStatus: 403,
+      requiredScope: "runs:write",
+    });
+    expect((err as Error).message).toMatch(/runs:write/);
+    expect((err as Error).message).toMatch(/engineer role/);
+    expect((err as Error).message).not.toMatch(/not found/i);
+  });
+
+  it("maps insufficient_scope on runs:read to guidance naming the viewer role", async () => {
+    const t = new FakeTransport().on("POST", "/v1/mcp/sessions", () => ({
+      status: 403,
+      body: { error: "insufficient_scope", requiredScope: "runs:read", message: "no" },
+    }));
+    await expect(
+      client(t).createMcpSession(["inv_1"], ["read-investigation"]),
+    ).rejects.toMatchObject({
+      requiredScope: "runs:read",
+      message: expect.stringMatching(/viewer role/),
+    });
+  });
+
+  it("keeps other 403s as NOT_FOUND (e.g. a session_scope_insufficient body is not a mint refusal)", async () => {
+    const t = new FakeTransport().on("GET", "/v1/runs/inv_x", () => ({
+      status: 403,
+      body: { error: "session_scope_insufficient" },
+    }));
+    await expect(client(t).getRun("inv_x")).rejects.toMatchObject({
+      code: "NOT_FOUND",
+      httpStatus: 404,
+    });
+  });
+
+  it("createMcpSession sends ttlSeconds only when given", async () => {
+    const t = new FakeTransport().on("POST", "/v1/mcp/sessions", () => ({
+      status: 201,
+      body: { endpoint: "e", audience: "a", sessionJwt: "j", ttlSeconds: 120 },
+    }));
+    const c = client(t);
+    await c.createMcpSession(["inv_1"], ["read-investigation"]);
+    await c.createMcpSession(["inv_1"], ["read-investigation"], 120);
+    expect(t.received[0].body).not.toHaveProperty("ttlSeconds");
+    expect(t.received[1].body).toMatchObject({ ttlSeconds: 120 });
   });
 
   it("surfaces 404 as NOT_FOUND", async () => {

@@ -61,7 +61,11 @@ export interface PluginRuntimeConfig {
   accountId?: string;
   /** Presence surface label attached to streamed runs (default `plugin`). */
   surface?: string;
-  /** Optional MCP-session TTL request (service caps it). */
+  /**
+   * Optional MCP-session TTL request, sent as `ttlSeconds` on the mint. The
+   * service caps it and defaults to 300 s; the plugin re-mints shortly before
+   * the granted expiry either way, and never extends beyond what is granted.
+   */
   sessionTtlSeconds?: number;
 }
 
@@ -79,6 +83,8 @@ export interface PluginRuntimeDeps {
     investigationIds: string[],
     scopes: Scope[],
   ) => Promise<McpSessionGrant>;
+  /** Where user-facing notices go (e.g. "your account is read-only"); default stderr. */
+  notify?: (message: string) => void;
   /** Client-side audit sink (e.g. user.mutation_rejected). */
   audit?: AuditSink;
   now?: () => number;
@@ -169,6 +175,8 @@ export class PluginRuntime {
       client: this.client,
       host: this.host,
       createServiceSession,
+      notify: deps.notify ?? ((message) => void process.stderr.write(`${message}\n`)),
+      ...(deps.now ? { now: deps.now } : {}),
     });
 
     const mcpToolTransport =
@@ -308,6 +316,8 @@ export class PluginRuntime {
       investigationIds.every((id) => this.sessions.isInScope(id));
     if (!covered) {
       await this.sessions.createSession(investigationIds, this.scopes);
+    } else {
+      await this.sessions.ensureFresh();
     }
   }
 }

@@ -190,6 +190,24 @@ export class ServiceError extends Error {
   }
 }
 
+/**
+ * 403 `insufficient_scope`: the caller is authenticated but does not hold the
+ * permission the request needs (for an MCP session mint: `runs:write` for a
+ * `mutate` session, `runs:read` for any session). Distinct from NOT_FOUND — a
+ * scope refusal names a missing permission, not a missing resource, so it is
+ * never rewritten under the no-enumeration rule.
+ */
+export class InsufficientScopeError extends ServiceError {
+  constructor(
+    /** The permission the service says is missing (e.g. `runs:write`). */
+    readonly requiredScope: string | undefined,
+    message: string,
+  ) {
+    super("PERMISSION_DENIED", 403, message);
+    this.name = "InsufficientScopeError";
+  }
+}
+
 /** 409 on duplicate Idempotency-Key. */
 export class IdempotencyConflict extends ServiceError {
   constructor(message = "Idempotency key already used") {

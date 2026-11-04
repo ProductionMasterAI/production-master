@@ -681,6 +681,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`.codex-version`) has held 0.148.0 since #35.** The pin-doc guard added
   above caught this live drift on the current tree; the doc now reads
   0.148.0 in the platform table and the narrative paragraph.
+- **A read-only login no longer breaks on `/v1/mcp/sessions`, and a session no
+  longer dies after five minutes.** Pairs with production-master-service#1705,
+  which makes the session mint refuse `mutate` unless the caller holds
+  `runs:write` (`403 insufficient_scope` with `requiredScope`) and defaults the
+  session to 300 s. This change must merge with or before it.
+  - *Mint by what the caller holds.* The client always asked for read, write
+    and approve (`['read','mutate']`). When the service answers
+    `insufficient_scope` for `runs:write`, the client now retries **once** with
+    `['read']`, tells you the login is read-only (the engineer role or above
+    grants writes), and refuses mutation tools locally instead of prompting you
+    to approve a change the service will refuse. Any other refusal, including
+    `runs:read`, is surfaced as-is.
+  - *Scope refusals are no longer "not found".* `ServiceClient` mapped every
+    403 to `NOT_FOUND`. A 403 `insufficient_scope` is now an
+    `InsufficientScopeError` carrying `requiredScope` and naming the role that
+    grants it; other 403s keep the no-enumeration rewrite.
+  - *Sessions refresh themselves.* The session's expiry (the sooner of the JWT
+    `exp` and the returned `ttlSeconds`, never the requested TTL) is tracked;
+    the client re-mints shortly before it, or once on a 401, and retries the
+    call with the same idempotency key. Trust grants you already approved are
+    kept across a refresh. `sessionTtlSeconds` is sent as `ttlSeconds`; the
+    service still caps it.
+    A refresh or retry is tied to the investigation it started for: if you switch
+    investigations while a call is in flight, a late refresh is discarded and a
+    call that gets a 401 is not re-sent under the new investigation's session.
 
 ## [0.1.1] - 2026-08-20
 

@@ -29,6 +29,8 @@ class FakeService implements HttpTransport {
   /** Access-token TTL handed out by the token endpoint (ms from `now`). */
   accessTtlMs = 3_600_000;
   tokenGrants = 0;
+  /** When set, a mint asking for `mutate` is refused like service#1705 does. */
+  refuseMutate = false;
 
   async request(opts: HttpRequest): Promise<HttpResponse> {
     this.received.push(opts);
@@ -62,6 +64,19 @@ class FakeService implements HttpTransport {
       case "POST /v1/runs":
         return { status: 202, body: { investigationId: INV } };
       case "POST /v1/mcp/sessions":
+        if (
+          this.refuseMutate &&
+          (opts.body as { scopes: string[] }).scopes.includes("mutate")
+        ) {
+          return {
+            status: 403,
+            body: {
+              error: "insufficient_scope",
+              requiredScope: "runs:write",
+              message: "The caller does not hold runs:write.",
+            },
+          };
+        }
         return {
           status: 201,
           body: {
@@ -295,5 +310,78 @@ describe("createPluginRuntime", () => {
       investigationIds: [INV],
       scopes: ["read", "mutate"],
     });
+  });
+
+  it("passes sessionTtlSeconds through as ttlSeconds on the mint", async () => {
+    const service = new FakeService();
+    const runtime = createPluginRuntime({
+      host: new NoopHostAdapter("approve"),
+      config: { serviceUrl: "https://svc.pm", sessionTtlSeconds: 120 },
+      deps: {
+        transport: service,
+        sseConnector: new FixtureSseConnector(),
+        mcpToolTransport: new FixtureMcpTransport(),
+        tokenStore: new TokenStore({
+          backend: new InMemorySecretBackend(),
+          issuer: "test",
+          now: () => service.now,
+        }),
+        now: () => service.now,
+        sleep: async () => {},
+      },
+    });
+    await runtime.login();
+    await runtime.update(INV, "investigation.add_evidence", { note: "a" });
+    const mint = service.received.find((r) => r.path === "/v1/mcp/sessions");
+    expect(mint?.body).toMatchObject({ ttlSeconds: 120 });
+  });
+
+  it("a read-only login (mint refused for mutate) falls back to ['read'], tells the user, and blocks writes locally", async () => {
+    const service = new FakeService();
+    service.refuseMutate = true;
+    const notices: string[] = [];
+    const mcp = new FixtureMcpTransport();
+    const host = new NoopHostAdapter("approve");
+    const runtime = newRuntime(service, host, {
+      mcpToolTransport: mcp,
+      notify: (m: string) => notices.push(m),
+    });
+    await runtime.login();
+
+    await expect(
+      runtime.update(INV, "investigation.add_evidence", { note: "a" }),
+    ).rejects.toMatchObject({
+      code: "PERMISSION_DENIED",
+      message: expect.stringMatching(/read-only/),
+    });
+
+    const mints = service.received.filter((r) => r.path === "/v1/mcp/sessions");
+    expect(mints.map((m) => (m.body as { scopes: string[] }).scopes)).toEqual([
+      ["read", "mutate"],
+      ["read"],
+    ]);
+    expect(notices).toHaveLength(1);
+    expect(notices[0]).toMatch(/engineer role/);
+    expect(host.mutationPreviews).toHaveLength(0);
+
+    // A read on the same login still works and reuses the read-only session.
+    await runtime.update(INV, "investigation.get_summary", {});
+    expect(
+      service.received.filter((r) => r.path === "/v1/mcp/sessions"),
+    ).toHaveLength(2);
+  });
+
+  it("re-mints a session that is about to expire on the next command", async () => {
+    const service = new FakeService();
+    const runtime = newRuntime(service, new NoopHostAdapter("approve"), {
+      mcpToolTransport: new FixtureMcpTransport(),
+    });
+    await runtime.login();
+    await runtime.update(INV, "investigation.add_evidence", { note: "a" });
+    service.now += 280_000; // 300 s TTL, inside the 30 s skew
+    await runtime.update(INV, "investigation.add_evidence", { note: "b" });
+    expect(
+      service.received.filter((r) => r.path === "/v1/mcp/sessions"),
+    ).toHaveLength(2);
   });
 });

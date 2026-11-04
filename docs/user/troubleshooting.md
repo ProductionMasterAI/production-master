@@ -16,6 +16,16 @@ Your stored token is missing or expired. Re-run `/login`. If it keeps happening 
 
 The token is valid but your account may lack access to the service, or you approved the session against a different service URL than the one the client is calling. Confirm your account has access, then verify the [service URL](#service-url) matches.
 
+### "Read-only" notice, or an action is refused as read-only
+
+If the client prints that your account is read-only, your login does not hold the `runs:write` permission, so the session was opened for reading only. You can still open investigations, stream progress and read reports; actions that would change an investigation (adding evidence, re-running a phase, resuming) are declined up front, before any approval prompt. The `engineer` role or above grants write access — ask an org admin to change your role. The change applies to the next session the client opens, which is within about five minutes; you do not need to log in again.
+
+If instead the client reports that your account is missing `runs:read`, it cannot open investigations at all; ask an org admin for the `viewer` role or above.
+
+### A session expires mid-run
+
+Investigation sessions are short-lived (five minutes by default) and renew themselves: the client opens a fresh session shortly before the old one expires, or once if the service rejects an expired one, and retries the call. You do not need to do anything. If a command still fails with a message to run `/login` after that retry, your login itself has expired — run `/login` again. Setting a longer `sessionTtlSeconds` only asks for a longer session; the service decides the limit.
+
 ## Service URL
 
 By default the client talks to the standard hosted service. If your organization runs the service at a custom URL, point the client at it before logging in.

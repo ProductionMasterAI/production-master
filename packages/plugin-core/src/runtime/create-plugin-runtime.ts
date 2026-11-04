@@ -63,8 +63,9 @@ export interface PluginRuntimeConfig {
   surface?: string;
   /**
    * Optional MCP-session TTL request, sent as `ttlSeconds` on the mint. The
-   * service caps it and defaults to 300 s; the plugin re-mints shortly before
-   * the granted expiry either way, and never extends beyond what is granted.
+   * service defaults to 300 s and caps at 300 s (a longer request is a 400, so
+   * keep this at or under 300); the plugin re-mints shortly before the granted
+   * expiry either way, and never extends beyond what is granted.
    */
   sessionTtlSeconds?: number;
 }

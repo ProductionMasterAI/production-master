@@ -292,28 +292,35 @@ paths:
           application/json:
             schema:
               type: object
-              required:
-                - investigationIds
+              required: [investigationIds]
               properties:
                 investigationIds:
                   type: array
-                  items:
-                    type: string
+                  items: { type: string }
                 scopes:
                   type: array
-                  items:
-                    type: string
-                    enum:
-                      - read
-                      - mutate
+                  items: { type: string, enum: [read, mutate] }
                 ttlSeconds:
                   type: integer
+                  default: 300
+                  maximum: 300
+                  description: >-
+                    Session lifetime in seconds. Defaults to, and is capped at, five minutes; a longer
+                    request is a 400.
                 callerKey:
                   type: string
-                  description: One-time secret issued by POST /v1/admin/mcp-callers. Required to invoke execute-capability tools (fork / rerun_from_phase / resume); AD-10 Amendment 1. An unregistered key fails the mint outright.
+                  description: >-
+                    One-time secret issued by POST /v1/admin/mcp-callers. Required to
+                    invoke execute-capability tools (fork / rerun_from_phase / resume);
+                    AD-10 Amendment 1. An unregistered key fails the mint outright.
       responses:
         "201":
           description: Session created
+        "403":
+          description: >-
+            insufficient_scope — a requested session scope needs an AD-29 scope the caller does not
+            hold (`mutate` needs `runs:write`, `read` needs `runs:read`); the missing scope is
+            returned as `requiredScope`
         "401":
           description: mcp_caller_not_registered — the callerKey matched no live entry
         "503":

@@ -70,6 +70,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `pmctl` or the Python SDK. The public service URL is now the built-in default
   (`--service` / `PM_SERVICE_URL` still override it), and `--help` exits 0.
 - **Cursor 3.11 (+2026-10-20 / desktop 3.27.22):** advance `changelog_date` **2026-10-16 → 2026-10-20**; desktop CLI **3.27.12 → 3.27.22**. Document **Agent SDK** GA (orthogonal to thin-client IP boundary). Feature pin remains **3.11**. CLI still **2026-08-26**. Cursor-only.
+- **Claude Code currency (2.1.312 → 2.1.318).** `.claude-code-version`
+  advances to **2.1.318**, covering 2.1.314, 2.1.316, 2.1.317, and 2.1.318
+  (2.1.313 and 2.1.315 were never published as separate entries).
+  Registration, sandboxing configuration shape, and command-argument
+  handling are unchanged. Nothing in this delta is adopted or closes a real
+  gap in this repo's own rules: `permissions.blockWritesOutsideWorkingDirectories`,
+  the Agent SDK `onFailure: "block"` hook option, pooled group budgets,
+  `CLAUDE_CODE_SUBAGENT_EFFORT`, fast-mode deprecation for Opus 4.8, idle
+  compaction, and the email-address network-send check are all host-side
+  settings, mod, subagent, or org/gateway-admin surface this repo defines
+  none of (constraint #4). The `claude plugin validate` custom-named
+  marketplace file fix (2.1.318) doesn't apply either — this repo's
+  manifest is already named `marketplace.json`. This run's installed
+  `claude` CLI reports `2.1.318`, matching the changelog's newest published
+  entry exactly. `claude plugin validate .claude-plugin/marketplace.json`
+  and `claude plugin validate plugin/.claude-plugin/plugin.json` were
+  re-run on the live CLI: both still pass. See [Platform
+  support](docs/user/platform-support.md) for the full per-item review.
 - **Claude Code currency (2.1.306 → 2.1.312).** `.claude-code-version`
   advances to **2.1.312**, covering 2.1.307 through 2.1.312 (six releases).
   Registration, sandboxing configuration shape, and command-argument
@@ -891,7 +909,7 @@ and PyPI have returned 404 for these package names until now (dev#642).
   and `docs/user/platform-support.md`. The 2.1.232 delta needs no client change;
   two entries improve the install story and are now documented: **`/plugin install
 plugin@marketplace` refreshes the marketplace first** — quick-start's reload note
-and troubleshooting's registration section carry the version-scoped behavior
+  and troubleshooting's registration section carry the version-scoped behavior
   (refresh-first on 2.1.232+, refresh-and-retry on 2.1.221–2.1.231) — and the fix
   for a **startup race that could silently unregister a plugin marketplace**
   (concurrent `known_marketplaces.json` writes), which troubleshooting now names

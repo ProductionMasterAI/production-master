@@ -4,7 +4,7 @@ The editor and agent platforms this client is validated against.
 
 | Platform | Validated against | Latest known |
 |---|---|---|
-| Claude Code | pending | 2.1.312 |
+| Claude Code | pending | 2.1.318 |
 | Cursor | pending | 3.11 (+ changelog 2026-10-20) |
 | Codex | pending | 0.166.0 |
 | OpenCode | pending | pending |
@@ -81,6 +81,42 @@ stdio server intentionally continues to advertise its older supported MCP
 protocol; changing only the protocol string would be unsafe. A future SDK-backed
 upgrade should adopt the newer protocol when paginated discovery, multi-round
 requests, and non-blocking startup can be implemented and tested together.
+
+**Claude Code notes (2.1.312 → 2.1.318).** `.claude-code-version` advances to
+**2.1.318**, covering 2.1.314, 2.1.316, 2.1.317, and 2.1.318 (2.1.313 and
+2.1.315 were never published as separate entries). Registration, sandboxing
+configuration shape, and command-argument handling are unchanged. Nothing in
+this delta is adopted or closes a real gap in this repo's own rules; every
+item is reviewed line by line and ruled not applicable by [constraint
+#4](../../.claude/rules/constraints.md) (no pipeline/agent logic, no hooks,
+mods, subagents, or MCP server of this repo's own for Claude Code) or
+[constraint #5](../../.claude/rules/constraints.md) (no self-hosted runner):
+
+- **Version-check note:** this run's installed `claude` CLI reports `claude
+  --version` → `2.1.318 (Claude Code)`, matching the newest entry published
+  on the official changelog — the first pass in a while where the local
+  binary and the changelog's newest published entry agree exactly.
+- **Reviewed, not applicable: `permissions.blockWritesOutsideWorkingDirectories`
+  and the Agent SDK `onFailure: "block"` hook option (2.1.314, 2.1.317).**
+  Both are host-side settings/mod surfaces for sessions and hooks this repo
+  defines none of — it registers for Claude Code as five plain
+  `Bash(node ${CLAUDE_PLUGIN_ROOT}/bin/production-master.mjs <command>:*)`
+  slash commands, nothing deeper.
+- **Reviewed, not applicable: the `claude plugin validate` custom-named
+  marketplace file fix (2.1.318).** This repo's marketplace manifest is
+  already named `marketplace.json` — the standard name the fix was about
+  accepting as a *non-standard* name — so there is nothing to change.
+  `claude plugin validate .claude-plugin/marketplace.json` and `claude
+  plugin validate plugin/.claude-plugin/plugin.json` were re-run on the live
+  2.1.318 CLI: both still pass.
+- **Reviewed, not applicable: pooled group budgets, `CLAUDE_CODE_SUBAGENT_EFFORT`,
+  fast-mode deprecation for Opus 4.8, idle compaction, and the email-address
+  network-send check (2.1.314, 2.1.316, 2.1.317).** All are
+  organization/gateway admin, subagent, or model-call surface this repo
+  defines none of (constraint #4). Everything else across 2.1.314–2.1.318 —
+  VS Code, Remote Control, Cloud sessions, Claude Tag, and Code Review
+  product changes, plus host-side CLI reliability fixes — applies
+  automatically with no config change.
 
 **Claude Code notes (2.1.306 → 2.1.312).** `.claude-code-version` advances to
 **2.1.312**, covering 2.1.307 through 2.1.312 (six releases, the first time

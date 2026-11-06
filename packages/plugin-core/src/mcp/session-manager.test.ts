@@ -345,6 +345,65 @@ describe('McpSessionManager', () => {
       expect(mgr.getActiveSession()?.investigationIds).toEqual(['inv_B']);
     });
 
+    it('an older createSession() that resolves after a newer one is discarded (B stays active)', async () => {
+      const host = new NoopHostAdapter();
+      const trust = new SessionTrustGrantStore();
+      const release: Record<string, (g: McpSessionGrant) => void> = {};
+      const mgr = new McpSessionManager({
+        client: {} as any,
+        host,
+        trust,
+        newGrantId: () => 'g',
+        createServiceSession: (ids) =>
+          new Promise<McpSessionGrant>((resolve) => (release[ids[0]!] = resolve)),
+      });
+      const scopes: Scope[] = ['read-investigation', 'write-investigation'];
+      const createA = mgr.createSession(['inv_A'], scopes); // A still minting...
+      const createB = mgr.createSession(['inv_B'], scopes); // ...when B starts
+      release.inv_B!(grant('jwt-inv_B')); // B's mint resolves first
+      const b = await createB;
+      release.inv_A!(grant('jwt-inv_A')); // A's (older) mint resolves last
+      await expect(createA).rejects.toThrow(/superseded/);
+
+      const registered = host.calls
+        .filter((c) => c.method === 'registerMcpServer')
+        .map((c) => (c.arg as { sessionJwt: string }).sessionJwt);
+      expect(registered).toEqual(['jwt-inv_B']);
+      expect(mgr.getActiveSession()).toBe(b);
+      expect(mgr.getActiveSession()?.investigationIds).toEqual(['inv_B']);
+      // The stale create issues no trust grant for the investigation it lost.
+      expect(trust.listActive('inv_A')).toHaveLength(0);
+      expect(trust.listActive('inv_B')).toHaveLength(1);
+    });
+
+    it('a createSession() superseded while its host registration is in flight issues no grants', async () => {
+      const host = new NoopHostAdapter();
+      const trust = new SessionTrustGrantStore();
+      const register = host.registerMcpServer.bind(host);
+      let releaseRegister: (() => void) | undefined;
+      host.registerMcpServer = async (cfg) => {
+        await register(cfg);
+        if (cfg.sessionJwt === 'jwt-inv_A') await new Promise<void>((r) => (releaseRegister = r));
+      };
+      const mgr = new McpSessionManager({
+        client: {} as any,
+        host,
+        trust,
+        newGrantId: () => 'g',
+        createServiceSession: async (ids) => grant(`jwt-${ids[0]}`),
+      });
+      const scopes: Scope[] = ['read-investigation', 'write-investigation'];
+      const createA = mgr.createSession(['inv_A'], scopes);
+      await vi.waitFor(() => expect(releaseRegister).toBeDefined()); // A is registering...
+      const b = await mgr.createSession(['inv_B'], scopes); // ...when B starts and wins
+      releaseRegister!();
+      await expect(createA).rejects.toThrow(/superseded/);
+
+      expect(mgr.getActiveSession()).toBe(b);
+      expect(trust.listActive('inv_A')).toHaveLength(0);
+      expect(trust.listActive('inv_B')).toHaveLength(1);
+    });
+
     it('refresh(expectedGeneration) refuses to refresh a session the manager has moved past', async () => {
       const mgr = new McpSessionManager({
         client: {} as any,

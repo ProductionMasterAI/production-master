@@ -45,6 +45,13 @@ function jwtExpiryMs(jwt: string): number | undefined {
   }
 }
 
+function superseded(investigationIds: string[]): Error {
+  return new Error(
+    `MCP session for ${investigationIds.join(', ')} was superseded by a newer session ` +
+      'request before it was ready; it was discarded.',
+  );
+}
+
 export interface CreateSessionDeps {
   client: ServiceClient;
   host: HostAdapter;
@@ -109,11 +116,17 @@ export class McpSessionManager {
    * Mint by what the caller holds: if the service refuses the write scope
    * (`insufficient_scope` / `runs:write`) the mint is retried ONCE read-only and
    * the user is told. Any other refusal propagates.
+   *
+   * The most recent createSession() wins. If another one starts while this one
+   * is still minting, this one's result is discarded — never made active, never
+   * registered with the host, no grants issued — and it rejects as superseded.
    */
   async createSession(investigationIds: string[], scopes: Scope[]): Promise<ActiveSession> {
     // Discard the previous session (and revoke its grants) BEFORE the new one.
     if (this.active) this.discard();
-    const session = await this.mint(investigationIds, scopes, true, ++this.lastGeneration);
+    const generation = ++this.lastGeneration;
+    const session = await this.mint(investigationIds, scopes, true, generation);
+    if (this.lastGeneration !== generation) throw superseded(investigationIds);
     this.active = session;
     try {
       await this.register(session);
@@ -121,6 +134,7 @@ export class McpSessionManager {
       if (this.active === session) this.active = undefined;
       throw err;
     }
+    if (this.lastGeneration !== generation) throw superseded(investigationIds);
     this.issueGrantsFor(session);
     return session;
   }

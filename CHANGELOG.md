@@ -671,6 +671,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **An older MCP session request could replace a newer one** (#91). If you
+  opened investigation B while A's session was still being minted, whichever
+  mint finished last became the active session and the host's MCP server
+  registration, even when that was A's older request. The most recent
+  `createSession()` now wins: an older one that finishes later is discarded
+  without becoming active, without registering with the host and without
+  issuing trust grants, and it rejects as superseded. This closes the last
+  overlap left after #90, which already discards a stale refresh the same way.
 - **Login could never complete against the hosted service** (plugin, pmctl,
   Python SDK). The device-code client sent a camelCase dialect (`clientId`,
   `deviceCode`, `grantType`) the service never accepted, and expected a

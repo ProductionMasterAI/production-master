@@ -29,6 +29,16 @@ class FakeService implements HttpTransport {
   /** Access-token TTL handed out by the token endpoint (ms from `now`). */
   accessTtlMs = 3_600_000;
   tokenGrants = 0;
+  /** Refresh tokens presented to the refresh grant, in order. */
+  refreshCalls: string[] = [];
+  /** The refresh token the service currently accepts (rotates on every grant). */
+  liveRefresh: string | undefined;
+  /** When set, refresh grants answer invalid_grant (login revoked elsewhere). */
+  refuseRefresh = false;
+  /** When set, /oauth/revoke answers this status instead of 200. */
+  revokeStatus: number | undefined;
+  /** Set when the service saw a spent refresh token (it would revoke the login). */
+  replayed = false;
   /** When set, a mint asking for `mutate` is refused like service#1705 does. */
   refuseMutate = false;
 
@@ -50,17 +60,33 @@ class FakeService implements HttpTransport {
           },
         };
       case "POST /v1/oauth/token": {
+        const body = opts.body as { grant_type: string; refresh_token?: string };
+        if (body.grant_type === "refresh_token") {
+          this.refreshCalls.push(body.refresh_token ?? "");
+          if (body.refresh_token !== this.liveRefresh) this.replayed = true;
+          if (this.refuseRefresh || this.replayed) {
+            return { status: 400, body: { error: "invalid_grant" } };
+          }
+        }
         this.tokenGrants += 1;
+        this.liveRefresh = `refresh-${this.tokenGrants}`;
         return {
           status: 200,
           body: {
             access_token: `access-${this.tokenGrants}`,
             token_type: "Bearer",
             expires_in: Math.floor(this.accessTtlMs / 1000),
+            refresh_token: this.liveRefresh,
             scope: "read-investigation write-investigation approve-action",
           },
         };
       }
+      case "POST /v1/oauth/revoke":
+        if (this.revokeStatus !== undefined) {
+          return { status: this.revokeStatus, body: { error: "server_error" } };
+        }
+        this.liveRefresh = undefined;
+        return { status: 200, body: {} };
       case "POST /v1/runs":
         return { status: 202, body: { investigationId: INV } };
       case "POST /v1/mcp/sessions":
@@ -277,6 +303,101 @@ describe("createPluginRuntime", () => {
 
     const mints = service.received.filter((r) => r.path === "/v1/mcp/sessions");
     expect(mints).toHaveLength(1);
+  });
+
+  it("login() sends no scope: plugin session scopes are not service scopes", async () => {
+    const service = new FakeService();
+    const runtime = newRuntime(service, new NoopHostAdapter());
+    await runtime.login();
+    const start = service.received.find((r) => r.path === "/v1/oauth/device");
+    expect(start?.body).toEqual({ client_id: "pm-plugin" });
+  });
+
+  it("refreshes proactively when under 5 minutes remain and stores the rotated token", async () => {
+    const service = new FakeService();
+    service.accessTtlMs = 900_000;
+    const store = new TokenStore({ backend: new InMemorySecretBackend(), issuer: "test", now: () => service.now });
+    const runtime = newRuntime(service, new NoopHostAdapter(), { tokenStore: store });
+    await runtime.login();
+    service.now += 900_000 - 4 * 60_000; // 4 min left
+
+    await runtime.investigate({ ticket: "INC-1" });
+
+    expect(service.refreshCalls).toEqual(["refresh-1"]);
+    const stored = await store.load("default");
+    expect(stored?.refreshToken).toBe("refresh-2");
+    expect(stored?.clientId).toBe("pm-plugin");
+    const runReq = service.received.find((r) => r.path === "/v1/runs");
+    expect(runReq?.headers?.["Authorization"]).toBe("Bearer access-2");
+  });
+
+  it("two concurrent ensureAuth calls cause exactly one refresh", async () => {
+    const service = new FakeService();
+    service.accessTtlMs = 900_000;
+    const runtime = newRuntime(service, new NoopHostAdapter("approve"), {
+      mcpToolTransport: new FixtureMcpTransport(),
+    });
+    await runtime.login();
+    service.now += 900_000; // expired: a refresh is required
+
+    await Promise.all([
+      runtime.investigate({ ticket: "INC-1" }),
+      runtime.update(INV, "investigation.add_evidence", { note: "a" }),
+    ]);
+
+    expect(service.refreshCalls).toEqual(["refresh-1"]);
+    expect(service.replayed).toBe(false);
+  });
+
+  it("a refused refresh (invalid_grant) clears the session and forces a re-login", async () => {
+    const service = new FakeService();
+    service.accessTtlMs = 900_000;
+    const store = new TokenStore({ backend: new InMemorySecretBackend(), issuer: "test", now: () => service.now });
+    const runtime = newRuntime(service, new NoopHostAdapter(), { tokenStore: store });
+    await runtime.login();
+    service.now += 900_000;
+    service.refuseRefresh = true;
+
+    await expect(runtime.investigate({ ticket: "INC-1" })).rejects.toThrow(/log in again/);
+    expect(await store.load("default")).toBeUndefined();
+    expect(service.received.find((r) => r.path === "/v1/runs")).toBeUndefined();
+
+    // A fresh login works again.
+    service.refuseRefresh = false;
+    await runtime.login();
+    const run = await runtime.investigate({ ticket: "INC-1" });
+    expect(run.status).toBe("completed");
+  });
+
+  it("logout() revokes the refresh token server-side and wipes the store", async () => {
+    const service = new FakeService();
+    const store = new TokenStore({ backend: new InMemorySecretBackend(), issuer: "test", now: () => service.now });
+    const runtime = newRuntime(service, new NoopHostAdapter(), { tokenStore: store });
+    await runtime.login();
+
+    await runtime.logout();
+
+    const revoke = service.received.find((r) => r.path === "/v1/oauth/revoke");
+    expect(revoke?.body).toEqual({ token: "refresh-1" });
+    expect(await store.load("default")).toBeUndefined();
+  });
+
+  it("logout() wipes the store even when the revoke fails, and says so", async () => {
+    const service = new FakeService();
+    service.revokeStatus = 503;
+    const notices: string[] = [];
+    const store = new TokenStore({ backend: new InMemorySecretBackend(), issuer: "test", now: () => service.now });
+    const runtime = newRuntime(service, new NoopHostAdapter(), {
+      tokenStore: store,
+      notify: (m: string) => notices.push(m),
+    });
+    await runtime.login();
+
+    await runtime.logout();
+
+    expect(await store.load("default")).toBeUndefined();
+    expect(notices.some((n) => /revoke failed/.test(n))).toBe(true);
+    await expect(runtime.investigate({ ticket: "x" })).rejects.toThrow(/not authenticated/);
   });
 
   it("logout() discards the session and wipes stored tokens", async () => {

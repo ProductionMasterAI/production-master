@@ -18,6 +18,13 @@
  *   POST /v1/actions                  -> 201 ActionRef (proposed)
  *   POST /v1/actions/{id}/approve     -> 200 ActionRef (approved)
  *   POST /v1/actions/{id}/reject      -> 200 ActionRef (rejected)
+ *   POST /v1/oauth/device             -> 200 device code (pre-approved)
+ *   POST /v1/oauth/token              -> 200 tokens, for BOTH grants
+ *                                        (device_code / refresh_token); the
+ *                                        refresh token rotates, a spent one is
+ *                                        replay and revokes the login (400
+ *                                        invalid_grant), as service#1691 does
+ *   POST /v1/oauth/revoke             -> 200 {} ({token} or {device_code})
  *
  * Schema-real invariant: {@link EmulatedBff.registeredTemplates} exposes the
  * `METHOD {id}` template of every route the emulator serves. The companion test
@@ -85,6 +92,16 @@ export class EmulatedBff {
   readonly report: ReportResponse;
   /** Schema-real event page served by GET /v1/runs/{id}/events. */
   readonly events: InvestigationEventEnvelope[];
+  /** Device-login state: the client_id it started with and its live refresh token. */
+  readonly oauth: {
+    clientId?: string;
+    liveRefresh?: string;
+    spent: Set<string>;
+    revoked: boolean;
+    issued: number;
+    refreshGrants: number;
+    revokes: number;
+  } = { spent: new Set(), revoked: false, issued: 0, refreshGrants: 0, revokes: 0 };
   private readonly templates = new Set<string>();
 
   constructor(opts: EmulatedBffOptions = {}) {
@@ -178,6 +195,74 @@ export class EmulatedBff {
         } satisfies ActionRef,
       }),
     );
+    this.registerOauth();
+  }
+
+  private registerOauth(): void {
+    const deviceCode = "emulated-device-code";
+    const mint = (): HttpResponse => {
+      const o = this.oauth;
+      o.issued += 1;
+      o.liveRefresh = `emulated-refresh-${o.issued}`;
+      return {
+        status: 200,
+        body: {
+          access_token: `emulated-access-${o.issued}`,
+          token_type: "Bearer",
+          expires_in: 900,
+          refresh_token: o.liveRefresh,
+        },
+      };
+    };
+    this.register("POST", "/v1/oauth/device", "/v1/oauth/device", (req) => {
+      const body = (req.body ?? {}) as { client_id?: string };
+      if (!body.client_id) return { status: 400, body: { error: "invalid_request" } };
+      this.oauth.clientId = body.client_id;
+      return {
+        status: 200,
+        body: {
+          device_code: deviceCode,
+          user_code: "EMUL-0001",
+          verification_uri: "https://app.example/device",
+          verification_uri_complete: "https://app.example/device?user_code=EMUL-0001",
+          interval: 1,
+          expires_in: 600,
+        },
+      };
+    });
+    this.register("POST", "/v1/oauth/token", "/v1/oauth/token", (req) => {
+      const body = (req.body ?? {}) as Record<string, string | undefined>;
+      const o = this.oauth;
+      if (body.grant_type === "urn:ietf:params:oauth:grant-type:device_code") {
+        if (body.device_code !== deviceCode) return { status: 400, body: { error: "invalid_grant" } };
+        o.revoked = false;
+        o.spent.clear();
+        return mint();
+      }
+      if (body.grant_type === "refresh_token") {
+        o.refreshGrants += 1;
+        const presented = body.refresh_token ?? "";
+        if (o.spent.has(presented)) {
+          o.revoked = true; // replay revokes the whole login
+          o.liveRefresh = undefined;
+        }
+        if (o.revoked || presented !== o.liveRefresh || body.client_id !== o.clientId) {
+          return { status: 400, body: { error: "invalid_grant" } };
+        }
+        o.spent.add(presented);
+        return mint();
+      }
+      return { status: 400, body: { error: "unsupported_grant_type" } };
+    });
+    this.register("POST", "/v1/oauth/revoke", "/v1/oauth/revoke", (req) => {
+      const body = (req.body ?? {}) as { token?: string };
+      this.oauth.revokes += 1;
+      if (body.token !== undefined && (body.token === this.oauth.liveRefresh || this.oauth.spent.has(body.token))) {
+        this.oauth.revoked = true;
+        this.oauth.liveRefresh = undefined;
+      }
+      return { status: 200, body: {} };
+    });
   }
 
   /** The `METHOD {id}` template of every route the emulator serves. */

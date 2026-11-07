@@ -22,7 +22,7 @@ and the streaming runner, then exposes the thin-client commands:
 | `investigate({ ticket })` | Creates a run on the service, then streams it to a terminal state |
 | `connect(id)` | Re-attaches to an existing run (durable replay + live stream) |
 | `update(id, tool, args)` | Forwards one scoped MCP tool invocation to the service |
-| `logout()` | Clears the stored session |
+| `logout()` | Revokes the refresh token on the service (`POST /v1/oauth/revoke`), then wipes the stored session even if the revoke failed |
 
 There is exactly **one** runtime path — no local/inline mode.
 

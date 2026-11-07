@@ -26,6 +26,7 @@ import { MockAuthServer } from "./__fixtures__/mock-auth-server.js";
 import { parseDeviceAuthorizationResponse, parseTokenResponse } from "./wire.js";
 
 interface Schema {
+  oneOf?: Schema[];
   type?: string;
   const?: unknown;
   properties?: Record<string, Schema>;
@@ -45,6 +46,11 @@ function op(path: string): Record<string, unknown> {
 }
 function requestSchema(path: string): Schema {
   return (op(path)["requestBody"] as { content: Record<string, { schema: Schema }> }).content["application/json"].schema;
+}
+/** The request body shapes a path accepts: each `oneOf` branch, or the one schema. */
+function requestShapes(path: string): Schema[] {
+  const s = requestSchema(path);
+  return s.oneOf ?? [s];
 }
 function okSchema(path: string): Schema {
   const responses = op(path)["responses"] as Record<string, { content: Record<string, { schema: Schema }> }>;
@@ -71,6 +77,12 @@ function violations(body: unknown, schema: Schema, where: string): string[] {
   return out;
 }
 
+/** Violations against a `oneOf`: none if ANY branch accepts the body, else every branch's. */
+function oneOfViolations(body: unknown, shapes: Schema[], where: string): string[] {
+  const per = shapes.map((s, i) => violations(body, s, `${where} [oneOf ${i}]`));
+  return per.some((v) => v.length === 0) ? [] : per.flat();
+}
+
 /** A body holding ONLY the schema's required fields, with type-appropriate values. */
 function minimalBody(schema: Schema): Record<string, unknown> {
   const out: Record<string, unknown> = {};
@@ -81,6 +93,7 @@ function minimalBody(schema: Schema): Record<string, unknown> {
   return out;
 }
 
+/** Full lifecycle: device login, one refresh, revoke on logout. */
 async function runFlow(scopes: string[]): Promise<MockAuthServer> {
   const server = new MockAuthServer({ interval: 1 });
   const auth = new DeviceCodeAuth({
@@ -91,28 +104,47 @@ async function runFlow(scopes: string[]): Promise<MockAuthServer> {
   });
   await auth.start();
   server.approve();
-  await auth.waitForTokens();
+  const tokens = await auth.waitForTokens();
+  const next = await auth.refresh(tokens);
+  await auth.revoke(next.refreshToken);
   return server;
 }
 
 describe("device-code auth ⟷ edge-api-v1.yaml", () => {
   it("the spec describes the device-code flow", () => {
     expect(BASE).toBe("/v1");
+    for (const p of ["/oauth/device", "/oauth/token", "/oauth/revoke"]) {
+      for (const shape of requestShapes(p)) {
+        expect(shape.required?.length, `${p} request`).toBeGreaterThan(0);
+      }
+    }
     for (const p of ["/oauth/device", "/oauth/token"]) {
-      expect(requestSchema(p).required?.length, `${p} request`).toBeGreaterThan(0);
       expect(okSchema(p).required?.length, `${p} 200`).toBeGreaterThan(0);
     }
+  });
+
+  it("the spec serves both token grants and RFC 7009 revocation (v1.7, service#1691)", () => {
+    const grants = requestShapes("/oauth/token").map((s) => s.properties?.["grant_type"]?.const);
+    expect(grants).toEqual(
+      expect.arrayContaining(["urn:ietf:params:oauth:grant-type:device_code", "refresh_token"]),
+    );
+    // Every token response carries the rotated refresh token.
+    expect(okSchema("/oauth/token").required).toContain("refresh_token");
+    expect(requestShapes("/oauth/revoke").some((s) => s.required?.includes("token"))).toBe(true);
   });
 
   it.each([[["read-investigation", "approve-action"]], [[]]])(
     "every request body the client sends matches the spec (scopes %j)",
     async (scopes) => {
       const server = await runFlow(scopes);
-      expect(server.received.length).toBeGreaterThanOrEqual(2);
+      const paths = server.received.map((r) => r.path);
+      expect(paths).toEqual(expect.arrayContaining(["/v1/oauth/device", "/v1/oauth/token", "/v1/oauth/revoke"]));
+      // The refresh grant was really exercised, not only the device poll.
+      expect(server.refreshCalls).toHaveLength(1);
       for (const { path, body } of server.received) {
         expect(path.startsWith(`${BASE}/`), path).toBe(true);
         const specPath = path.slice(BASE.length);
-        expect(violations(body, requestSchema(specPath), `request ${specPath}`)).toEqual([]);
+        expect(oneOfViolations(body, requestShapes(specPath), `request ${specPath}`)).toEqual([]);
       }
     },
   );
@@ -141,6 +173,47 @@ describe("device-code auth ⟷ edge-api-v1.yaml", () => {
       },
     });
     expect(violations(token.body, okSchema("/oauth/token"), "mock 200 /oauth/token")).toEqual([]);
+    const refreshed = await server.request({
+      method: "POST",
+      path: "/v1/oauth/token",
+      body: {
+        grant_type: "refresh_token",
+        refresh_token: (token.body as { refresh_token: string }).refresh_token,
+        client_id: "c",
+      },
+    });
+    expect(refreshed.status).toBe(200);
+    expect(violations(refreshed.body, okSchema("/oauth/token"), "mock 200 refresh")).toEqual([]);
+    const revoked = await server.request({
+      method: "POST",
+      path: "/v1/oauth/revoke",
+      body: { token: (refreshed.body as { refresh_token: string }).refresh_token },
+    });
+    expect(revoked.status).toBe(200);
+    expect(violations(revoked.body, okSchema("/oauth/revoke"), "mock 200 /oauth/revoke")).toEqual([]);
+  });
+
+  it("the mock refuses a body that matches no oneOf branch, like the service", async () => {
+    const server = new MockAuthServer();
+    const res = await server.request({
+      method: "POST",
+      path: "/v1/oauth/token",
+      body: { grant_type: "refresh_token", refresh_token: "r", device_code: "d", client_id: "c" },
+    });
+    expect(res.status).toBe(400);
+    expect((res.body as { error: string }).error).toBe("invalid_request");
+  });
+
+  it("every error code the client branches on is one the spec's OAuthError allows", () => {
+    const comps = (spec as unknown as {
+      components: { responses: { OAuthError: { content: Record<string, { schema: Schema }> } } };
+    }).components;
+    const errorEnum = (comps.responses.OAuthError.content["application/json"].schema.properties?.["error"] as {
+      enum?: string[];
+    }).enum;
+    for (const code of ["authorization_pending", "slow_down", "access_denied", "expired_token", "invalid_grant", "unsupported_grant_type"]) {
+      expect(errorEnum, code).toContain(code);
+    }
   });
 
   it("the parsers need nothing beyond what the spec marks required", () => {

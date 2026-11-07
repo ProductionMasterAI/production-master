@@ -17,8 +17,11 @@ import {
   NodeHttpTransport,
   NodeSseConnector,
   DeviceCodeAuth,
+  ReauthRequiredError,
+  TokenRefresher,
+  createRefreshLock,
   createTokenStore,
-  type Scope,
+  refreshLockKey,
 } from "@production-master/plugin-core";
 import { parseArgs, strFlag, boolFlag, type ParsedArgs } from "./args.js";
 import {
@@ -36,6 +39,7 @@ import {
 } from "./exit-codes.js";
 import type { Deps } from "./deps.js";
 import { loginCommand } from "./commands/login.js";
+import { logoutCommand } from "./commands/logout.js";
 import { startCommand } from "./commands/start.js";
 import { statusCommand } from "./commands/status.js";
 import { reportCommand } from "./commands/report.js";
@@ -54,6 +58,7 @@ type Command = (deps: Deps, parsed: ParsedArgs) => Promise<number>;
 
 const COMMANDS: Record<string, Command> = {
   login: loginCommand,
+  logout: logoutCommand,
   start: startCommand,
   status: statusCommand,
   report: reportCommand,
@@ -62,18 +67,14 @@ const COMMANDS: Record<string, Command> = {
   reject: rejectCommand,
 };
 
-const SCOPES: Scope[] = [
-  "read-investigation",
-  "write-investigation",
-  "approve-action",
-];
-
 const USAGE = `pmctl — operator CLI for Production Master
 
 Usage: pmctl <command> [args] [flags]
 
 Commands:
-  login                       Authenticate via device-code flow; store a scoped token
+  login                       Authenticate via device-code flow; store the session
+                              (refreshed automatically before it expires)
+  logout                      Revoke the stored session server-side and wipe it
   start <ticket>              Create a run (POST /v1/runs).
                               Flags: --title, --mode {standard|deep},
                                      --max-usd <n>, --max-iterations <n>, --idempotency-key
@@ -114,6 +115,7 @@ function resolveOutput(parsed: ParsedArgs): OutputFormat {
 }
 
 async function buildDeps(
+  verb: string,
   parsed: ParsedArgs,
   io: Io,
   output: OutputFormat,
@@ -126,22 +128,41 @@ async function buildDeps(
   const clientId = io.env.PM_CLIENT_ID ?? "pmctl";
   const tokenStore = createTokenStore();
   const transport = new NodeHttpTransport(service);
+  // No `scope` on the device login: the grant then carries the user's own
+  // live roles. (Plugin session scopes are not service scopes; a device token
+  // narrowed to them is refused on identity-only routes.)
   const deviceAuth = new DeviceCodeAuth({
     transport,
     clientId,
-    scopes: SCOPES,
+    scopes: [],
+  });
+  // pmctl and the IDE plugin share the OS credential store, so a refresh takes
+  // the same cross-process lock they all use (a concurrent refresh with one
+  // refresh token is replay, and the service revokes the whole login).
+  const refresher = new TokenRefresher({
+    auth: deviceAuth,
+    store: tokenStore,
+    accountId,
+    lock: createRefreshLock(),
+    lockKey: refreshLockKey(accountId),
   });
 
   // Token precedence: explicit flag > env > token store. A flag/env override
-  // is used as given (the caller owns its lifetime). A stored session is used
-  // until it expires; the hosted service issues no refresh token, so an
-  // expired one is dropped here and the call proceeds unauthenticated — the
-  // service 401s it and classifyError maps that to AuthError, which tells the
-  // user to `pmctl login` again.
+  // is used as given (the caller owns its lifetime). A stored session is
+  // refreshed first when under ~5 min remain. A login that is over (refresh
+  // refused, or expired with no refresh token) is dropped here and the call
+  // proceeds unauthenticated — the service 401s it and classifyError maps that
+  // to AuthError, which tells the user to `pmctl login` again.
   let token = strFlag(parsed, "token") ?? io.env.PM_ACCESS_TOKEN;
-  if (!token) {
+  if (!token && verb !== "login" && verb !== "logout") {
     const stored = await tokenStore.load(accountId).catch(() => undefined);
-    token = stored && !deviceAuth.isExpired(stored) ? stored.accessToken : undefined;
+    if (stored) {
+      try {
+        token = (await refresher.ensureFresh(stored))?.accessToken;
+      } catch (err) {
+        if (!(err instanceof ReauthRequiredError)) throw err;
+      }
+    }
   }
 
   const idempotencyKey = strFlag(parsed, "idempotency-key");
@@ -166,6 +187,7 @@ async function buildDeps(
     deviceAuth,
     tokenStore,
     accountId,
+    refresher,
   };
 }
 
@@ -201,7 +223,7 @@ export async function runCli(argv: string[], io: Io): Promise<number> {
   });
   try {
     output = resolveOutput(parsed);
-    const deps = await buildDeps(verbArgs, io, output);
+    const deps = await buildDeps(verb, verbArgs, io, output);
     return await command(deps, verbArgs);
   } catch (err) {
     const { code, message, exit } = classifyError(err);

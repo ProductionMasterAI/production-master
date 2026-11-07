@@ -5,12 +5,13 @@
 openapi: 3.1.0
 info:
   title: Production Master Edge API
-  version: 1.6.0
+  version: 1.7.0
   description: |
     REST surface for investigations (runs). v1.5 adds MCP session minting,
     modes, fork/branch, comments list, and trigger provenance fields. v1.6
     adds the RFC 8628 device-code login (`/oauth/device`, `/oauth/token`,
-    `/oauth/revoke`) with RFC snake_case wire names.
+    `/oauth/revoke`) with RFC snake_case wire names. v1.7 adds the RFC 6749
+    §6 refresh grant (rotating refresh tokens) and RFC 7009 revocation.
 servers:
   - url: /v1
 components:
@@ -29,22 +30,14 @@ components:
         application/json:
           schema:
             type: object
-            required:
-              - error
+            required: [error]
             properties:
               error:
                 type: string
-                enum:
-                  - invalid_request
-                  - invalid_client
-                  - invalid_grant
-                  - invalid_scope
-                  - authorization_pending
-                  - slow_down
-                  - access_denied
-                  - expired_token
-              error_description:
-                type: string
+                enum: [invalid_request, invalid_client, invalid_grant, unsupported_grant_type,
+                       invalid_scope, authorization_pending, slow_down, access_denied,
+                       expired_token]
+              error_description: { type: string }
 paths:
   /runs:
     post:
@@ -418,84 +411,107 @@ paths:
                       - rate_limited
   /oauth/token:
     post:
-      summary: Poll for the access token (RFC 8628 §3.4)
+      summary: Device-code poll (RFC 8628 §3.4) or refresh (RFC 6749 §6)
+      description: >-
+        Two grants, told apart by `grant_type`. The device-code grant polls an
+        approved login; the refresh grant (service#1691) exchanges a refresh
+        token for a new access token. Both answer with a short-lived access
+        token (900 s) and a NEW refresh token: refresh tokens rotate on every
+        use, and presenting one that was already used revokes the whole login
+        (every refresh token and every access token minted from it). A refresh
+        token is opaque, bound to the user, tenant and client of the login, and
+        lives at most 30 days from the login however often it is refreshed.
+        Every refused refresh is `invalid_grant`; the client must then log in
+        again. A client must not refresh concurrently with one refresh token:
+        the loser's request is reuse.
       security: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              additionalProperties: false
-              required:
-                - grant_type
-                - device_code
-                - client_id
-              properties:
-                grant_type:
-                  const: urn:ietf:params:oauth:grant-type:device_code
-                device_code:
-                  type: string
-                client_id:
-                  type: string
+              oneOf:
+                - type: object
+                  additionalProperties: false
+                  required: [grant_type, device_code, client_id]
+                  properties:
+                    grant_type: { const: 'urn:ietf:params:oauth:grant-type:device_code' }
+                    device_code: { type: string }
+                    client_id: { type: string }
+                - type: object
+                  additionalProperties: false
+                  required: [grant_type, refresh_token, client_id]
+                  properties:
+                    grant_type: { const: refresh_token }
+                    refresh_token: { type: string }
+                    client_id:
+                      type: string
+                      description: Must be the client_id the login was started with.
       responses:
-        "200":
-          description: Approved — access token minted
+        '200':
+          description: Access token minted (device-code approved, or refresh accepted)
           content:
             application/json:
               schema:
                 type: object
                 additionalProperties: false
-                required:
-                  - access_token
-                  - token_type
-                  - expires_in
+                required: [access_token, token_type, expires_in, refresh_token]
                 properties:
-                  access_token:
+                  access_token: { type: string }
+                  token_type: { const: Bearer }
+                  expires_in: { type: integer, description: Seconds until access_token expires. }
+                  scope: { type: string, description: Space-delimited scopes actually granted. }
+                  refresh_token:
                     type: string
-                  token_type:
-                    const: Bearer
-                  expires_in:
-                    type: integer
-                    description: Seconds until access_token expires.
-                  scope:
-                    type: string
-                    description: Space-delimited scopes actually granted.
-        "400":
-          $ref: "#/components/responses/OAuthError"
-        "403":
-          $ref: "#/components/responses/OAuthError"
-        "429":
-          $ref: "#/components/responses/OAuthError"
+                    description: >-
+                      Opaque. Replaces the refresh token the client held (if any),
+                      which is spent. Store it in the OS credential store.
+        '400':
+          $ref: '#/components/responses/OAuthError'
+        '403':
+          $ref: '#/components/responses/OAuthError'
+        '429':
+          $ref: '#/components/responses/OAuthError'
   /oauth/revoke:
     post:
-      summary: Revoke a device code (pending or approved)
+      summary: Revoke a login (RFC 7009) or a device code
+      description: >-
+        One path, two bodies, told apart by the credential they carry. `token`
+        (RFC 7009 §2.1) revokes a refresh token's whole login: every refresh
+        token and every access token minted from it, which every service then
+        refuses. `token_type_hint` is advisory; only refresh tokens are
+        revocable here, and an access token dies with its login. `client_id`,
+        when given, must be the login's client, or nothing is revoked.
+        `device_code` denies a pending or approved code, or, once it was
+        redeemed, revokes the login it created. The answer is 200 with an
+        empty object whether or not the token existed or was already revoked
+        (RFC 7009 §2.2).
       security: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              additionalProperties: false
-              required:
-                - device_code
-              properties:
-                device_code:
-                  type: string
+              oneOf:
+                - type: object
+                  additionalProperties: false
+                  required: [token]
+                  properties:
+                    token: { type: string, description: A refresh token. }
+                    token_type_hint: { type: string, enum: [refresh_token, access_token] }
+                    client_id: { type: string }
+                - type: object
+                  additionalProperties: false
+                  required: [device_code]
+                  properties:
+                    device_code: { type: string }
       responses:
-        "200":
-          description: Revoked
+        '200':
+          description: Processed. Says nothing about whether anything existed.
           content:
             application/json:
               schema:
                 type: object
-                required:
-                  - revoked
-                properties:
-                  revoked:
-                    type: boolean
-        "400":
-          $ref: "#/components/responses/OAuthError"
-        "404":
-          description: Unknown device code
+                additionalProperties: false
+        '400':
+          $ref: '#/components/responses/OAuthError'

@@ -11,6 +11,7 @@ import type {
   SseConnector,
   DeviceCodeAuth,
   TokenStore,
+  TokenRefresher,
 } from "@production-master/plugin-core";
 import type { OutputFormat } from "./output.js";
 
@@ -44,4 +45,6 @@ export interface Deps {
   tokenStore: TokenStore;
   /** Account key under which the session is stored. */
   accountId: string;
+  /** Single-flight refresh + revoke-on-logout for the stored session. */
+  refresher: TokenRefresher;
 }

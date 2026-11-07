@@ -15,13 +15,13 @@ export class NodeHttpTransport implements HttpTransport {
         if (v !== undefined) url.searchParams.set(k, String(v));
       }
     }
-    const headers: Record<string, string> = { ...(opts.headers ?? {}) };
+    const reqHeaders: Record<string, string> = { ...(opts.headers ?? {}) };
     let body: string | undefined;
     if (opts.body !== undefined) {
-      headers['Content-Type'] = 'application/json';
+      reqHeaders['Content-Type'] = 'application/json';
       body = JSON.stringify(opts.body);
     }
-    const res = await fetch(url, { method: opts.method, headers, body });
+    const res = await fetch(url, { method: opts.method, headers: reqHeaders, body });
     let parsed: unknown = undefined;
     const text = await res.text();
     if (text) {
@@ -31,6 +31,10 @@ export class NodeHttpTransport implements HttpTransport {
         parsed = { message: text };
       }
     }
-    return { status: res.status, body: parsed };
+    const headers: Record<string, string> = {};
+    res.headers.forEach((value, name) => {
+      headers[name.toLowerCase()] = value;
+    });
+    return { status: res.status, body: parsed, headers };
   }
 }

@@ -16,6 +16,7 @@ import { describe, it, expect } from "vitest";
 import { ServiceClient } from "../client.js";
 import { extractRoutes } from "../openapi-routes.js";
 import { EmulatedBff, EMULATOR_CROSS_SERVICE_ROUTES } from "./emulated-bff.js";
+import { DeviceCodeAuth, ReauthRequiredError } from "../../auth/device-code.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const VENDORED_SPEC = resolve(HERE, "./edge-api-v1.yaml");
@@ -74,6 +75,26 @@ describe("ServiceClient <-> emulated schema-real BFF", () => {
 
     const rejected = await c.rejectAction(emu.actionId, "rejector", "unsafe");
     expect(rejected.status).toBe("rejected");
+  });
+
+  it("serves the device login, both token grants and revoke (service#1691)", async () => {
+    const emu = new EmulatedBff();
+    const auth = new DeviceCodeAuth({ transport: emu.transport, clientId: "pmctl", scopes: [], sleep: async () => {} });
+    await auth.start();
+    const first = await auth.waitForTokens();
+    expect(first.refreshToken).toBe("emulated-refresh-1");
+
+    const second = await auth.refresh(first);
+    expect(second.refreshToken).toBe("emulated-refresh-2");
+    expect(emu.oauth.refreshGrants).toBe(1);
+
+    // Replaying the spent token revokes the whole login.
+    await expect(auth.refresh(first)).rejects.toBeInstanceOf(ReauthRequiredError);
+    await expect(auth.refresh(second)).rejects.toBeInstanceOf(ReauthRequiredError);
+
+    // Revoke answers 200 {} whatever the token.
+    await expect(auth.revoke("unknown")).resolves.toBeUndefined();
+    expect(emu.oauth.revokes).toBe(1);
   });
 
   it("self-check: every route the emulator serves is in the OpenAPI surface ∪ the cross-service allowlist", () => {

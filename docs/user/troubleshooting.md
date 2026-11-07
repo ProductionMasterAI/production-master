@@ -10,7 +10,7 @@ Device codes are short-lived. If you waited too long before approving in the bro
 
 ### "Not authenticated" when starting a run
 
-Your stored token is missing or expired. Re-run `/login`. If it keeps happening after a successful login, your editor may not be able to persist the token — check that the client has permission to write to its token store (OS keychain or config directory) and that a security tool isn't clearing it.
+Your stored login is missing or has ended. A login refreshes itself silently for up to 30 days; it ends sooner if you ran `/logout`, if it was revoked, or if the service refused a refresh (for example after a refresh token was replayed). Re-run `/login`. If it keeps happening after a successful login, your editor may not be able to persist the token — check that the client has permission to write to its token store (OS keychain or config directory) and that a security tool isn't clearing it.
 
 ### Login succeeds but investigations return 401/403
 
@@ -24,7 +24,7 @@ If instead the client reports that your account is missing `runs:read`, it canno
 
 ### A session expires mid-run
 
-Investigation sessions are short-lived (five minutes by default) and renew themselves: the client opens a fresh session shortly before the old one expires, or once if the service rejects an expired one, and retries the call. You do not need to do anything. If a command still fails with a message to run `/login` after that retry, your login itself has expired — run `/login` again. Setting a longer `sessionTtlSeconds` only asks for a longer session; the service decides the limit.
+Investigation sessions are short-lived (five minutes by default) and renew themselves: the client opens a fresh session shortly before the old one expires, or once if the service rejects an expired one, and retries the call. You do not need to do anything. If a command still fails with a message to run `/login` after that retry, your login itself has ended (see "Not authenticated" above) — run `/login` again. Setting a longer `sessionTtlSeconds` only asks for a longer session; the service decides the limit.
 
 ## Service URL
 

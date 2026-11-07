@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Logins refresh themselves and `/logout` revokes them** (service#1691;
+  needs service v1.7, edge-api `/oauth/token` refresh grant). The device-code
+  login now stores the rotating refresh token the service issues, and
+  `PluginRuntime` and `pmctl` refresh the 15-minute access token whenever
+  under 5 minutes remain, so a login lasts up to the service's 30-day cap
+  instead of 15 minutes. A refresh is single-flight in-process and across
+  processes (a lock file shared by the IDE plugin and `pmctl`, which share the
+  OS credential store), because the service treats a second use of a refresh
+  token as replay and revokes the whole login. A refused refresh
+  (`invalid_grant`) wipes the stored session and asks for `/login`. `/logout`
+  (and the new `pmctl logout`) calls `POST /v1/oauth/revoke` and wipes the
+  local session even when the revoke fails. New plugin-core exports:
+  `TokenRefresher`, `FileRefreshLock`, `createRefreshLock`,
+  `ReauthRequiredError`.
+- **The device-code start honours `429 rate_limited` + `retry-after`**
+  (service#1744): it waits the advertised seconds and starts again, up to
+  three attempts, and reports the wait when it is over a minute.
+  `HttpResponse` gains optional, lower-cased `headers`.
+
 - **Plugin directory readiness — the plugin is now the self-contained
   [`plugin/`](plugin/) folder** (#84, #85, #86, #88). Submit it to the Claude
   plugin directory with **Plugin path = `plugin`**. It carries the manifest,
@@ -56,6 +75,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The device-code login no longer sends `scope`.** The plugin's
+  `read-investigation`/`write-investigation`/`approve-action` are MCP-session
+  scopes, not service OAuth scopes, so a login narrowed to them was pinned to
+  nothing and refused on identity-only routes (`403 insufficient_scope`). An
+  omitted `scope` gives the login the user's own live roles. The vendored
+  `edge-api-v1.yaml` is re-synced to the service's v1.7.0 `/oauth/token`,
+  `/oauth/revoke` and `OAuthError`.
 - **Claude Code plugin layout and permissions** (#84, #88). The marketplace
   entry's `source` is now `./plugin`, so the repo-root `package.json` +
   lockfile, `docs/`, `sdk/` and `scripts/` are no longer part of the plugin

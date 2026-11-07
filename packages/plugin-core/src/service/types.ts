@@ -176,6 +176,8 @@ export interface HttpRequest {
 export interface HttpResponse {
   status: number;
   body: unknown;
+  /** Response headers, names lower-cased. Optional: in-memory doubles may omit them. */
+  headers?: Record<string, string>;
 }
 
 /** Typed error thrown for non-2xx service responses. */

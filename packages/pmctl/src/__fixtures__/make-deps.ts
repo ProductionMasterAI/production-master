@@ -6,7 +6,7 @@ import {
   ServiceClient,
   DeviceCodeAuth,
   TokenStore,
-  type Scope,
+  TokenRefresher,
 } from "@production-master/plugin-core";
 import type { Deps } from "../deps.js";
 import type { OutputFormat } from "../output.js";
@@ -20,12 +20,6 @@ export interface Captured {
   /** Joined stderr. */
   stderr(): string;
 }
-
-const SCOPES: Scope[] = [
-  "read-investigation",
-  "write-investigation",
-  "approve-action",
-];
 
 export function makeDeps(opts: {
   transport: FakeTransport;
@@ -54,6 +48,7 @@ export function makeDeps(opts: {
       : {}),
   });
 
+  const deviceAuth = new DeviceCodeAuth({ transport, clientId: "pmctl", scopes: [] });
   const deps: Deps = {
     client,
     output: opts.output ?? "table",
@@ -63,13 +58,10 @@ export function makeDeps(opts: {
     streamUrlFor: (id) => `https://svc.test/v1/runs/${id}/stream`,
     streamHeaders: () => ({ Authorization: "Bearer tok" }),
     scheduleReconnect: (fn) => fn(), // synchronous reconnect for deterministic tests
-    deviceAuth: new DeviceCodeAuth({
-      transport,
-      clientId: "pmctl",
-      scopes: SCOPES,
-    }),
+    deviceAuth,
     tokenStore,
     accountId: "default",
+    refresher: new TokenRefresher({ auth: deviceAuth, store: tokenStore, accountId: "default" }),
   };
   return { deps, cap };
 }

@@ -738,13 +738,13 @@ var NodeHttpTransport = class {
         if (v !== void 0) url.searchParams.set(k, String(v));
       }
     }
-    const headers = { ...opts.headers ?? {} };
+    const reqHeaders = { ...opts.headers ?? {} };
     let body;
     if (opts.body !== void 0) {
-      headers["Content-Type"] = "application/json";
+      reqHeaders["Content-Type"] = "application/json";
       body = JSON.stringify(opts.body);
     }
-    const res = await fetch(url, { method: opts.method, headers, body });
+    const res = await fetch(url, { method: opts.method, headers: reqHeaders, body });
     let parsed = void 0;
     const text = await res.text();
     if (text) {
@@ -754,7 +754,11 @@ var NodeHttpTransport = class {
         parsed = { message: text };
       }
     }
-    return { status: res.status, body: parsed };
+    const headers = {};
+    res.headers.forEach((value, name) => {
+      headers[name.toLowerCase()] = value;
+    });
+    return { status: res.status, body: parsed, headers };
   }
 };
 
@@ -1235,6 +1239,7 @@ var HttpMcpToolTransport = class {
 
 // packages/plugin-core/src/auth/wire.ts
 var DEVICE_CODE_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:device_code";
+var REFRESH_TOKEN_GRANT_TYPE = "refresh_token";
 function deviceAuthorizationRequest(clientId, scopes) {
   const body = { client_id: clientId };
   if (scopes.length > 0) body.scope = scopes.join(" ");
@@ -1242,6 +1247,16 @@ function deviceAuthorizationRequest(clientId, scopes) {
 }
 function deviceTokenRequest(clientId, deviceCode) {
   return { grant_type: DEVICE_CODE_GRANT_TYPE, device_code: deviceCode, client_id: clientId };
+}
+function refreshTokenRequest(clientId, refreshToken) {
+  return { grant_type: REFRESH_TOKEN_GRANT_TYPE, refresh_token: refreshToken, client_id: clientId };
+}
+function tokenRevocationRequest(refreshToken) {
+  return { token: refreshToken };
+}
+function oauthErrorCode(body) {
+  const err = body?.error;
+  return typeof err === "string" ? err : void 0;
 }
 function record(body, what) {
   if (typeof body !== "object" || body === null || Array.isArray(body)) {
@@ -1275,22 +1290,34 @@ function parseDeviceAuthorizationResponse(body) {
     expiresIn: int(o, "expires_in", what)
   };
 }
-function parseTokenResponse(body, now, requestedScopes) {
+function parseTokenResponse(body, now, requestedScopes, clientId) {
   const what = "token response";
   const o = record(body, what);
   const tokenType = str2(o, "token_type", what);
   if (tokenType.toLowerCase() !== "bearer") throw new Error(`${what}: unsupported token_type "${tokenType}"`);
   const scope = typeof o["scope"] === "string" ? o["scope"].trim() : "";
+  const refresh = o["refresh_token"];
+  if (refresh !== void 0 && (typeof refresh !== "string" || refresh === "")) {
+    throw new Error(`${what}: invalid "refresh_token"`);
+  }
   return {
     accessToken: str2(o, "access_token", what),
-    refreshToken: "",
+    refreshToken: typeof refresh === "string" ? refresh : "",
     expiresAt: now + int(o, "expires_in", what) * 1e3,
-    scopes: scope ? scope.split(/\s+/) : [...requestedScopes]
+    scopes: scope ? scope.split(/\s+/) : [...requestedScopes],
+    ...clientId ? { clientId } : {}
   };
 }
 
 // packages/plugin-core/src/auth/device-code.ts
+var ReauthRequiredError = class extends Error {
+  constructor(message = "not authenticated — the session expired; log in again.") {
+    super(message);
+    this.name = "ReauthRequiredError";
+  }
+};
 var ONE_MIN_MS = 60 * 1e3;
+var FIVE_MIN_MS = 5 * ONE_MIN_MS;
 var DeviceCodeAuth = class {
   transport;
   clientId;
@@ -1298,6 +1325,9 @@ var DeviceCodeAuth = class {
   now;
   sleep;
   expirySkewMs;
+  refreshSkewMs;
+  maxStartAttempts;
+  maxRetryAfterMs;
   deviceCode;
   interval = 5;
   // seconds
@@ -1309,13 +1339,23 @@ var DeviceCodeAuth = class {
     this.now = opts.now ?? (() => Date.now());
     this.sleep = opts.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
     this.expirySkewMs = opts.expirySkewMs ?? ONE_MIN_MS;
+    this.refreshSkewMs = opts.refreshSkewMs ?? FIVE_MIN_MS;
+    this.maxStartAttempts = Math.max(1, opts.maxStartAttempts ?? 3);
+    this.maxRetryAfterMs = opts.maxRetryAfterMs ?? ONE_MIN_MS;
   }
   async start() {
-    const res = await this.transport.request({
-      method: "POST",
-      path: "/v1/oauth/device",
-      body: deviceAuthorizationRequest(this.clientId, this.scopes)
-    });
+    let res = await this.requestDeviceCode();
+    for (let attempt = 1; res.status === 429 && attempt < this.maxStartAttempts; attempt++) {
+      const waitMs = retryAfterMs(res);
+      if (waitMs === void 0 || waitMs > this.maxRetryAfterMs) break;
+      await this.sleep(waitMs);
+      res = await this.requestDeviceCode();
+    }
+    if (res.status === 429) {
+      const waitMs = retryAfterMs(res);
+      const hint = waitMs === void 0 ? "" : `; try again in ${Math.ceil(waitMs / 1e3)} s`;
+      throw new Error(`device start failed: 429${oauthErrorSuffix(res.body)}${hint}`);
+    }
     if (res.status < 200 || res.status >= 300) {
       throw new Error(`device start failed: ${res.status}${oauthErrorSuffix(res.body)}`);
     }
@@ -1335,7 +1375,10 @@ var DeviceCodeAuth = class {
       body: deviceTokenRequest(this.clientId, this.deviceCode)
     });
     if (res.status >= 200 && res.status < 300) {
-      return { status: "tokens", tokens: parseTokenResponse(res.body, this.now(), this.scopes) };
+      return {
+        status: "tokens",
+        tokens: parseTokenResponse(res.body, this.now(), this.scopes, this.clientId)
+      };
     }
     const err = res.body?.error;
     switch (err) {
@@ -1375,14 +1418,74 @@ var DeviceCodeAuth = class {
       }
     }
   }
+  /**
+   * One refresh_token grant (RFC 6749 §6). Returns the new session, whose
+   * `refreshToken` REPLACES the one passed in (now spent). The request carries
+   * the login's client_id (`current.clientId`, else this instance's). Throws
+   * ReauthRequiredError on `invalid_grant`, and a plain Error on anything else
+   * (network, 5xx), after which the caller cannot know whether the token was
+   * spent.
+   *
+   * Not single-flight by itself: go through TokenRefresher.
+   */
+  async refresh(current) {
+    if (!current.refreshToken) throw new ReauthRequiredError();
+    const clientId = current.clientId ?? this.clientId;
+    const res = await this.transport.request({
+      method: "POST",
+      path: "/v1/oauth/token",
+      body: refreshTokenRequest(clientId, current.refreshToken)
+    });
+    if (res.status >= 200 && res.status < 300) {
+      return parseTokenResponse(res.body, this.now(), current.scopes, clientId);
+    }
+    if (oauthErrorCode(res.body) === "invalid_grant") {
+      throw new ReauthRequiredError(
+        "not authenticated — the session can no longer be refreshed; log in again."
+      );
+    }
+    throw new Error(`token refresh failed: ${res.status}${oauthErrorSuffix(res.body)}`);
+  }
+  /**
+   * Revoke a refresh token (RFC 7009), ending its whole login server-side.
+   * The service answers 200 whether or not the token existed; any other status
+   * throws.
+   */
+  async revoke(refreshToken) {
+    const res = await this.transport.request({
+      method: "POST",
+      path: "/v1/oauth/revoke",
+      body: tokenRevocationRequest(refreshToken)
+    });
+    if (res.status < 200 || res.status >= 300) {
+      throw new Error(`token revoke failed: ${res.status}${oauthErrorSuffix(res.body)}`);
+    }
+  }
+  /** True when the access token has less than the refresh skew (5 min) left. */
+  needsRefresh(tokens) {
+    return tokens.expiresAt - this.now() <= this.refreshSkewMs;
+  }
   /** True when the session is at (or within the skew of) its expiry. */
   isExpired(tokens) {
     return tokens.expiresAt - this.now() <= this.expirySkewMs;
   }
+  requestDeviceCode() {
+    return this.transport.request({
+      method: "POST",
+      path: "/v1/oauth/device",
+      body: deviceAuthorizationRequest(this.clientId, this.scopes)
+    });
+  }
 };
 function oauthErrorSuffix(body) {
-  const err = body?.error;
-  return typeof err === "string" ? ` (${err})` : "";
+  const err = oauthErrorCode(body);
+  return err ? ` (${err})` : "";
+}
+function retryAfterMs(res) {
+  const raw = res.headers?.["retry-after"];
+  if (raw === void 0) return void 0;
+  const sec = Number(raw.trim());
+  return Number.isFinite(sec) && sec >= 0 ? Math.ceil(sec) * 1e3 : void 0;
 }
 
 // packages/plugin-core/src/auth/token-store.ts
@@ -1434,7 +1537,8 @@ var TokenStore = class {
       refreshTokenEnc: this.cipher.encrypt(tokens.refreshToken),
       scopes: tokens.scopes,
       expiresAt: tokens.expiresAt,
-      updatedAt: this.now()
+      updatedAt: this.now(),
+      ...tokens.clientId ? { clientId: tokens.clientId } : {}
     };
     await this.backend.set(this.key(accountId), JSON.stringify(session));
   }
@@ -1446,7 +1550,8 @@ var TokenStore = class {
       accessToken: this.cipher.decrypt(s.accessTokenEnc),
       refreshToken: this.cipher.decrypt(s.refreshTokenEnc),
       expiresAt: s.expiresAt,
-      scopes: s.scopes
+      scopes: s.scopes,
+      ...s.clientId ? { clientId: s.clientId } : {}
     };
   }
   async scopes(accountId) {
@@ -1683,6 +1788,276 @@ function createTokenStore(serviceName = "production-master") {
   return new TokenStore({ backend, issuer: serviceName });
 }
 
+// packages/plugin-core/src/auth/refresh.ts
+import { createHash, randomUUID } from "node:crypto";
+import { mkdir, open, readFile, rm, stat } from "node:fs/promises";
+import { hostname, tmpdir, userInfo } from "node:os";
+import { join } from "node:path";
+var IN_PROCESS_ONLY = { withLock: (_key, fn) => fn() };
+var FileRefreshLock = class {
+  dir;
+  staleMs;
+  heartbeatMs;
+  timeoutMs;
+  pollMs;
+  sleep;
+  constructor(opts) {
+    this.dir = opts.dir;
+    this.staleMs = opts.staleMs ?? 6e4;
+    this.heartbeatMs = opts.heartbeatMs ?? Math.max(10, Math.floor(this.staleMs / 4));
+    this.timeoutMs = opts.timeoutMs ?? 9e4;
+    this.pollMs = opts.pollMs ?? 100;
+    this.sleep = opts.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
+  }
+  /** The lock file used for `key` (exposed for tests and diagnostics). */
+  pathFor(key) {
+    const digest = createHash("sha256").update(key).digest("hex").slice(0, 24);
+    return join(this.dir, `refresh-${digest}.lock`);
+  }
+  async withLock(key, fn) {
+    await mkdir(this.dir, { recursive: true, mode: 448 });
+    const file = this.pathFor(key);
+    const nonce = await this.acquire(file);
+    let beat = Promise.resolve();
+    const timer = setInterval(() => {
+      beat = beat.then(() => this.heartbeat(file, nonce)).catch(() => {
+      });
+    }, this.heartbeatMs);
+    timer.unref?.();
+    try {
+      return await fn();
+    } finally {
+      clearInterval(timer);
+      await beat;
+      await this.release(file, nonce);
+    }
+  }
+  async acquire(file) {
+    const deadline = Date.now() + this.timeoutMs;
+    for (; ; ) {
+      const nonce = randomUUID();
+      try {
+        const fh = await open(file, "wx", 384);
+        try {
+          await fh.writeFile(JSON.stringify(this.record(nonce)));
+        } finally {
+          await fh.close();
+        }
+        return nonce;
+      } catch (err) {
+        if (err.code !== "EEXIST") throw err;
+      }
+      const held = await readRecord(file);
+      if (held === "gone") continue;
+      if (held === void 0 ? await this.oldFile(file) : this.isStale(held)) {
+        const again = await readRecord(file);
+        if (again === "gone" || sameRecord(again, held)) await rm(file, { force: true });
+        continue;
+      }
+      if (Date.now() >= deadline) {
+        throw new Error(`timed out waiting for the token-refresh lock held by pid ${held?.pid ?? "unknown"}`);
+      }
+      await this.sleep(this.pollMs);
+    }
+  }
+  record(nonce) {
+    return { pid: process.pid, host: hostname(), at: Date.now(), nonce };
+  }
+  /** Renew this holder's heartbeat, in place, only while the file is still ours. */
+  async heartbeat(file, nonce) {
+    const held = await readRecord(file);
+    if (held === "gone" || held?.nonce !== nonce) return;
+    const fh = await open(file, "r+");
+    try {
+      await fh.truncate(0);
+      await fh.write(JSON.stringify(this.record(nonce)), 0);
+    } finally {
+      await fh.close();
+    }
+  }
+  isStale(rec) {
+    if (Date.now() - rec.at > this.staleMs) return true;
+    const sameHost = rec.host === void 0 || rec.host === hostname();
+    return sameHost && rec.pid !== process.pid && !processAlive(rec.pid);
+  }
+  async oldFile(file) {
+    try {
+      return Date.now() - (await stat(file)).mtimeMs > this.staleMs;
+    } catch {
+      return false;
+    }
+  }
+  async release(file, nonce) {
+    const held = await readRecord(file);
+    if (held !== "gone" && held?.nonce === nonce) await rm(file, { force: true });
+  }
+};
+async function readRecord(file) {
+  let raw;
+  try {
+    raw = await readFile(file, "utf8");
+  } catch (err) {
+    if (err.code === "ENOENT") return "gone";
+    throw err;
+  }
+  try {
+    const rec = JSON.parse(raw);
+    if (typeof rec.pid === "number" && typeof rec.at === "number" && typeof rec.nonce === "string") {
+      return rec;
+    }
+  } catch {
+  }
+  return void 0;
+}
+function sameRecord(a, b) {
+  if (a === "gone") return false;
+  if (a === void 0 || b === void 0) return a === b;
+  return a.nonce === b.nonce;
+}
+function processAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err) {
+    return err.code === "EPERM";
+  }
+}
+function createRefreshLock(serviceName = "production-master") {
+  let who;
+  try {
+    const info = userInfo();
+    who = info.uid >= 0 ? String(info.uid) : info.username;
+  } catch {
+    who = "user";
+  }
+  return new FileRefreshLock({ dir: join(tmpdir(), `${serviceName}-${who}`) });
+}
+function refreshLockKey(accountId, serviceName = "production-master") {
+  return `${serviceName}:${accountId}`;
+}
+var inflight = /* @__PURE__ */ new WeakMap();
+var queues = /* @__PURE__ */ new WeakMap();
+function serialize(store, accountId, fn) {
+  let byAccount = queues.get(store);
+  if (!byAccount) {
+    byAccount = /* @__PURE__ */ new Map();
+    queues.set(store, byAccount);
+  }
+  const prev = byAccount.get(accountId) ?? Promise.resolve();
+  const run = prev.then(fn, fn);
+  const tail = run.catch(() => void 0);
+  byAccount.set(accountId, tail);
+  void tail.then(() => {
+    if (byAccount.get(accountId) === tail) byAccount.delete(accountId);
+  });
+  return run;
+}
+var TokenRefresher = class {
+  auth;
+  store;
+  accountId;
+  lock;
+  lockKey;
+  constructor(opts) {
+    this.auth = opts.auth;
+    this.store = opts.store;
+    this.accountId = opts.accountId;
+    this.lock = opts.lock ?? IN_PROCESS_ONLY;
+    this.lockKey = opts.lockKey ?? refreshLockKey(opts.accountId);
+  }
+  /**
+   * Usable tokens for the account, refreshed first when under the refresh
+   * skew. `undefined` means nobody is logged in. Throws ReauthRequiredError
+   * when the login is over (refresh refused, or expired with no refresh
+   * token); the stored session is wiped first. A transient refresh failure
+   * (network, 5xx) keeps the current access token while it is still valid,
+   * and throws once it is not.
+   */
+  async ensureFresh(cached) {
+    const tokens = cached ?? await this.store.load(this.accountId);
+    if (!tokens) return void 0;
+    if (!this.auth.needsRefresh(tokens)) return tokens;
+    if (!tokens.refreshToken) return this.withoutRefresh(tokens);
+    try {
+      return await this.refresh();
+    } catch (err) {
+      if (err instanceof ReauthRequiredError) throw err;
+      if (!this.auth.isExpired(tokens)) return tokens;
+      throw err;
+    }
+  }
+  /**
+   * Single-flight refresh of the stored login (in-process and cross-process).
+   * The store is re-read under the lock, and a session that no longer needs a
+   * refresh (another caller or process just did it) is returned as is.
+   */
+  refresh() {
+    let byAccount = inflight.get(this.store);
+    if (!byAccount) {
+      byAccount = /* @__PURE__ */ new Map();
+      inflight.set(this.store, byAccount);
+    }
+    const running = byAccount.get(this.accountId);
+    if (running) return running;
+    const map = byAccount;
+    const p = serialize(
+      this.store,
+      this.accountId,
+      () => this.lock.withLock(this.lockKey, () => this.refreshLocked())
+    ).finally(() => map.delete(this.accountId));
+    map.set(this.accountId, p);
+    return p;
+  }
+  /**
+   * Revoke the stored refresh token (RFC 7009) and wipe the local session.
+   * Runs after any in-flight refresh (in-process queue + the RefreshLock), so
+   * it revokes the token that refresh just rotated in, and nothing writes the
+   * session back afterwards. The wipe happens even when the revoke fails or
+   * the service is down.
+   */
+  logout(cached) {
+    return serialize(this.store, this.accountId, async () => {
+      try {
+        return await this.lock.withLock(this.lockKey, async () => {
+          try {
+            const latest = await this.store.load(this.accountId).catch(() => void 0) ?? cached;
+            if (!latest?.refreshToken) return { revoked: false };
+            await this.auth.revoke(latest.refreshToken);
+            return { revoked: true };
+          } finally {
+            await this.store.clear(this.accountId);
+          }
+        });
+      } catch (error) {
+        await this.store.clear(this.accountId).catch(() => {
+        });
+        return { revoked: false, error };
+      }
+    });
+  }
+  async refreshLocked() {
+    const latest = await this.store.load(this.accountId);
+    if (!latest) throw new ReauthRequiredError("not authenticated — call login() first.");
+    if (!this.auth.needsRefresh(latest)) return latest;
+    if (!latest.refreshToken) return this.withoutRefresh(latest);
+    let next;
+    try {
+      next = await this.auth.refresh(latest);
+    } catch (err) {
+      if (err instanceof ReauthRequiredError) await this.store.clear(this.accountId);
+      throw err;
+    }
+    await this.store.save(this.accountId, next);
+    return next;
+  }
+  /** A session with no refresh token lives until it expires, then is over. */
+  async withoutRefresh(tokens) {
+    if (!this.auth.isExpired(tokens)) return tokens;
+    await this.store.clear(this.accountId);
+    throw new ReauthRequiredError();
+  }
+};
+
 // packages/plugin-core/src/runtime/create-plugin-runtime.ts
 var DEFAULT_SCOPES = [
   "read-investigation",
@@ -1696,6 +2071,8 @@ var PluginRuntime = class {
   host;
   auth;
   tokenStore;
+  refresher;
+  notify;
   runner;
   serviceUrl;
   accountId;
@@ -1729,17 +2106,27 @@ var PluginRuntime = class {
     this.auth = new DeviceCodeAuth({
       transport,
       clientId,
-      scopes: this.scopes,
+      // No `scope` on the device login: DEFAULT_SCOPES are plugin session
+      // scopes, not service scopes, and would pin the login to nothing.
+      scopes: [],
       ...deps.now ? { now: deps.now } : {},
       ...deps.sleep ? { sleep: deps.sleep } : {}
     });
+    this.refresher = new TokenRefresher({
+      auth: this.auth,
+      store: this.tokenStore,
+      accountId: this.accountId,
+      lock: deps.refreshLock ?? (deps.tokenStore ? IN_PROCESS_ONLY : createRefreshLock()),
+      lockKey: refreshLockKey(this.accountId)
+    });
+    this.notify = deps.notify ?? ((message) => void process.stderr.write(`${message}
+`));
     const createServiceSession = deps.createServiceSession ?? ((ids, scopes) => this.client.createMcpSession(ids, scopes, config.sessionTtlSeconds));
     this.sessions = new McpSessionManager({
       client: this.client,
       host: this.host,
       createServiceSession,
-      notify: deps.notify ?? ((message) => void process.stderr.write(`${message}
-`)),
+      notify: this.notify,
       ...deps.now ? { now: deps.now } : {}
     });
     const mcpToolTransport = deps.mcpToolTransport ?? new HttpMcpToolTransport(gatewayUrl, () => this.accessToken);
@@ -1807,12 +2194,24 @@ var PluginRuntime = class {
     await this.ensureSession([investigationId]);
     return this.tools.invoke(tool, { investigationId, ...args });
   }
-  /** Discard the active MCP session and wipe stored tokens. */
+  /**
+   * Discard the active MCP session, revoke the refresh token server-side
+   * (`POST /v1/oauth/revoke`, RFC 7009) and wipe the stored tokens. The local
+   * wipe happens even when the revoke fails, so no orphaned secret survives;
+   * a failed revoke is reported through `notify`.
+   */
   async logout() {
     this.sessions.discard();
+    const cached = this.currentTokens;
     this.currentTokens = void 0;
     this.accessToken = void 0;
-    await this.tokenStore.clear(this.accountId);
+    const result = await this.refresher.logout(cached);
+    if (result.error !== void 0) {
+      const why = result.error instanceof Error ? result.error.message : String(result.error);
+      this.notify(
+        `Logged out locally, but the server-side revoke failed (${why}); the login expires on its own.`
+      );
+    }
   }
   withPresence(opts) {
     if (opts.presence) return opts;
@@ -1825,26 +2224,29 @@ var PluginRuntime = class {
     await this.tokenStore.save(this.accountId, tokens);
   }
   /**
-   * Ensure a usable access token: hydrate from the store on first use. Throws
-   * "not authenticated" when the user never logged in OR the session has
-   * expired — the hosted service issues no refresh token, so an expired
-   * session is cleared and the user is told to log in again rather than being
-   * handed a token the service will reject mid-run.
+   * Ensure a usable access token: hydrate from the store on first use, and
+   * refresh it when under ~5 min remain (single-flight, see TokenRefresher).
+   * Throws "not authenticated" when the user never logged in, or the login is
+   * over (refresh refused with invalid_grant, or expired with no refresh
+   * token); the stored session is wiped and the user is told to log in again
+   * rather than being handed a token the service will reject mid-run.
    */
   async ensureAuth() {
-    if (!this.currentTokens) {
-      this.currentTokens = await this.tokenStore.load(this.accountId);
-      this.accessToken = this.currentTokens?.accessToken;
+    let tokens;
+    try {
+      tokens = await this.refresher.ensureFresh(this.currentTokens);
+    } catch (err) {
+      if (err instanceof ReauthRequiredError) {
+        this.currentTokens = void 0;
+        this.accessToken = void 0;
+      }
+      throw err;
     }
-    if (!this.currentTokens) {
+    if (!tokens) {
       throw new Error("not authenticated — call login() first.");
     }
-    if (this.auth.isExpired(this.currentTokens)) {
-      this.currentTokens = void 0;
-      this.accessToken = void 0;
-      await this.tokenStore.clear(this.accountId);
-      throw new Error("not authenticated — the session expired; log in again.");
-    }
+    this.currentTokens = tokens;
+    this.accessToken = tokens.accessToken;
   }
   /** Mint (or reuse) a scoped session covering the given investigation ids. */
   async ensureSession(investigationIds) {

@@ -5,6 +5,7 @@
  * confirm-mutation, open-URL) plus connection config, and gets back a runtime
  * that can:
  *   - `login()`     — device-code grant (RFC 8628) → tokens in the keychain,
+ *                     refreshed proactively before each command (RFC 6749 §6),
  *   - `investigate()` — start a hosted run (`POST /v1/runs` → worker fleet) and
  *                       stream its SSE into the host's render sink,
  *   - `connect()`   — replay + subscribe to an existing run (AD-9 continuity),
@@ -23,8 +24,15 @@ import { RemoteServiceRunner } from "../runner/remote-runner.js";
 import { McpSessionManager } from "../mcp/session-manager.js";
 import { McpTools } from "../mcp/tools.js";
 import { HttpMcpToolTransport } from "../mcp/http-transport.js";
-import { DeviceCodeAuth } from "../auth/device-code.js";
+import { DeviceCodeAuth, ReauthRequiredError } from "../auth/device-code.js";
 import { createTokenStore } from "../auth/create-token-store.js";
+import {
+  IN_PROCESS_ONLY,
+  TokenRefresher,
+  createRefreshLock,
+  refreshLockKey,
+  type RefreshLock,
+} from "../auth/refresh.js";
 import type { TokenStore } from "../auth/token-store.js";
 import type { TokenResponse } from "../auth/types.js";
 import type { HostAdapter } from "../host/host-adapter.js";
@@ -55,7 +63,13 @@ export interface PluginRuntimeConfig {
   mcpGatewayUrl?: string;
   /** Device-code client id (`PM_CLIENT_ID`, default `pm-plugin`). */
   clientId?: string;
-  /** Scopes requested at login + session mint (default read+write+approve). */
+  /**
+   * Scopes for the per-investigation MCP session mint (default
+   * read+write+approve). These are plugin session scopes, not service OAuth
+   * scopes, so the device login sends NO `scope`: the grant then carries the
+   * user's own live roles (a narrowed device token is refused on
+   * identity-only routes with 403 insufficient_scope).
+   */
   scopes?: Scope[];
   /** Keychain account slot (`PM_ACCOUNT_ID`, default `default`). */
   accountId?: string;
@@ -79,6 +93,13 @@ export interface PluginRuntimeDeps {
   sseConnector?: SseConnector;
   mcpToolTransport?: McpToolTransport;
   tokenStore?: TokenStore;
+  /**
+   * Cross-process lock around a token refresh. Defaults to the shared lock
+   * file when the default OS credential store is used (pmctl and other plugin
+   * processes share it), and to in-process exclusion only when `tokenStore`
+   * is injected.
+   */
+  refreshLock?: RefreshLock;
   /** Overrides the default `POST /v1/mcp/sessions` session mint. */
   createServiceSession?: (
     investigationIds: string[],
@@ -119,6 +140,8 @@ export class PluginRuntime {
   private readonly host: HostAdapter;
   private readonly auth: DeviceCodeAuth;
   private readonly tokenStore: TokenStore;
+  private readonly refresher: TokenRefresher;
+  private readonly notify: (message: string) => void;
   private readonly runner: RemoteServiceRunner;
   private readonly serviceUrl: string;
   private readonly accountId: string;
@@ -163,10 +186,20 @@ export class PluginRuntime {
     this.auth = new DeviceCodeAuth({
       transport,
       clientId,
-      scopes: this.scopes,
+      // No `scope` on the device login: DEFAULT_SCOPES are plugin session
+      // scopes, not service scopes, and would pin the login to nothing.
+      scopes: [],
       ...(deps.now ? { now: deps.now } : {}),
       ...(deps.sleep ? { sleep: deps.sleep } : {}),
     });
+    this.refresher = new TokenRefresher({
+      auth: this.auth,
+      store: this.tokenStore,
+      accountId: this.accountId,
+      lock: deps.refreshLock ?? (deps.tokenStore ? IN_PROCESS_ONLY : createRefreshLock()),
+      lockKey: refreshLockKey(this.accountId),
+    });
+    this.notify = deps.notify ?? ((message) => void process.stderr.write(`${message}\n`));
 
     const createServiceSession =
       deps.createServiceSession ??
@@ -176,7 +209,7 @@ export class PluginRuntime {
       client: this.client,
       host: this.host,
       createServiceSession,
-      notify: deps.notify ?? ((message) => void process.stderr.write(`${message}\n`)),
+      notify: this.notify,
       ...(deps.now ? { now: deps.now } : {}),
     });
 
@@ -266,12 +299,24 @@ export class PluginRuntime {
     return this.tools.invoke(tool, { investigationId, ...args });
   }
 
-  /** Discard the active MCP session and wipe stored tokens. */
+  /**
+   * Discard the active MCP session, revoke the refresh token server-side
+   * (`POST /v1/oauth/revoke`, RFC 7009) and wipe the stored tokens. The local
+   * wipe happens even when the revoke fails, so no orphaned secret survives;
+   * a failed revoke is reported through `notify`.
+   */
   async logout(): Promise<void> {
     this.sessions.discard();
+    const cached = this.currentTokens;
     this.currentTokens = undefined;
     this.accessToken = undefined;
-    await this.tokenStore.clear(this.accountId);
+    const result = await this.refresher.logout(cached);
+    if (result.error !== undefined) {
+      const why = result.error instanceof Error ? result.error.message : String(result.error);
+      this.notify(
+        `Logged out locally, but the server-side revoke failed (${why}); the login expires on its own.`,
+      );
+    }
   }
 
   private withPresence(opts: StreamOptions): StreamOptions {
@@ -287,26 +332,29 @@ export class PluginRuntime {
   }
 
   /**
-   * Ensure a usable access token: hydrate from the store on first use. Throws
-   * "not authenticated" when the user never logged in OR the session has
-   * expired — the hosted service issues no refresh token, so an expired
-   * session is cleared and the user is told to log in again rather than being
-   * handed a token the service will reject mid-run.
+   * Ensure a usable access token: hydrate from the store on first use, and
+   * refresh it when under ~5 min remain (single-flight, see TokenRefresher).
+   * Throws "not authenticated" when the user never logged in, or the login is
+   * over (refresh refused with invalid_grant, or expired with no refresh
+   * token); the stored session is wiped and the user is told to log in again
+   * rather than being handed a token the service will reject mid-run.
    */
   private async ensureAuth(): Promise<void> {
-    if (!this.currentTokens) {
-      this.currentTokens = await this.tokenStore.load(this.accountId);
-      this.accessToken = this.currentTokens?.accessToken;
+    let tokens: TokenResponse | undefined;
+    try {
+      tokens = await this.refresher.ensureFresh(this.currentTokens);
+    } catch (err) {
+      if (err instanceof ReauthRequiredError) {
+        this.currentTokens = undefined;
+        this.accessToken = undefined;
+      }
+      throw err;
     }
-    if (!this.currentTokens) {
+    if (!tokens) {
       throw new Error("not authenticated — call login() first.");
     }
-    if (this.auth.isExpired(this.currentTokens)) {
-      this.currentTokens = undefined;
-      this.accessToken = undefined;
-      await this.tokenStore.clear(this.accountId);
-      throw new Error("not authenticated — the session expired; log in again.");
-    }
+    this.currentTokens = tokens;
+    this.accessToken = tokens.accessToken;
   }
 
   /** Mint (or reuse) a scoped session covering the given investigation ids. */

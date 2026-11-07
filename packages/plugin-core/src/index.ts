@@ -145,8 +145,21 @@ export { NodeHttpTransport } from "./service/node-transport.js";
 export { NodeSseConnector } from "./stream/node-sse-connector.js";
 
 // Device-code auth + token storage
-export { DeviceCodeAuth } from "./auth/device-code.js";
+export { DeviceCodeAuth, ReauthRequiredError } from "./auth/device-code.js";
 export type { DeviceCodeAuthOptions } from "./auth/device-code.js";
+export {
+  TokenRefresher,
+  FileRefreshLock,
+  IN_PROCESS_ONLY,
+  createRefreshLock,
+  refreshLockKey,
+} from "./auth/refresh.js";
+export type {
+  RefreshLock,
+  FileRefreshLockOptions,
+  TokenRefresherOptions,
+  LogoutResult,
+} from "./auth/refresh.js";
 export {
   TokenStore,
   MultiAccountStore,

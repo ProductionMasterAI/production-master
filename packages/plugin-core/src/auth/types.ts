@@ -26,13 +26,22 @@ export interface DeviceStartResponse {
 export interface TokenResponse {
   accessToken: string;
   /**
-   * Always '' for sessions from the hosted service, which implements no refresh
-   * grant yet: a session ends at `expiresAt` and the user runs /login again.
+   * The rotating refresh token (RFC 6749 §6, service#1691). Every token
+   * response — device-code or refresh — carries a NEW one that replaces the
+   * stored one; the old one is spent, and presenting it again revokes the whole
+   * login. '' means the session cannot be refreshed (a pre-provisioned bearer,
+   * or a service that issued none): it ends at `expiresAt`.
    */
   refreshToken: string;
-  /** Absolute expiry, epoch milliseconds. */
+  /** Absolute expiry of the access token, epoch milliseconds. */
   expiresAt: number;
   scopes: Scope[];
+  /**
+   * The OAuth client_id the login was started with. A refresh must present the
+   * same one, so it travels with the session: pmctl and the plugin share one
+   * credential store but log in under different client ids.
+   */
+  clientId?: string;
 }
 
 /** Poll outcome surfaced to callers. */
@@ -53,4 +62,6 @@ export interface StoredSession {
   scopes: Scope[];
   expiresAt: number;
   updatedAt: number;
+  /** client_id of the login (absent in sessions stored before refresh existed). */
+  clientId?: string;
 }

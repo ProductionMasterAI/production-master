@@ -98,6 +98,7 @@ export class TokenStore {
       scopes: tokens.scopes,
       expiresAt: tokens.expiresAt,
       updatedAt: this.now(),
+      ...(tokens.clientId ? { clientId: tokens.clientId } : {}),
     };
     await this.backend.set(this.key(accountId), JSON.stringify(session));
   }
@@ -111,6 +112,7 @@ export class TokenStore {
       refreshToken: this.cipher.decrypt(s.refreshTokenEnc),
       expiresAt: s.expiresAt,
       scopes: s.scopes,
+      ...(s.clientId ? { clientId: s.clientId } : {}),
     };
   }
 

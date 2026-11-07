@@ -13,7 +13,7 @@ import {
   ServiceClient,
   DeviceCodeAuth,
   TokenStore,
-  type Scope,
+  TokenRefresher,
 } from "@production-master/plugin-core";
 import { EmulatedBff } from "@production-master/plugin-core/testing";
 import type { Deps } from "../deps.js";
@@ -22,13 +22,9 @@ import { FixtureConnector } from "../__fixtures__/fakes.js";
 import { startCommand } from "./start.js";
 import { statusCommand } from "./status.js";
 import { reportCommand } from "./report.js";
+import { loginCommand } from "./login.js";
+import { logoutCommand } from "./logout.js";
 import { EXIT } from "../exit-codes.js";
-
-const SCOPES: Scope[] = [
-  "read-investigation",
-  "write-investigation",
-  "approve-action",
-];
 
 function args(
   positional: string[],
@@ -45,6 +41,13 @@ function makeEmulatedDeps(emu: EmulatedBff): { deps: Deps; out: string[] } {
     getAuthToken: () => "tok",
     newIdempotencyKey: () => "KEY-1",
   });
+  const deviceAuth = new DeviceCodeAuth({
+    transport: emu.transport,
+    clientId: "pmctl",
+    scopes: [],
+    sleep: async () => {},
+  });
+  const tokenStore = new TokenStore({ issuer: "test" });
   const deps: Deps = {
     client,
     output: "json",
@@ -54,13 +57,10 @@ function makeEmulatedDeps(emu: EmulatedBff): { deps: Deps; out: string[] } {
     streamUrlFor: (id) => `https://svc.test/v1/runs/${id}/stream`,
     streamHeaders: () => ({ Authorization: "Bearer tok" }),
     scheduleReconnect: (fn) => fn(),
-    deviceAuth: new DeviceCodeAuth({
-      transport: emu.transport,
-      clientId: "pmctl",
-      scopes: SCOPES,
-    }),
-    tokenStore: new TokenStore({ issuer: "test" }),
+    deviceAuth,
+    tokenStore,
     accountId: "default",
+    refresher: new TokenRefresher({ auth: deviceAuth, store: tokenStore, accountId: "default" }),
   };
   return { deps, out };
 }
@@ -101,5 +101,27 @@ describe("pmctl <-> emulated schema-real BFF", () => {
     const reportEnv = JSON.parse(out.join("").trim());
     expect(reportEnv.data.content).toContain("# Root cause");
     expect(reportEnv.data.format).toBe("md");
+  });
+
+  it("logs in, refreshes the stored session once, and revokes it on logout", async () => {
+    const emu = new EmulatedBff();
+    const { deps } = makeEmulatedDeps(emu);
+
+    expect(await loginCommand(deps, args([]))).toBe(EXIT.OK);
+    const stored = await deps.tokenStore.load("default");
+    expect(stored?.refreshToken).toBe("emulated-refresh-1");
+    expect(stored?.clientId).toBe("pmctl");
+
+    // Age the session under the 5-minute threshold, then let the
+    // single-flight refresher rotate it (as buildDeps does).
+    await deps.tokenStore.save("default", { ...stored!, expiresAt: Date.now() + 60_000 });
+    await deps.refresher.ensureFresh();
+    expect((await deps.tokenStore.load("default"))?.refreshToken).toBe("emulated-refresh-2");
+    expect(emu.oauth.revoked).toBe(false);
+
+    expect(await logoutCommand(deps, args([]))).toBe(EXIT.OK);
+    expect(emu.oauth.revokes).toBe(1);
+    expect(emu.oauth.revoked).toBe(true);
+    expect(await deps.tokenStore.load("default")).toBeUndefined();
   });
 });

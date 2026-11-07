@@ -24,7 +24,7 @@
  */
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, open, readFile, rm, stat } from "node:fs/promises";
-import { tmpdir, userInfo } from "node:os";
+import { hostname, tmpdir, userInfo } from "node:os";
 import { join } from "node:path";
 import { ReauthRequiredError, type DeviceCodeAuth } from "./device-code.js";
 import type { TokenStore } from "./token-store.js";
@@ -42,8 +42,15 @@ export const IN_PROCESS_ONLY: RefreshLock = { withLock: (_key, fn) => fn() };
 export interface FileRefreshLockOptions {
   /** Directory holding the lock files (created 0700 if missing). */
   dir: string;
-  /** A lock older than this, or held by a dead pid, is broken (default 60 s). */
+  /**
+   * A lock whose heartbeat is older than this is broken (default 60 s). A live
+   * holder renews its heartbeat every `heartbeatMs`, so this only ever fires
+   * for a holder that died, hung its whole event loop, or whose pid was
+   * reused; a lock held by a dead pid on this host is broken at once.
+   */
   staleMs?: number;
+  /** How often a holder renews its heartbeat (default staleMs / 4). */
+  heartbeatMs?: number;
   /** Give up waiting after this long (default 90 s). */
   timeoutMs?: number;
   /** Poll interval while waiting (default 100 ms). */
@@ -53,6 +60,9 @@ export interface FileRefreshLockOptions {
 
 interface LockRecord {
   pid: number;
+  /** Host of the holder: its pid means nothing on another machine. */
+  host?: string;
+  /** Last heartbeat, epoch ms. */
   at: number;
   nonce: string;
 }
@@ -60,14 +70,21 @@ interface LockRecord {
 /**
  * Cross-process lock built on `open(path, 'wx')` (O_CREAT|O_EXCL), which is
  * atomic on local filesystems on every platform Node supports. No native
- * addon, no dependency. A holder that crashed leaves a file naming a dead pid
- * (or an old timestamp); the next waiter breaks it. Release removes the file
- * only if it still carries this holder's nonce, so a holder whose lock was
- * broken as stale never deletes its successor's.
+ * addon, no dependency.
+ *
+ * A live holder stays exclusive however long its work takes: it renews the
+ * record's heartbeat while `fn` runs, and a waiter never breaks a lock with a
+ * fresh heartbeat (it times out instead). Breaking a live holder's lock would
+ * let two processes present the same refresh token, which the service treats
+ * as replay and answers by revoking the whole login. A lock IS broken when its
+ * holder is a dead pid on this host, or its heartbeat stopped (crash, pid
+ * reuse, another host). Release removes the file only if it still carries
+ * this holder's nonce, so a holder never deletes its successor's lock.
  */
 export class FileRefreshLock implements RefreshLock {
   private readonly dir: string;
   private readonly staleMs: number;
+  private readonly heartbeatMs: number;
   private readonly timeoutMs: number;
   private readonly pollMs: number;
   private readonly sleep: (ms: number) => Promise<void>;
@@ -75,6 +92,7 @@ export class FileRefreshLock implements RefreshLock {
   constructor(opts: FileRefreshLockOptions) {
     this.dir = opts.dir;
     this.staleMs = opts.staleMs ?? 60_000;
+    this.heartbeatMs = opts.heartbeatMs ?? Math.max(10, Math.floor(this.staleMs / 4));
     this.timeoutMs = opts.timeoutMs ?? 90_000;
     this.pollMs = opts.pollMs ?? 100;
     this.sleep = opts.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
@@ -90,9 +108,16 @@ export class FileRefreshLock implements RefreshLock {
     await mkdir(this.dir, { recursive: true, mode: 0o700 });
     const file = this.pathFor(key);
     const nonce = await this.acquire(file);
+    let beat: Promise<void> = Promise.resolve();
+    const timer = setInterval(() => {
+      beat = beat.then(() => this.heartbeat(file, nonce)).catch(() => {});
+    }, this.heartbeatMs);
+    timer.unref?.();
     try {
       return await fn();
     } finally {
+      clearInterval(timer);
+      await beat;
       await this.release(file, nonce);
     }
   }
@@ -104,8 +129,7 @@ export class FileRefreshLock implements RefreshLock {
       try {
         const fh = await open(file, "wx", 0o600);
         try {
-          const record: LockRecord = { pid: process.pid, at: Date.now(), nonce };
-          await fh.writeFile(JSON.stringify(record));
+          await fh.writeFile(JSON.stringify(this.record(nonce)));
         } finally {
           await fh.close();
         }
@@ -129,9 +153,30 @@ export class FileRefreshLock implements RefreshLock {
     }
   }
 
+  private record(nonce: string): LockRecord {
+    return { pid: process.pid, host: hostname(), at: Date.now(), nonce };
+  }
+
+  /** Renew this holder's heartbeat, in place, only while the file is still ours. */
+  private async heartbeat(file: string, nonce: string): Promise<void> {
+    const held = await readRecord(file);
+    if (held === "gone" || held?.nonce !== nonce) return;
+    // r+ never re-creates a file someone removed; truncate + write in place.
+    const fh = await open(file, "r+");
+    try {
+      await fh.truncate(0);
+      await fh.write(JSON.stringify(this.record(nonce)), 0);
+    } finally {
+      await fh.close();
+    }
+  }
+
   private isStale(rec: LockRecord): boolean {
+    // Heartbeat stopped: the holder is gone (or hung, or its pid was reused).
     if (Date.now() - rec.at > this.staleMs) return true;
-    return rec.pid !== process.pid && !processAlive(rec.pid);
+    // A dead pid on THIS host is gone now; a pid from another host proves nothing.
+    const sameHost = rec.host === undefined || rec.host === hostname();
+    return sameHost && rec.pid !== process.pid && !processAlive(rec.pid);
   }
 
   private async oldFile(file: string): Promise<boolean> {
@@ -226,6 +271,29 @@ export interface LogoutResult {
 // on one store share one refresh.
 const inflight = new WeakMap<TokenStore, Map<string, Promise<TokenResponse>>>();
 
+// Per store + account, the tail of a queue every refresh and logout runs
+// through in order. This is the in-process half of the exclusion (the
+// RefreshLock is the cross-process half, and may be IN_PROCESS_ONLY): a logout
+// waits for an in-flight refresh to save before it revokes and wipes, so a
+// refresh can never write a session back after logout cleared it.
+const queues = new WeakMap<TokenStore, Map<string, Promise<unknown>>>();
+
+function serialize<T>(store: TokenStore, accountId: string, fn: () => Promise<T>): Promise<T> {
+  let byAccount = queues.get(store);
+  if (!byAccount) {
+    byAccount = new Map();
+    queues.set(store, byAccount);
+  }
+  const prev = byAccount.get(accountId) ?? Promise.resolve();
+  const run = prev.then(fn, fn);
+  const tail = run.catch(() => undefined);
+  byAccount.set(accountId, tail);
+  void tail.then(() => {
+    if (byAccount.get(accountId) === tail) byAccount.delete(accountId);
+  });
+  return run;
+}
+
 export class TokenRefresher {
   private readonly auth: DeviceCodeAuth;
   private readonly store: TokenStore;
@@ -277,30 +345,40 @@ export class TokenRefresher {
     const running = byAccount.get(this.accountId);
     if (running) return running;
     const map = byAccount;
-    const p = this.lock
-      .withLock(this.lockKey, () => this.refreshLocked())
-      .finally(() => map.delete(this.accountId));
+    const p = serialize(this.store, this.accountId, () =>
+      this.lock.withLock(this.lockKey, () => this.refreshLocked()),
+    ).finally(() => map.delete(this.accountId));
     map.set(this.accountId, p);
     return p;
   }
 
   /**
    * Revoke the stored refresh token (RFC 7009) and wipe the local session.
-   * The wipe happens even when the revoke fails or the service is down.
+   * Runs after any in-flight refresh (in-process queue + the RefreshLock), so
+   * it revokes the token that refresh just rotated in, and nothing writes the
+   * session back afterwards. The wipe happens even when the revoke fails or
+   * the service is down.
    */
-  async logout(cached?: TokenResponse): Promise<LogoutResult> {
-    try {
-      return await this.lock.withLock(this.lockKey, async () => {
-        const latest = (await this.store.load(this.accountId).catch(() => undefined)) ?? cached;
-        if (!latest?.refreshToken) return { revoked: false };
-        await this.auth.revoke(latest.refreshToken);
-        return { revoked: true };
-      });
-    } catch (error) {
-      return { revoked: false, error };
-    } finally {
-      await this.store.clear(this.accountId);
-    }
+  logout(cached?: TokenResponse): Promise<LogoutResult> {
+    return serialize(this.store, this.accountId, async () => {
+      try {
+        return await this.lock.withLock(this.lockKey, async () => {
+          try {
+            const latest = (await this.store.load(this.accountId).catch(() => undefined)) ?? cached;
+            if (!latest?.refreshToken) return { revoked: false };
+            await this.auth.revoke(latest.refreshToken);
+            return { revoked: true };
+          } finally {
+            // Inside the lock: no other process can refresh between revoke and wipe.
+            await this.store.clear(this.accountId);
+          }
+        });
+      } catch (error) {
+        // The lock itself failed (timed out): still wipe locally.
+        await this.store.clear(this.accountId).catch(() => {});
+        return { revoked: false, error };
+      }
+    });
   }
 
   private async refreshLocked(): Promise<TokenResponse> {

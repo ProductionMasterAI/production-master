@@ -1791,18 +1791,20 @@ function createTokenStore(serviceName = "production-master") {
 // packages/plugin-core/src/auth/refresh.ts
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, open, readFile, rm, stat } from "node:fs/promises";
-import { tmpdir, userInfo } from "node:os";
+import { hostname, tmpdir, userInfo } from "node:os";
 import { join } from "node:path";
 var IN_PROCESS_ONLY = { withLock: (_key, fn) => fn() };
 var FileRefreshLock = class {
   dir;
   staleMs;
+  heartbeatMs;
   timeoutMs;
   pollMs;
   sleep;
   constructor(opts) {
     this.dir = opts.dir;
     this.staleMs = opts.staleMs ?? 6e4;
+    this.heartbeatMs = opts.heartbeatMs ?? Math.max(10, Math.floor(this.staleMs / 4));
     this.timeoutMs = opts.timeoutMs ?? 9e4;
     this.pollMs = opts.pollMs ?? 100;
     this.sleep = opts.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
@@ -1816,9 +1818,17 @@ var FileRefreshLock = class {
     await mkdir(this.dir, { recursive: true, mode: 448 });
     const file = this.pathFor(key);
     const nonce = await this.acquire(file);
+    let beat = Promise.resolve();
+    const timer = setInterval(() => {
+      beat = beat.then(() => this.heartbeat(file, nonce)).catch(() => {
+      });
+    }, this.heartbeatMs);
+    timer.unref?.();
     try {
       return await fn();
     } finally {
+      clearInterval(timer);
+      await beat;
       await this.release(file, nonce);
     }
   }
@@ -1829,8 +1839,7 @@ var FileRefreshLock = class {
       try {
         const fh = await open(file, "wx", 384);
         try {
-          const record2 = { pid: process.pid, at: Date.now(), nonce };
-          await fh.writeFile(JSON.stringify(record2));
+          await fh.writeFile(JSON.stringify(this.record(nonce)));
         } finally {
           await fh.close();
         }
@@ -1851,9 +1860,25 @@ var FileRefreshLock = class {
       await this.sleep(this.pollMs);
     }
   }
+  record(nonce) {
+    return { pid: process.pid, host: hostname(), at: Date.now(), nonce };
+  }
+  /** Renew this holder's heartbeat, in place, only while the file is still ours. */
+  async heartbeat(file, nonce) {
+    const held = await readRecord(file);
+    if (held === "gone" || held?.nonce !== nonce) return;
+    const fh = await open(file, "r+");
+    try {
+      await fh.truncate(0);
+      await fh.write(JSON.stringify(this.record(nonce)), 0);
+    } finally {
+      await fh.close();
+    }
+  }
   isStale(rec) {
     if (Date.now() - rec.at > this.staleMs) return true;
-    return rec.pid !== process.pid && !processAlive(rec.pid);
+    const sameHost = rec.host === void 0 || rec.host === hostname();
+    return sameHost && rec.pid !== process.pid && !processAlive(rec.pid);
   }
   async oldFile(file) {
     try {
@@ -1911,6 +1936,22 @@ function refreshLockKey(accountId, serviceName = "production-master") {
   return `${serviceName}:${accountId}`;
 }
 var inflight = /* @__PURE__ */ new WeakMap();
+var queues = /* @__PURE__ */ new WeakMap();
+function serialize(store, accountId, fn) {
+  let byAccount = queues.get(store);
+  if (!byAccount) {
+    byAccount = /* @__PURE__ */ new Map();
+    queues.set(store, byAccount);
+  }
+  const prev = byAccount.get(accountId) ?? Promise.resolve();
+  const run = prev.then(fn, fn);
+  const tail = run.catch(() => void 0);
+  byAccount.set(accountId, tail);
+  void tail.then(() => {
+    if (byAccount.get(accountId) === tail) byAccount.delete(accountId);
+  });
+  return run;
+}
 var TokenRefresher = class {
   auth;
   store;
@@ -1959,27 +2000,40 @@ var TokenRefresher = class {
     const running = byAccount.get(this.accountId);
     if (running) return running;
     const map = byAccount;
-    const p = this.lock.withLock(this.lockKey, () => this.refreshLocked()).finally(() => map.delete(this.accountId));
+    const p = serialize(
+      this.store,
+      this.accountId,
+      () => this.lock.withLock(this.lockKey, () => this.refreshLocked())
+    ).finally(() => map.delete(this.accountId));
     map.set(this.accountId, p);
     return p;
   }
   /**
    * Revoke the stored refresh token (RFC 7009) and wipe the local session.
-   * The wipe happens even when the revoke fails or the service is down.
+   * Runs after any in-flight refresh (in-process queue + the RefreshLock), so
+   * it revokes the token that refresh just rotated in, and nothing writes the
+   * session back afterwards. The wipe happens even when the revoke fails or
+   * the service is down.
    */
-  async logout(cached) {
-    try {
-      return await this.lock.withLock(this.lockKey, async () => {
-        const latest = await this.store.load(this.accountId).catch(() => void 0) ?? cached;
-        if (!latest?.refreshToken) return { revoked: false };
-        await this.auth.revoke(latest.refreshToken);
-        return { revoked: true };
-      });
-    } catch (error) {
-      return { revoked: false, error };
-    } finally {
-      await this.store.clear(this.accountId);
-    }
+  logout(cached) {
+    return serialize(this.store, this.accountId, async () => {
+      try {
+        return await this.lock.withLock(this.lockKey, async () => {
+          try {
+            const latest = await this.store.load(this.accountId).catch(() => void 0) ?? cached;
+            if (!latest?.refreshToken) return { revoked: false };
+            await this.auth.revoke(latest.refreshToken);
+            return { revoked: true };
+          } finally {
+            await this.store.clear(this.accountId);
+          }
+        });
+      } catch (error) {
+        await this.store.clear(this.accountId).catch(() => {
+        });
+        return { revoked: false, error };
+      }
+    });
   }
   async refreshLocked() {
     const latest = await this.store.load(this.accountId);

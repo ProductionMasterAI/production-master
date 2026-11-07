@@ -168,6 +168,43 @@ describe("TokenRefresher.logout", () => {
     expect(await store.load("default")).toBeUndefined();
   });
 
+  it("waits for an in-flight refresh, revokes the rotated token, and nothing writes the session back", async () => {
+    // Injected store + no custom lock (IN_PROCESS_ONLY): the in-process queue
+    // alone must order refresh before logout.
+    const { server, refresher, store, advance } = await setup();
+    advance(900_000);
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const real = server.request.bind(server);
+    server.request = async (req) => {
+      if ((req.body as { grant_type?: string } | undefined)?.grant_type === "refresh_token") await gate;
+      return real(req);
+    };
+
+    const refreshing = refresher.ensureFresh();
+    await new Promise((r) => setTimeout(r, 0)); // the refresh is now awaiting its response
+    const loggingOut = refresher.logout();
+    release();
+    await refreshing;
+    const result = await loggingOut;
+
+    expect(result).toEqual({ revoked: true });
+    // Logout ran after the refresh saved, so it revoked the NEW token.
+    expect(server.revokeCalls).toEqual([{ token: "refresh-tok-2" }]);
+    expect(server.revoked).toBe(true);
+    expect(await store.load("default")).toBeUndefined();
+  });
+
+  it("a refresh queued behind logout finds no session and asks for a login", async () => {
+    const { refresher, store, advance } = await setup();
+    advance(900_000);
+    const loggingOut = refresher.logout();
+    const refreshing = refresher.refresh();
+    await loggingOut;
+    await expect(refreshing).rejects.toBeInstanceOf(ReauthRequiredError);
+    expect(await store.load("default")).toBeUndefined();
+  });
+
   it("wipes the session even when the transport throws", async () => {
     const { refresher, store, server } = await setup();
     server.request = async () => {
@@ -217,6 +254,43 @@ describe("FileRefreshLock", () => {
     const deadPid = await exitedPid();
     writeFileSync(lock.pathFor("k"), JSON.stringify({ pid: deadPid, at: Date.now(), nonce: "x" }));
     expect(await lock.withLock("k", async () => "got it")).toBe("got it");
+  });
+
+  it("keeps a live holder exclusive past staleMs by renewing its heartbeat", async () => {
+    dir = mkdtempSync(join(tmpdir(), "pm-lock-test-"));
+    // staleMs far below how long the holder works: without the heartbeat the
+    // waiter would break the lock and both would refresh at once.
+    const lock = new FileRefreshLock({ dir, pollMs: 5, staleMs: 60, heartbeatMs: 10, timeoutMs: 5_000 });
+    const order: string[] = [];
+    const first = lock.withLock("k", async () => {
+      order.push("a:in");
+      await new Promise((r) => setTimeout(r, 300));
+      order.push("a:out");
+    });
+    await new Promise((r) => setTimeout(r, 20));
+    const second = lock.withLock("k", async () => {
+      order.push("b:in");
+    });
+    await Promise.all([first, second]);
+    expect(order).toEqual(["a:in", "a:out", "b:in"]);
+  });
+
+  it("breaks a lock whose heartbeat stopped even if its pid is alive (pid reuse)", async () => {
+    dir = mkdtempSync(join(tmpdir(), "pm-lock-test-"));
+    const lock = new FileRefreshLock({ dir, pollMs: 5, staleMs: 100, timeoutMs: 1_000 });
+    writeFileSync(lock.pathFor("k"), JSON.stringify({ pid: process.pid, at: Date.now() - 1_000, nonce: "old" }));
+    expect(await lock.withLock("k", async () => "got it")).toBe("got it");
+  });
+
+  it("does not judge a pid from another host: a fresh lock there is respected", async () => {
+    dir = mkdtempSync(join(tmpdir(), "pm-lock-test-"));
+    const lock = new FileRefreshLock({ dir, pollMs: 5, timeoutMs: 50 });
+    const deadHere = await exitedPid();
+    writeFileSync(
+      lock.pathFor("k"),
+      JSON.stringify({ pid: deadHere, host: "some-other-host", at: Date.now(), nonce: "remote" }),
+    );
+    await expect(lock.withLock("k", async () => "never")).rejects.toThrow(/timed out waiting/);
   });
 
   it("times out instead of waiting forever on a live holder", async () => {

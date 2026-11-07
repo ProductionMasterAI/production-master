@@ -396,6 +396,26 @@ paths:
                     description: Seconds until device_code expires.
         "400":
           $ref: "#/components/responses/OAuthError"
+        "429":
+          description: Too many device-code starts from this client IP. Checked before the body is read and before any device code is created; wait `retry-after` seconds, then start again.
+          headers:
+            retry-after:
+              required: true
+              description: Whole seconds to wait before the next start.
+              schema:
+                type: integer
+                minimum: 1
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - rate_limited
   /oauth/token:
     post:
       summary: Poll for the access token (RFC 8628 §3.4)

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Cursor 3.11 (+2026-11-06 / desktop 3.29.9):** advance pins; document Voice Chat (≠ dictation) and Live Apps as orthogonal to the thin-client IP boundary. Feature pin remains **3.11**. Cursor-only.
+
 ### Added
 
 - **Logins refresh themselves and `/logout` revokes them** (service#1691;

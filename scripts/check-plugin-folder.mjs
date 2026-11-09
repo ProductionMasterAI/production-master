@@ -1,34 +1,48 @@
 #!/usr/bin/env node
 /**
- * Guard the Claude Code plugin folder against the plugin-directory findings
- * that held v0.1.1 (5f553e2) in review.
+ * Guard the Claude Code plugin folder against the plugin-directory findings.
  *
  * THE REAL QUESTION -----------------------------------------------------
- * "Would the directory raise a finding on the folder we submit?" The portal
- * reads and scans ONLY the plugin path given at submit time (`plugin/`), so
- * every check below runs against that folder exactly as the portal sees it —
- * not against the repo, and not against a file list someone remembered.
+ * "Would the directory refuse or hold the folder we submit?" The portal scans
+ * the plugin path given at submit time (`plugin/`), so every check runs
+ * against that folder exactly as the portal sees it.
  *
- * Each check names the finding code it prevents:
- *   LOCKFILE_AUTO_INSTALL        no package.json / lockfile anywhere in plugin/
- *   ALLOWED_TOOLS_BROAD          every Bash rule is pinned to a file under
- *                                ${CLAUDE_PLUGIN_ROOT}; no bare Bash/Bash(*)
- *   MCP_FORWARDS_CREDENTIAL_ENV  no TOKEN/SECRET/KEY/PASSWORD env read in plugin/
- *   RUNTIME_FETCH_EXEC           no curl|sh, wget|sh, npx/bunx/uvx/pipx launchers
- *   ICON_MISSING                 plugin.json icon -> square PNG/JPEG, 512-2048 px, < 2 MB
- *   (size/type holds)            non-image files < 256 KiB; <= 512 files; text,
- *                                PNG, JPEG, GIF, WebP and fonts only
+ * ProductionMasterAI is not a Verified organization. For such an org the
+ * directory accepts no local code at all (v0.1.2 was refused on 2026-11-08):
+ *   LOCAL_CODE_BIN         no bin/ folder (Claude Code adds it to PATH)
+ *   LOCAL_CODE_FILE_TYPE   only Markdown, text, JSON, YAML and PNG/JPEG/GIF/
+ *                          WebP/ICO images; nothing starting with #!; no
+ *                          package-manager config (package.json,
+ *                          pnpm-workspace.yaml, ...); UTF-8, no NUL bytes;
+ *                          an image's bytes must match its extension
+ *   LOCAL_CODE_TOOL_GRANT  every allowed-tools / allowedTools entry is plain
+ *                          Read, Grep, Glob or LS — no ${...}, no // or \\
+ *                          path, no URL — and the list must be readable
+ * Holds the directory raises for review:
+ *   MCP_FORWARDS_CREDENTIAL_ENV  no credential-like env var anywhere; the only
+ *                                credential is a sensitive userConfig value
+ *   RUNTIME_FETCH_EXEC           no curl|sh, wget|sh, npx/bunx/uvx/pipx
+ *   UNREAD_ASSET_REFERENCED      no text file other than plugin.json names an
+ *                                image or font file
+ *   ICON_MISSING                 icon -> square PNG/JPEG, 512-2048 px, < 2 MB
+ *   PRIVACY_URL_MISSING          a remote MCP server needs an https privacyPolicyUrl
+ * Guards of our own, for things that would be local code by another route:
+ *   LOCAL_CODE_HOOK        no hooks (a hook runs a command on the user's machine)
+ *   LOCAL_CODE_MCP         every MCP server is remote: type http/sse, an https
+ *                          URL, no `command`
+ *   USER_CONFIG            every ${user_config.KEY} is declared, and a key used
+ *                          in an MCP header is `sensitive: true`
  * And the plumbing that makes `plugin/` the submitted folder:
- *   marketplace.json source is "./plugin"
+ *   MARKETPLACE            marketplace.json source is "./plugin"
  *
- * `claude plugin validate` covers only a subset (it reports ICON_MISSING but
- * none of the policy holds), which is why this script exists.
+ * `claude plugin validate` covers only a subset, which is why this exists.
  *
  * Usage: node scripts/check-plugin-folder.mjs [pluginDir]   (default: plugin)
  */
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, resolve, relative, extname, basename, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parse as parseYaml } from 'yaml';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PLUGIN = resolve(ROOT, process.argv[2] ?? 'plugin');
@@ -36,30 +50,39 @@ const MAX_TEXT_BYTES = 256 * 1024;
 const MAX_FILES = 512;
 const MAX_ICON_BYTES = 2 * 1024 * 1024;
 
-const IMAGE_EXT = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp']);
-const FONT_EXT = new Set(['.woff', '.woff2', '.ttf', '.otf']);
-const LOCKFILES = new Set([
-  'package.json',
-  'package-lock.json',
-  'npm-shrinkwrap.json',
-  'bun.lock',
-  'bun.lockb',
-  'yarn.lock',
-  'pnpm-lock.yaml',
+const TEXT_EXT = new Set(['.md', '.markdown', '.txt', '.json', '.yaml', '.yml']);
+// Extensionless files the directory names as allowed when they are UTF-8 text.
+const TEXT_NAMES = new Set(['LICENSE', 'LICENCE', 'README', 'NOTICE', 'COPYING', '.gitignore']);
+const IMAGE_EXT = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico']);
+const PACKAGE_MANAGER_FILES = new Set([
+  'package.json', 'package-lock.json', 'npm-shrinkwrap.json', '.npmrc',
+  'pnpm-workspace.yaml', 'pnpm-lock.yaml', 'yarn.lock', '.yarnrc', '.yarnrc.yml',
+  'bun.lock', 'bun.lockb', 'bunfig.toml', 'deno.json', 'deno.jsonc', 'deno.lock',
+  'requirements.txt', 'pyproject.toml', 'Pipfile', 'Pipfile.lock', 'uv.toml', 'uv.lock',
+  'composer.json', 'composer.lock', 'Gemfile', 'Gemfile.lock', 'Cargo.toml', 'go.mod',
 ]);
+const PLAIN_TOOLS = new Set(['Read', 'Grep', 'Glob', 'LS']);
 
 const errors = [];
 const err = (code, msg) => errors.push(`${code}: ${msg}`);
+const rel = (p) => relative(ROOT, p);
 
 const MANIFEST = join(PLUGIN, '.claude-plugin/plugin.json');
-const hasManifest = existsSync(MANIFEST);
-if (!hasManifest) err('MANIFEST', `${relative(ROOT, MANIFEST)} not found`);
+let manifest;
+if (!existsSync(MANIFEST)) err('MANIFEST', `${rel(MANIFEST)} not found`);
+else {
+  try {
+    manifest = JSON.parse(readFileSync(MANIFEST, 'utf8'));
+  } catch (e) {
+    err('MANIFEST', `${rel(MANIFEST)} is not valid JSON: ${e.message}`);
+  }
+}
 
 function walk(dir) {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
     const p = join(dir, e.name);
     if (e.isSymbolicLink()) {
-      err('SYMLINK', `${relative(ROOT, p)} is a symlink — ship real files only`);
+      err('SYMLINK', `${rel(p)} is a symlink — ship real files only`);
       return [];
     }
     return e.isDirectory() ? walk(p) : [p];
@@ -67,85 +90,185 @@ function walk(dir) {
 }
 
 const files = walk(PLUGIN);
-const rel = (p) => relative(ROOT, p);
-
-// --- file count, types, sizes, lockfiles ----------------------------------
 if (files.length > MAX_FILES) err('FILE_COUNT', `${files.length} files in plugin/ (max ${MAX_FILES})`);
-
-const textFiles = [];
-for (const f of files) {
-  const ext = extname(f).toLowerCase();
-  if (LOCKFILES.has(basename(f))) {
-    err('LOCKFILE_AUTO_INSTALL', `${rel(f)} — Claude Code runs an install when the plugin carries package.json + a lockfile`);
-  }
-  if (IMAGE_EXT.has(ext) || FONT_EXT.has(ext)) continue;
-  const buf = readFileSync(f);
-  if (buf.includes(0)) {
-    err('BINARY_FILE', `${rel(f)} is binary — only text, images and fonts are accepted`);
-    continue;
-  }
-  if (buf.length >= MAX_TEXT_BYTES) err('FILE_TOO_LARGE', `${rel(f)} is ${buf.length} bytes (limit ${MAX_TEXT_BYTES})`);
-  textFiles.push([f, buf.toString('utf8')]);
+if (existsSync(join(PLUGIN, 'bin'))) {
+  err('LOCAL_CODE_BIN', `${rel(join(PLUGIN, 'bin'))}/ exists — non-Verified orgs may not ship a bin/ folder`);
 }
 
-// --- allowed-tools ---------------------------------------------------------
-// Accept only Bash rules pinned to a concrete file under ${CLAUDE_PLUGIN_ROOT},
-// optionally run by `node`, with at most a trailing `:*` / ` *` wildcard.
-const PINNED_BASH = /^(node )?\$\{CLAUDE_PLUGIN_ROOT\}\/[A-Za-z0-9._/-]+\.[A-Za-z0-9]+( [A-Za-z0-9_-]+)?(:\*| \*)?$/;
+// --- file types, encodings, sizes ------------------------------------------
+function imageMatches(ext, b) {
+  if (ext === '.png') return b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+  if (ext === '.jpg' || ext === '.jpeg') return b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff;
+  if (ext === '.gif') return /^GIF8[79]a$/.test(b.subarray(0, 6).toString('latin1'));
+  if (ext === '.webp') return b.subarray(0, 4).toString('latin1') === 'RIFF' && b.subarray(8, 12).toString('latin1') === 'WEBP';
+  if (ext === '.ico') return b.readUInt32BE(0) === 0x00000100;
+  return false;
+}
+
+const utf8 = new TextDecoder('utf-8', { fatal: true });
+const textFiles = [];
+for (const f of files) {
+  const name = basename(f);
+  const ext = extname(f).toLowerCase();
+  const buf = readFileSync(f);
+  if (PACKAGE_MANAGER_FILES.has(name)) {
+    err('LOCAL_CODE_FILE_TYPE', `${rel(f)} is package-manager configuration`);
+    continue;
+  }
+  if (IMAGE_EXT.has(ext)) {
+    if (buf.length < 12 || !imageMatches(ext, buf)) err('LOCAL_CODE_FILE_TYPE', `${rel(f)} is not a real ${ext} image`);
+    continue;
+  }
+  if (!TEXT_EXT.has(ext) && !TEXT_NAMES.has(name)) {
+    err('LOCAL_CODE_FILE_TYPE', `${rel(f)} — only Markdown, text, JSON, YAML and images are accepted`);
+    continue;
+  }
+  if (buf.includes(0)) {
+    err('LOCAL_CODE_FILE_TYPE', `${rel(f)} holds a NUL byte`);
+    continue;
+  }
+  let text;
+  try {
+    text = utf8.decode(buf);
+  } catch {
+    err('LOCAL_CODE_FILE_TYPE', `${rel(f)} is not valid UTF-8`);
+    continue;
+  }
+  if (text.replace(/^﻿/, '').startsWith('#!')) err('LOCAL_CODE_FILE_TYPE', `${rel(f)} starts with #!`);
+  if (buf.length >= MAX_TEXT_BYTES) err('FILE_TOO_LARGE', `${rel(f)} is ${buf.length} bytes (limit ${MAX_TEXT_BYTES})`);
+  textFiles.push([f, text]);
+}
+
+// --- allowed-tools -----------------------------------------------------------
+// A list is a YAML sequence or a space/comma-separated string; each entry is
+// `Name` or `Name(rule)`. Anything we cannot split into such entries counts as
+// unreadable, which the directory treats like a grant.
+function toolEntries(value) {
+  if (Array.isArray(value)) return value.every((v) => typeof v === 'string') ? value : null;
+  if (typeof value !== 'string') return null;
+  const entries = value.match(/[A-Za-z]+(?:\([^)]*\))?/g) ?? [];
+  const squash = (s) => s.replace(/[\s,]/g, '');
+  return squash(entries.join('')) === squash(value) ? entries : null;
+}
+function checkToolList(where, value) {
+  const entries = toolEntries(value);
+  if (!entries) {
+    err('LOCAL_CODE_TOOL_GRANT', `${where} has an allowed-tools list that cannot be read completely`);
+    return;
+  }
+  for (const entry of entries) {
+    const m = entry.trim().match(/^([A-Za-z]+)(?:\(([^)]*)\))?$/);
+    const [tool, rule] = m ? [m[1], m[2] ?? ''] : [entry, ''];
+    if (!m || !PLAIN_TOOLS.has(tool)) {
+      err('LOCAL_CODE_TOOL_GRANT', `${where} pre-approves ${entry} — only Read, Grep, Glob and LS are accepted`);
+    } else if (/\$\{/.test(rule) || /^\s*(\/\/|\\\\)/.test(rule) || /[a-z][a-z0-9+.-]*:\/\//i.test(rule)) {
+      err('LOCAL_CODE_TOOL_GRANT', `${where} ${entry} uses a \${...} path, a // or \\\\ path, or a URL`);
+    }
+  }
+}
 for (const [f, text] of textFiles) {
-  if (!/\.md$/i.test(f)) continue;
-  const fm = text.match(/^---\n([\s\S]*?)\n---/);
+  if (!/\.(md|markdown)$/i.test(f)) continue;
+  const fm = text.match(/^---\r?\n([\s\S]*?)\r?\n---/);
   if (!fm) continue;
-  const line = fm[1].split('\n').find((l) => /^allowed-tools\s*:/.test(l));
-  if (!line) continue;
-  const value = line.replace(/^allowed-tools\s*:\s*/, '');
-  // Tool entries: `Name` or `Name(rule)`, separated by spaces/commas.
-  for (const m of value.matchAll(/([A-Za-z]+)(?:\(([^)]*)\))?/g)) {
-    const [, tool, rule] = m;
-    if (tool !== 'Bash') continue;
-    if (rule === undefined || rule.trim() === '*' || rule.trim() === '') {
-      err('ALLOWED_TOOLS_BROAD', `${rel(f)} pre-approves unrestricted Bash`);
-    } else if (!PINNED_BASH.test(rule.trim())) {
-      err('ALLOWED_TOOLS_BROAD', `${rel(f)} Bash(${rule}) is not pinned to a file under \${CLAUDE_PLUGIN_ROOT}`);
+  let data;
+  try {
+    data = parseYaml(fm[1]);
+  } catch (e) {
+    err('LOCAL_CODE_TOOL_GRANT', `${rel(f)} frontmatter is not valid YAML (${e.message.split('\n')[0]})`);
+    continue;
+  }
+  for (const key of ['allowed-tools', 'allowedTools']) {
+    if (data && typeof data === 'object' && key in data) checkToolList(rel(f), data[key]);
+  }
+}
+if (manifest && manifest.commands && typeof manifest.commands === 'object' && !Array.isArray(manifest.commands)) {
+  for (const [name, cmd] of Object.entries(manifest.commands)) {
+    if (cmd && typeof cmd === 'object' && 'allowedTools' in cmd) checkToolList(`plugin.json commands.${name}`, cmd.allowedTools);
+  }
+}
+
+// --- hooks and MCP servers ---------------------------------------------------
+if (existsSync(join(PLUGIN, 'hooks')) || manifest?.hooks) {
+  err('LOCAL_CODE_HOOK', "the plugin declares hooks — a hook runs a command on the user's machine");
+}
+function mcpServerMaps() {
+  const maps = [];
+  const load = (p, label) => {
+    try {
+      const j = JSON.parse(readFileSync(p, 'utf8'));
+      maps.push([label, j.mcpServers ?? j]);
+    } catch (e) {
+      err('LOCAL_CODE_MCP', `${label} cannot be read: ${e.message}`);
+    }
+  };
+  if (existsSync(join(PLUGIN, '.mcp.json'))) load(join(PLUGIN, '.mcp.json'), rel(join(PLUGIN, '.mcp.json')));
+  const m = manifest?.mcpServers;
+  for (const ref of Array.isArray(m) ? m : [m]) {
+    if (typeof ref === 'string') load(join(PLUGIN, ref), `plugin.json mcpServers -> ${ref}`);
+    else if (ref && typeof ref === 'object') maps.push(['plugin.json mcpServers', ref]);
+  }
+  return maps;
+}
+const userConfig = manifest?.userConfig ?? {};
+const headerKeys = new Set();
+const serverMaps = mcpServerMaps();
+for (const [label, servers] of serverMaps) {
+  for (const [name, s] of Object.entries(servers ?? {})) {
+    const where = `${label}.${name}`;
+    if (!s || typeof s !== 'object') {
+      err('LOCAL_CODE_MCP', `${where} is not an object`);
+      continue;
+    }
+    if ('command' in s) err('LOCAL_CODE_MCP', `${where} runs a local command — only remote servers are accepted`);
+    if (!['http', 'streamable-http', 'sse'].includes(s.type)) err('LOCAL_CODE_MCP', `${where} type is ${JSON.stringify(s.type)}, expected "http"`);
+    if (typeof s.url !== 'string' || !s.url.startsWith('https://')) err('LOCAL_CODE_MCP', `${where} url must be https://`);
+    for (const v of Object.values(s.headers ?? {})) {
+      for (const ref of String(v).matchAll(/\$\{([^}]*)\}/g)) {
+        const key = ref[1].match(/^user_config\.([A-Za-z0-9_]+)$/)?.[1];
+        if (!key) err('MCP_FORWARDS_CREDENTIAL_ENV', `${where} header reads \${${ref[1]}} — take it from \${user_config.KEY}`);
+        else headerKeys.add(key);
+      }
     }
   }
 }
 
-// --- quoted plugin paths in command/skill bodies ---------------------------
-// An unquoted ${CLAUDE_PLUGIN_ROOT}/… is split by the shell when the install
-// path contains a space (MODULE_NOT_FOUND). Bodies must quote it; the
-// allowed-tools rule may stay unquoted — Claude Code normalises quoting when it
-// matches (verified against 2.1.317 with a spaced install path, PR #89).
+// A plugin that sends data to a remote server must say where its privacy policy is.
+if (manifest && serverMaps.some(([, s]) => Object.keys(s ?? {}).length) && !/^https:\/\//.test(manifest.privacyPolicyUrl ?? '')) {
+  err('PRIVACY_URL_MISSING', 'plugin.json declares a remote MCP server but no https privacyPolicyUrl');
+}
+
+// --- userConfig --------------------------------------------------------------
 for (const [f, text] of textFiles) {
-  if (!/\.md$/i.test(f)) continue;
-  const body = text.replace(/^---\n[\s\S]*?\n---\n/, '');
-  for (const m of body.matchAll(/(^|[^"'])\$\{CLAUDE_PLUGIN_ROOT\}\//g)) {
-    // Skip prose/inline-code mentions (`…`); only shell lines are run.
-    const lineStart = body.lastIndexOf('\n', m.index) + 1;
-    const lineEnd = body.indexOf('\n', m.index);
-    const line = body.slice(lineStart, lineEnd === -1 ? undefined : lineEnd);
-    if (line.includes('`')) continue;
-    err('UNQUOTED_PLUGIN_ROOT', `${rel(f)}: "${line.trim()}" — quote "\${CLAUDE_PLUGIN_ROOT}/…" so install paths with spaces work`);
+  for (const ref of text.matchAll(/\$\{user_config\.([A-Za-z0-9_]+)\}/g)) {
+    if (!(ref[1] in userConfig)) err('USER_CONFIG', `${rel(f)} references undeclared \${user_config.${ref[1]}}`);
+  }
+}
+for (const key of headerKeys) {
+  if (userConfig[key] && userConfig[key].sensitive !== true) {
+    err('USER_CONFIG', `userConfig.${key} is sent as an MCP header but is not "sensitive": true`);
   }
 }
 
-// --- credentials from the environment & download-and-run ------------------
+// --- credentials from the environment, download-and-run, asset references ----
 const CRED_ENV = /process\.env(?:\.|\[['"])([A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|API_KEY|ACCESS_KEY|PRIVATE_KEY))\b|os\.environ(?:\.get)?[[(]['"]([A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|KEY))['"]|\$\{?([A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|API_KEY))\}?/g;
 const FETCH_EXEC = /\b(?:curl|wget)\b[^\n|]*\|\s*(?:ba|z|da)?sh\b|\b(?:npx|bunx|uvx|pipx run)\s+[^\s`]|\birm\b[^\n|]*\|\s*iex\b/;
+const ASSET_REF = /[\w./-]+\.(?:png|jpe?g|gif|webp|ico|svg|woff2?|ttf|otf)\b/i;
 for (const [f, text] of textFiles) {
   for (const m of text.matchAll(CRED_ENV)) {
     const name = m[1] ?? m[2] ?? m[3];
-    // ${CLAUDE_PLUGIN_ROOT}-style plugin variables are not credentials.
     if (name && !name.startsWith('CLAUDE_PLUGIN')) {
       err('MCP_FORWARDS_CREDENTIAL_ENV', `${rel(f)} reads credential-like env var ${name} — use userConfig (sensitive: true) instead`);
     }
   }
   const fe = text.match(FETCH_EXEC);
   if (fe) err('RUNTIME_FETCH_EXEC', `${rel(f)} contains a download-and-run command: ${fe[0].trim()}`);
+  if (f !== MANIFEST) {
+    const a = text.match(ASSET_REF);
+    if (a) err('UNREAD_ASSET_REFERENCED', `${rel(f)} names an image/font file (${a[0]}) — only plugin.json may`);
+  }
 }
 
-// --- icon -----------------------------------------------------------------
-const manifest = hasManifest ? JSON.parse(readFileSync(MANIFEST, 'utf8')) : undefined;
+// --- icon --------------------------------------------------------------------
 if (!manifest) {
   // Already reported as MANIFEST; the icon and marketplace checks need it.
 } else if (!manifest.icon) {
@@ -183,7 +306,7 @@ if (!manifest) {
   }
 }
 
-// --- marketplace points at this folder ------------------------------------
+// --- marketplace points at this folder --------------------------------------
 if (manifest) {
   const marketplace = JSON.parse(readFileSync(join(ROOT, '.claude-plugin/marketplace.json'), 'utf8'));
   const entry = marketplace.plugins?.find((p) => p.name === manifest.name);

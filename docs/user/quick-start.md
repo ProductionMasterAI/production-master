@@ -2,7 +2,7 @@
 
 Get from zero to your first investigation in a few minutes. Three steps, same everywhere: **install → log in → investigate.**
 
-> **Prerequisites:** Node.js 22 and an account on the Production Master hosted service.
+> **Prerequisites:** an account on the Production Master hosted service, and Node.js 22 for Cursor, Codex and OpenCode (the Claude Code plugin needs no Node.js).
 
 > **Status:** the Cursor, Codex, and OpenCode adapters are runnable but not yet published to npm (`private: true` for 0.1.0) — register them by pointing your editor at a local build, as shown below. Claude Code installs from the plugin marketplace and needs no local build.
 
@@ -18,6 +18,8 @@ This repo is its own plugin marketplace (`.claude-plugin/marketplace.json`), so 
 /plugin marketplace add ProductionMasterAI/production-master
 /plugin install production-master@production-master
 ```
+
+Claude Code asks for a **Production Master access token** when you install or enable the plugin (see [step 2](#2-log-in)). The plugin runs nothing on your machine — it connects Claude Code to the hosted service as a remote MCP server.
 
 > **Claude Code 2.1.275+:** the two steps above collapse into one —
 > `/plugin install production-master --marketplace ProductionMasterAI/production-master`
@@ -47,10 +49,9 @@ This repo is its own plugin marketplace (`.claude-plugin/marketplace.json`), so 
 > `archive` plugin source: the plugin is installed from a zip fetched over
 > HTTPS, with optional SHA-256 pinning of the archive — no git clone and no
 > npm involved in the install itself. The plugin is the self-contained
-> [`plugin/`](../../plugin) folder — its runtime,
-> `plugin/bin/production-master.mjs`, is committed already built, so a zip of
-> that folder is a complete install with no build step. Node.js 22 is still
-> required at runtime.
+> [`plugin/`](../../plugin) folder — a manifest and prompt-only commands,
+> with no program to build or run, so a zip of that folder is a complete
+> install. No Node.js is needed.
 
 ### Cursor
 
@@ -143,7 +144,9 @@ manual `/plugin marketplace update`.)
 
 ## 2. Log in
 
-Run the login command in your editor:
+**Claude Code** uses an access token instead of a device-code login. Claude Code asks for it when you install or enable the plugin; create one in the Production Master console under Settings, then Access tokens. Claude Code stores it in your OS credential store. To set up, change or remove the token later, run `/production-master:setup`. Then skip ahead to your first investigation.
+
+**Cursor, Codex and OpenCode:** run the login command in your editor:
 
 ```
 /login
@@ -162,6 +165,8 @@ Start an investigation by describing the incident:
 ```
 /investigate "checkout latency spiked at 14:20 UTC"
 ```
+
+In Claude Code the command is namespaced: `/production-master:investigate "checkout latency spiked at 14:20 UTC"`.
 
 The client hands this to the hosted service and begins streaming progress back into your editor: status updates, findings, and finally the report. You don't have to wait at the terminal — you can reconnect to a run later (see [Usage](usage.md)).
 

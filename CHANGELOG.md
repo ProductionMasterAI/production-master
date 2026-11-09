@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Stricter plugin-folder guard.** `npm run check:plugin` now fails on any
+  local code in `plugin/` and on missing directory-readiness metadata, with
+  these rule codes: `LOCAL_CODE_BIN`, `LOCAL_CODE_FILE_TYPE`,
+  `LOCAL_CODE_TOOL_GRANT`, `LOCAL_CODE_HOOK`, `LOCAL_CODE_MCP`, `USER_CONFIG`
+  and `PRIVACY_URL_MISSING`. It runs only the folder check; the bundle build
+  and drift check are gone.
 - **Logins refresh themselves and `/logout` revokes them** (service#1691;
   needs service v1.7, edge-api `/oauth/token` refresh grant). The device-code
   login now stores the rotating refresh token the service issues, and
@@ -74,6 +80,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   service send data, how long evidence is retained, and links the privacy policy.
 
 ### Changed
+
+- **BREAKING for Claude Code users (plugin v0.2.0): the plugin is now a
+  remote MCP connection with an access token, and ships no local program.**
+  The Claude Code plugin directory refuses local code from organizations that
+  are not Verified, so `plugin/` now declares one remote MCP server,
+  `production-master`, at `https://api.productionmaster.dev/v1/mcp`, and
+  Claude Code asks for a Production Master access token (created in the
+  console under Settings, then Access tokens) when you install or enable the
+  plugin. The token is stored in your OS credential store. The four commands
+  (`/production-master:setup`, `:investigate`, `:connect`, `:update`) are
+  prompt-only and pre-approve no tools, so Claude asks before each call.
+  No Node.js is needed. The device-code login, keychain session and
+  service-URL setting no longer apply to the Claude Code plugin; the Cursor,
+  Codex and OpenCode adapters and `pmctl` are unchanged. Needs the service's
+  user-scoped MCP endpoint, which is not live yet.
 
 - **The device-code login no longer sends `scope`.** The plugin's
   `read-investigation`/`write-investigation`/`approve-action` are MCP-session
@@ -758,6 +779,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     A refresh or retry is tied to the investigation it started for: if you switch
     investigations while a call is in flight, a late refresh is discarded and a
     call that gets a 401 is not re-sent under the new investigation's session.
+
+### Removed
+
+- **BREAKING for Claude Code users: `/login` and `/logout` are replaced by
+  `/production-master:setup`**, which creates, changes or removes the access
+  token. The bundled program `plugin/bin/production-master.mjs`, the
+  `scripts/build-plugin.mjs` build script and the `build:plugin` npm script
+  are removed.
 
 ## [0.1.1] - 2026-08-20
 

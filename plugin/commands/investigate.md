@@ -23,8 +23,9 @@ server — do no analysis of your own and do not read the user's code for it.
    `mcp__plugin_production-master_production-master__get_report` and present
    the report.
 5. If a step proposes an action, show it to the user and wait for their answer.
-   Never approve or reject on their behalf — they use
-   `/production-master:update` for that.
+   Never approve or reject on their behalf — they decide on the
+   investigation's page in the Production Master console (the console link
+   from step 2). `/production-master:update` can list what is waiting.
 
 If a call fails with an authentication error, the access token is missing,
 expired or revoked: tell the user to run `/production-master:setup`. Report any

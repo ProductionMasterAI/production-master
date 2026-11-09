@@ -33,11 +33,12 @@ jobs:
       # sit beneath a Keep a Changelog category header (plugin#37's
       # regression).
       - run: node scripts/check-changelog-structure.mjs
-      # Plugin directory submission (objective directory-zero-warnings, #86):
-      # the committed plugin/bin bundle must match its sources, and plugin/ --
-      # the only path the directory scans -- must carry none of the findings
-      # that held v0.1.1 (lockfile, broad allowed-tools, credential env reads,
-      # download-and-run, missing icon, binary / >256 KiB files).
+      # Plugin directory submission (#86, PR #98): plugin/ -- the only path
+      # the directory scans -- must carry no local code (no bin/, hooks, LSP
+      # servers, monitors, workflows, command-running settings or local MCP
+      # servers; only Markdown/text/JSON/YAML/images; allowed-tools limited to
+      # Read/Grep/Glob/LS) and none of the holds that stopped v0.1.x
+      # (credential env reads, download-and-run, missing icon or privacy URL).
       - run: npm run check:plugin
       # Claude Code's own plugin + marketplace validators, pinned so a CLI
       # release can't silently change what this gate checks.

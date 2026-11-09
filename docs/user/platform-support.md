@@ -5,13 +5,13 @@ The editor and agent platforms this client is validated against.
 | Platform | Validated against | Latest known |
 |---|---|---|
 | Claude Code | pending | 2.1.318 |
-| Cursor | pending | 3.11 (+ changelog 2026-10-20) |
+| Cursor | pending | 3.11 (+ changelog 2026-11-06) |
 | Codex | pending | 0.167.0 |
 | OpenCode | pending | pending |
 
 All four adapter packages now ship a runnable `dist/cli.js`, so each client is
 usable today. The Codex release this repo targets is **0.167.0** and the Cursor
-release is **3.11** (changelog covered through 2026-10-20; desktop CLI observed at **3.27.22**): for each, the
+release is **3.11** (changelog covered through 2026-11-06; desktop CLI observed at **3.29.9**): for each, the
 compatibility delta was reviewed against the existing adapter and its registration
 shape (`.codex/config.toml` for Codex, `.cursor/mcp.json` for Cursor), and nothing
 in either requires a client change. That is a documentation review, not a host
@@ -19,6 +19,12 @@ test — `Validated against` stays `pending` for both, as it does for every plat
 because running the adapter end-to-end against a released host is a separate axis
 that no target has cleared yet. 
 
+
+**Voice Chat with Agents (2026-11-06).** Realtime two-way voice with agents (IDE / Agents Window / web / iOS); separate from dictation (Cmd+Shift+Space). Optional for operator steer of local adapter sessions — no MCP registration change ([changelog](https://cursor.com/changelog)).
+
+**Build Live Apps (2026-11-05).** Cloud Agents can publish Cursor-hosted live apps. Orthogonal to this thin-client plugin; do not move product console hosting off the canonical Vercel projects ([changelog](https://cursor.com/changelog)).
+
+**Desktop 3.29.9 (stable download API 2026-11-08).** Stable download line **3.27.22 → 3.29.9** while the public feature write-up remains **3.11** / **2026-11-06**. IDE notes still cover **3.26**/**3.27**; 3.28–3.29 stabilize Projects / Cloud Agents / Remote Control / Origin Marketplace.
 
 **Agent SDK (2026-10-20).** Cursor's Agent SDK (`@grok/agent-sdk`) lets teams ship versioned PR-review / triage bots with evals ([docs](https://cursor.com/docs/agent-sdk), [changelog](https://cursor.com/changelog)). Optional and **orthogonal** to this thin-client plugin: bots may call the hosted public API / MCP only — never reimplement investigation pipeline logic here (public-repo IP boundary).
 
@@ -30,9 +36,9 @@ that no target has cleared yet.
 
 **Security Review + Rollouts (2026-09-23).** Teams/Enterprise bots from [Automations](https://cursor.com/automations) ([docs](https://cursor.com/docs/security-agents)). Security Review comments exploitable bugs on ready PRs (drafts skipped; Bugbot keeps style/quality); use `/review-security` before push. Rollouts watches deploy health per environment — optional for this public thin-client (no product deploy surface here). [Changelog](https://cursor.com/changelog/rollouts-and-security-reviewer).
 
-**Desktop 3.27.22 (stable download API 2026-11-01).** Stable download line advances **3.27.12 → 3.27.22** while the public feature write-up remains **3.11** / **2026-10-20** (Agent SDK GA). IDE notes still cover **3.26**/**3.27** (Resume-after-crash, sticky Always Run, `parent_agent_id`, Mermaid, Reduce Motion). **3.26:** resumable agents after extension-host crash; sticky Always Run when `~/.cursor/permissions.json` manages terminal allowlists. **3.27:** `parent_agent_id` on `subagentStart`/`subagentStop`; Mermaid expand/zoom/copy in markdown preview; Reduce Motion; faster first-window startup; non-UTF-8 agent I/O fixes. Retains 3.24–3.25 hook **`tool_use_id`** / **`transcript_path`** / auto-review / OOM / MCP OAuth hosted callback and 3.23 MCP allowlists / service tokens / Origin MCP. For this thin client: prefer Resume on crashed local adapter sessions; prefer service tokens over personal PATs for Cloud Agent CI triage; confirm org MCP allowlists still permit any Team MCP registration after upgrade.
+**Desktop 3.29.9 (see above).** Prior pin **3.27.22** superseded; feature write-up **3.11** / **2026-11-06**. IDE notes still cover **3.26**/**3.27** (Resume-after-crash, sticky Always Run, `parent_agent_id`, Mermaid, Reduce Motion). **3.26:** resumable agents after extension-host crash; sticky Always Run when `~/.cursor/permissions.json` manages terminal allowlists. **3.27:** `parent_agent_id` on `subagentStart`/`subagentStop`; Mermaid expand/zoom/copy in markdown preview; Reduce Motion; faster first-window startup; non-UTF-8 agent I/O fixes. Retains 3.24–3.25 hook **`tool_use_id`** / **`transcript_path`** / auto-review / OOM / MCP OAuth hosted callback and 3.23 MCP allowlists / service tokens / Origin MCP. For this thin client: prefer Resume on crashed local adapter sessions; prefer service tokens over personal PATs for Cloud Agent CI triage; confirm org MCP allowlists still permit any Team MCP registration after upgrade.
 
-**Cursor currency (desktop 3.27.22 / CLI 2026-08-26).** Feature write-up remains **3.11** (changelog through **2026-10-20** Agent SDK). The desktop download line is **3.27.22** (2026-11-01). CLI changelog **2026-08-26** adds persistent sessions (`agent persist`, `/detach`, `agent persist attach`) useful for long local adapter smoke runs — optional; no MCP registration change. Hibernated self-hosted worker wake on follow-up is irrelevant to this thin-client plugin (constraint #4 / no self-hosted Cursor workers declared here).
+**Cursor currency (desktop 3.29.9 / CLI 2026-08-26).** Feature write-up remains **3.11** (changelog through **2026-11-06** Voice Chat). The desktop download line is **3.29.9** (2026-11-08). CLI changelog **2026-08-26** adds persistent sessions (`agent persist`, `/detach`, `agent persist attach`) useful for long local adapter smoke runs — optional; no MCP registration change. Hibernated self-hosted worker wake on follow-up is irrelevant to this thin-client plugin (constraint #4 / no self-hosted Cursor workers declared here).
 
 The tracked pins live at the repo root:
 [`.claude-code-version`](../../.claude-code-version),
@@ -1896,7 +1902,7 @@ Enable **Update stale builds** and set the **Staleness threshold** (default
 **24 hours**; `0` = always pull latest default-branch at agent start). Phase
 split: durable work in `install` (Build-time), fresh services in `start`, shared
 app processes in `terminals` (both at agent start). Desktop download line
-**3.27.22** (stable download API **2026-11-01**; IDE 3.26/3.27 notes above; desktop 3.23 added MCP allowlists / service tokens; public feature changelog through 2026-10-20).
+**3.29.9** (stable download API **2026-11-08**; IDE 3.26/3.27 notes above; desktop 3.23 added MCP allowlists / service tokens; public feature changelog through 2026-11-06).
 ([announcement](https://cursor.com/blog/builds) · [Builds docs](https://cursor.com/docs/cloud-agent/builds)).
 
 **Cursor working tips.** **Desktop 3.23.12:** confirm Team MCP allowlists; prefer service tokens for Automations. **Security Review + Rollouts (2026-09-23):** enable from Automations when on Teams/Enterprise; `/review-security` for local pre-push. **Projects (2026-09-10):** use Cursor **Projects** (left nav) for multi-week / multi-agent work — a **coordinator** plans and delegates (does not write code); **shared context** syncs across cloud and local agents; **subscriptions** can watch Slack, schedules, or all PRs. Keep one-shot adapter fixes in ordinary Agent / Cloud Agent chats. Desktop CLI observed **3.23.12** (feature changelog still **3.11**). **Self-Hosted Machines (2026-09-02):** Cursor can run Cloud Agent tool execution on **My Machines**, **Team Pools** (dynamic scale + hibernation), or partner sandboxes (AWS Lambda, Coder, Cloudflare, Daytona, Modal, Namespace, Vercel, E2B), with **computer use** on Linux/Mac ([docs](https://cursor.com/docs/cloud-agent/self-hosted)). This is **not** GitHub Actions `runs-on: [self-hosted]` — this **public** thin-client repo stays on `ubuntu-latest` only (Hard rule 4 / fork-PR RCE). Prefer Cursor-managed Cloud Agents for day-to-day plugin work; use self-hosted only for private-network or custom-hardware constraints. **Start from scratch / Origin without SCM (2026-08-27):** Cloud Agents no longer need a connected GitHub (or other SCM) to begin — pick **Start from scratch**, prompt immediately, then **Create repo** to save into an Origin repo (private/internal). Live **browser port-forward preview** (incl. design mode) and optional **Vercel publish** for a live URL are available from the agent session. GitHub remains canonical for this public thin client's installs/CI. **Subscriptions / Custom Modes / isolated-VM subagents / `/goal` (+ CreateGoal/UpdateGoal) + steering (2026-08-19):** Cloud Agents can wake on PR/Slack/schedule and auto-subscribe to PRs they open; pin any skill as a Custom Mode via ⌥⏎ / Alt+Enter from `/`; cloud subagents can run on their own VMs; use `/goal` or native **CreateGoal** / **UpdateGoal**; follow-ups wait for the next tool call. Cursor CLI **Aug 11** adds sticky skills (Option+Enter),
@@ -1905,7 +1911,7 @@ durable `/goal` (gated), and runs hooks from installed plugins once a Cursor-nat
 hooks bundle exists — irrelevant to this thin-client adapter beyond local CLI
 debugging.  Desktop CLI may report **3.16.29** while the public feature
 changelog stays on **3.11** — this repo pins the feature/date in `.cursor-version`
-and records `desktop_cli` separately. Newest covered changelog date is **2026-10-20** (Agent SDK GA; prior Cloud Agent canvases + Environments API **2026-10-16**, Origin App Marketplace **2026-10-13**, Remote Control **2026-10-06**, Security Review + Rollouts **2026-09-23**, Projects **2026-09-10**). Desktop CLI **3.27.22**. Cursor also loads the open
+and records `desktop_cli` separately. Newest covered changelog date is **2026-11-06** (Voice Chat; prior Live Apps **2026-11-05**, Agent SDK GA **2026-10-20**, Cloud Agent canvases **2026-10-16**, Origin App Marketplace **2026-10-13**, Remote Control **2026-10-06**, Security Review + Rollouts **2026-09-23**, Projects **2026-09-10**). Desktop CLI **3.29.9**. Cursor also loads the open
 [Agent Plugins](https://agent-plugins.org) standard alongside `.cursor-plugin`
 manifests. The desktop/CLI `workspaceOpen` hook can return `pluginPaths` for
 workspace-specific plugins (not available on Cloud Agents). Use a **side chat**

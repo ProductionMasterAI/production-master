@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- **`permissions.blockReadsOutsideWorkingDirectories` is no longer set in
+  `.claude/settings.json`.** It made Claude Code ask before every shell
+  command whose reads it can't check (`sed -i`, `cd`+`git` chains, `xargs`),
+  even in `bypassPermissions` mode, so unattended sessions kept stopping for
+  approval. Set it in your user or `.claude/settings.local.json` settings if
+  you want the guard for your own sessions.
+
 ### Added
 
 - **Logins refresh themselves and `/logout` revokes them** (service#1691;

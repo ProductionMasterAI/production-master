@@ -23,7 +23,7 @@
  *   `src/service/__fixtures__/edge-api-v1.yaml` is the SUBSET of
  *   `production-master-service/tools/openapi/edge-api-v1.yaml` this client
  *   uses (public paths + the device-code `/oauth/*` contract; the internal
- *   `/admin` and `/operator` surfaces are omitted — Hard rule 15). Freshness is
+ *   `/admin` and `/operator` surfaces are omitted as non-public). Freshness is
  *   enforced on the SERVICE side: its "Plugin spec sync" CI job fetches this
  *   public file and fails unless every path/component here deep-equals the
  *   source. This repo is public and cannot read the private service, which is

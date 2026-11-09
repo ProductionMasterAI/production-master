@@ -27,9 +27,16 @@
  *   ICON_MISSING                 icon -> square PNG/JPEG, 512-2048 px, < 2 MB
  *   PRIVACY_URL_MISSING          a remote MCP server needs an https privacyPolicyUrl
  * Guards of our own, for things that would be local code by another route:
- *   LOCAL_CODE_HOOK        no hooks (a hook runs a command on the user's machine)
+ *   LOCAL_CODE_HOOK        no hooks (a hook runs a command on the user's machine;
+ *                          mods load through hooks/hooks.json too)
+ *   LOCAL_CODE_LSP         no LSP servers (.lsp.json or lspServers)
+ *   LOCAL_CODE_MONITOR     no monitors (monitors/ or [experimental.]monitors)
+ *   LOCAL_CODE_WORKFLOW    no workflows (workflows/ or workflows)
+ *   LOCAL_CODE_SETTINGS    no status line in plugin.json settings or settings.json
+ *                          (subagentStatusLine is a {type: "command"} entry)
  *   LOCAL_CODE_MCP         every MCP server is remote: type http/sse, an https
- *                          URL, no `command`
+ *                          URL, no `command`, no `headersHelper`, no .mcpb/.dxt
+ *                          bundle
  *   USER_CONFIG            every ${user_config.KEY} is declared, and a key used
  *                          in an MCP header is `sensitive: true`
  * And the plumbing that makes `plugin/` the submitted folder:
@@ -187,10 +194,43 @@ if (manifest && manifest.commands && typeof manifest.commands === 'object' && !A
   }
 }
 
-// --- hooks and MCP servers ---------------------------------------------------
-if (existsSync(join(PLUGIN, 'hooks')) || manifest?.hooks) {
+// --- components that run a command on the user's machine ----------------------
+// Each component below is a process Claude Code starts locally, so a plugin
+// from a non-Verified org may declare none of them — by default location or by
+// manifest key (https://code.claude.com/docs/en/plugins-reference).
+const declared = (v) => v !== undefined && v !== null && !(Array.isArray(v) && v.length === 0);
+if (existsSync(join(PLUGIN, 'hooks')) || declared(manifest?.hooks)) {
+  // Also covers mods: a mod is a hooks module named from hooks/hooks.json.
   err('LOCAL_CODE_HOOK', "the plugin declares hooks — a hook runs a command on the user's machine");
 }
+if (existsSync(join(PLUGIN, '.lsp.json')) || declared(manifest?.lspServers)) {
+  err('LOCAL_CODE_LSP', 'the plugin declares LSP servers (.lsp.json or lspServers) — each one runs a local command');
+}
+if (existsSync(join(PLUGIN, 'monitors')) || declared(manifest?.monitors) || declared(manifest?.experimental?.monitors)) {
+  err('LOCAL_CODE_MONITOR', 'the plugin declares monitors (monitors/ or experimental.monitors) — each one runs a background command');
+}
+if (existsSync(join(PLUGIN, 'workflows')) || declared(manifest?.workflows)) {
+  err('LOCAL_CODE_WORKFLOW', 'the plugin declares workflows (workflows/ or workflows) — a workflow is a JavaScript program');
+}
+// `settings` (plugin.json) and settings.json at the root apply `agent` and
+// `subagentStatusLine`; the status line is {type: "command", command}.
+const COMMAND_SETTINGS = ['subagentStatusLine', 'statusLine'];
+const settingsSources = [];
+if (manifest?.settings && typeof manifest.settings === 'object') settingsSources.push(['plugin.json settings', manifest.settings]);
+if (existsSync(join(PLUGIN, 'settings.json'))) {
+  try {
+    settingsSources.push([rel(join(PLUGIN, 'settings.json')), JSON.parse(readFileSync(join(PLUGIN, 'settings.json'), 'utf8'))]);
+  } catch (e) {
+    err('LOCAL_CODE_SETTINGS', `${rel(join(PLUGIN, 'settings.json'))} cannot be read: ${e.message}`);
+  }
+}
+for (const [label, s] of settingsSources) {
+  for (const key of COMMAND_SETTINGS) {
+    if (s && typeof s === 'object' && declared(s[key])) err('LOCAL_CODE_SETTINGS', `${label} sets ${key} — a status line runs a local command`);
+  }
+}
+
+// --- MCP servers -------------------------------------------------------------
 function mcpServerMaps() {
   const maps = [];
   const load = (p, label) => {
@@ -204,7 +244,9 @@ function mcpServerMaps() {
   if (existsSync(join(PLUGIN, '.mcp.json'))) load(join(PLUGIN, '.mcp.json'), rel(join(PLUGIN, '.mcp.json')));
   const m = manifest?.mcpServers;
   for (const ref of Array.isArray(m) ? m : [m]) {
-    if (typeof ref === 'string') load(join(PLUGIN, ref), `plugin.json mcpServers -> ${ref}`);
+    if (typeof ref === 'string' && /\.(mcpb|dxt)$/i.test(ref)) {
+      err('LOCAL_CODE_MCP', `plugin.json mcpServers -> ${ref} is an MCP bundle — it unpacks and runs a local server`);
+    } else if (typeof ref === 'string') load(join(PLUGIN, ref), `plugin.json mcpServers -> ${ref}`);
     else if (ref && typeof ref === 'object') maps.push(['plugin.json mcpServers', ref]);
   }
   return maps;
@@ -220,6 +262,7 @@ for (const [label, servers] of serverMaps) {
       continue;
     }
     if ('command' in s) err('LOCAL_CODE_MCP', `${where} runs a local command — only remote servers are accepted`);
+    if ('headersHelper' in s) err('LOCAL_CODE_MCP', `${where} has a headersHelper — it runs a local command to build headers`);
     if (!['http', 'streamable-http', 'sse'].includes(s.type)) err('LOCAL_CODE_MCP', `${where} type is ${JSON.stringify(s.type)}, expected "http"`);
     if (typeof s.url !== 'string' || !s.url.startsWith('https://')) err('LOCAL_CODE_MCP', `${where} url must be https://`);
     for (const v of Object.values(s.headers ?? {})) {

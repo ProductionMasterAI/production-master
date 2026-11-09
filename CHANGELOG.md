@@ -12,8 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Stricter plugin-folder guard.** `npm run check:plugin` now fails on any
   local code in `plugin/` and on missing directory-readiness metadata, with
   these rule codes: `LOCAL_CODE_BIN`, `LOCAL_CODE_FILE_TYPE`,
-  `LOCAL_CODE_TOOL_GRANT`, `LOCAL_CODE_HOOK`, `LOCAL_CODE_MCP`, `USER_CONFIG`
-  and `PRIVACY_URL_MISSING`. It runs only the folder check; the bundle build
+  `LOCAL_CODE_TOOL_GRANT`, `LOCAL_CODE_HOOK`, `LOCAL_CODE_LSP`,
+  `LOCAL_CODE_MONITOR`, `LOCAL_CODE_WORKFLOW`, `LOCAL_CODE_SETTINGS`,
+  `LOCAL_CODE_MCP` (which also refuses an MCP `headersHelper` and `.mcpb`/`.dxt`
+  bundles), `USER_CONFIG` and `PRIVACY_URL_MISSING`. It runs only the folder check; the bundle build
   and drift check are gone.
 - **Logins refresh themselves and `/logout` revokes them** (service#1691;
   needs service v1.7, edge-api `/oauth/token` refresh grant). The device-code
@@ -91,7 +93,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   plugin. The token is stored in your OS credential store. The four commands
   (`/production-master:setup`, `:investigate`, `:connect`, `:update`) are
   prompt-only and pre-approve no tools, so Claude asks before each call.
-  No Node.js is needed. The device-code login, keychain session and
+  The MCP server has no tool that approves or rejects a proposed action, so in
+  Claude Code you approve or reject on the investigation's page in the console;
+  `/production-master:update` lists what is waiting. No Node.js is needed. The device-code login, keychain session and
   service-URL setting no longer apply to the Claude Code plugin; the Cursor,
   Codex and OpenCode adapters and `pmctl` are unchanged. Needs the service's
   user-scoped MCP endpoint, which is not live yet.

@@ -149,6 +149,91 @@ describe('check-plugin-folder', () => {
     expectFinding(dir, 'LOCAL_CODE_HOOK');
   });
 
+  it('flags hooks declared only in plugin.json (LOCAL_CODE_HOOK)', () => {
+    const dir = copyPlugin();
+    editManifest(dir, (m) => {
+      m.hooks = { SessionStart: [{ hooks: [{ type: 'command', command: 'true' }] }] };
+    });
+    expectFinding(dir, 'LOCAL_CODE_HOOK');
+  });
+
+  describe('LOCAL_CODE_LSP', () => {
+    it('flags a .lsp.json file', () => {
+      const dir = copyPlugin();
+      writeFileSync(join(dir, '.lsp.json'), JSON.stringify({ go: { command: 'gopls', extensionToLanguage: { '.go': 'go' } } }));
+      expectFinding(dir, 'LOCAL_CODE_LSP');
+    });
+
+    it('flags lspServers in plugin.json', () => {
+      const dir = copyPlugin();
+      editManifest(dir, (m) => {
+        m.lspServers = { go: { command: 'gopls', extensionToLanguage: { '.go': 'go' } } };
+      });
+      expectFinding(dir, 'LOCAL_CODE_LSP');
+    });
+  });
+
+  describe('LOCAL_CODE_MONITOR', () => {
+    it('flags monitors/monitors.json', () => {
+      const dir = copyPlugin();
+      mkdirSync(join(dir, 'monitors'));
+      writeFileSync(join(dir, 'monitors/monitors.json'), JSON.stringify([{ name: 'm', command: 'tail -f x', description: 'd' }]));
+      expectFinding(dir, 'LOCAL_CODE_MONITOR');
+    });
+
+    it.each([
+      ['experimental.monitors', (m: Record<string, any>) => { m.experimental = { monitors: [{ name: 'm', command: 'true', description: 'd' }] }; }],
+      ['a top-level monitors key', (m: Record<string, any>) => { m.monitors = [{ name: 'm', command: 'true', description: 'd' }]; }],
+    ])('flags %s in plugin.json', (_label, edit) => {
+      const dir = copyPlugin();
+      editManifest(dir, edit);
+      expectFinding(dir, 'LOCAL_CODE_MONITOR');
+    });
+  });
+
+  describe('LOCAL_CODE_WORKFLOW', () => {
+    it('flags a workflows/ folder', () => {
+      const dir = copyPlugin();
+      mkdirSync(join(dir, 'workflows'));
+      writeFileSync(join(dir, 'workflows/notes.md'), '# notes\n');
+      expectFinding(dir, 'LOCAL_CODE_WORKFLOW');
+    });
+
+    it('flags workflows in plugin.json', () => {
+      const dir = copyPlugin();
+      editManifest(dir, (m) => {
+        m.workflows = './commands/';
+      });
+      expectFinding(dir, 'LOCAL_CODE_WORKFLOW');
+    });
+  });
+
+  describe('LOCAL_CODE_SETTINGS', () => {
+    const statusLine = { type: 'command', command: 'echo hi' };
+    it('flags subagentStatusLine in plugin.json settings', () => {
+      const dir = copyPlugin();
+      editManifest(dir, (m) => {
+        m.settings = { subagentStatusLine: statusLine };
+      });
+      expectFinding(dir, 'LOCAL_CODE_SETTINGS');
+    });
+
+    it('flags subagentStatusLine in a root settings.json', () => {
+      const dir = copyPlugin();
+      writeFileSync(join(dir, 'settings.json'), JSON.stringify({ subagentStatusLine: statusLine }));
+      expectFinding(dir, 'LOCAL_CODE_SETTINGS');
+    });
+
+    it('accepts settings that only choose an agent', () => {
+      const dir = copyPlugin();
+      writeFileSync(join(dir, 'settings.json'), JSON.stringify({ agent: 'reviewer' }));
+      // A temp copy always trips MARKETPLACE (its path is not ./plugin), so
+      // assert on the finding codes rather than the exit status.
+      const r = check(dir);
+      expect(r.out).not.toContain('LOCAL_CODE');
+    });
+  });
+
   describe('LOCAL_CODE_MCP', () => {
     it('flags a server that runs a local command', () => {
       const dir = copyPlugin();
@@ -172,6 +257,23 @@ describe('check-plugin-folder', () => {
         delete firstServer(m).type;
       });
       expectFinding(dir, 'LOCAL_CODE_MCP');
+    });
+
+    it('flags a headersHelper (it runs a local command)', () => {
+      const dir = copyPlugin();
+      editManifest(dir, (m) => {
+        firstServer(m).headersHelper = '${CLAUDE_PLUGIN_ROOT}/headers.sh';
+      });
+      expectFinding(dir, 'LOCAL_CODE_MCP');
+    });
+
+    it.each([['./server.mcpb'], ['https://example.invalid/server.dxt']])('flags an MCP bundle reference %s', (ref) => {
+      const dir = copyPlugin();
+      editManifest(dir, (m) => {
+        m.mcpServers = [m.mcpServers, ref];
+      });
+      // Named as a bundle, not merely as an unreadable JSON path.
+      expectFinding(dir, 'is an MCP bundle');
     });
 
     it('checks a .mcp.json file too', () => {

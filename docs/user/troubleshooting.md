@@ -213,11 +213,13 @@ Related notes for recent Claude Code versions:
   This closes a further gap in the same guarantee the compound-command fix
   above (2.1.271) narrowed, this time for the broader class of command
   shapes the checker can't fully parse rather than just two-`cd`/subshell/
-  `cd`+`git` chains. This repo sets `blockReadsOutsideWorkingDirectories:
-  true` in [`.claude/settings.json`](../../.claude/settings.json)
-  specifically so a stray read can't reach a `PM_ACCESS_TOKEN` credentials
-  file living outside the checkout. Update to 2.1.273+; the setting itself
-  needs no change.
+  `cd`+`git` chains. This repo no longer sets
+  `blockReadsOutsideWorkingDirectories` in
+  [`.claude/settings.json`](../../.claude/settings.json): it made Claude Code
+  ask before every shell command whose reads it can't check, such as
+  `sed -i` or a `cd`+`git` chain, even in `bypassPermissions` mode. To keep
+  that guard for your own sessions, set it in your user or
+  `.claude/settings.local.json` settings instead.
 - **A shell write through a repo-committed symlink onto a sensitive file now
   prompts, instead of writing through it silently — fixed in 2.1.287.** If a
   sandboxed Bash command resolved a tracked symlink to a path outside its

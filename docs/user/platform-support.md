@@ -5,7 +5,7 @@ The editor and agent platforms this client is validated against.
 | Platform | Validated against | Latest known |
 |---|---|---|
 | Claude Code | pending | 2.1.318 |
-| Cursor | pending | 3.11 (+ changelog 2026-11-06; desktop 3.29.9) |
+| Cursor | pending | 3.11 (+ changelog 2026-11-06) |
 | Codex | pending | 0.166.0 |
 | OpenCode | pending | pending |
 
@@ -1452,7 +1452,11 @@ it needs no repo change:
   dotfile-managed `PM_ACCESS_TOKEN` credentials file living outside the
   checkout is refused rather than merely prompted once. Set in
   [`.claude/settings.json`](../../.claude/settings.json) alongside the
-  existing allow/deny rules. The setting is scoped to auto mode, so it changes
+  existing allow/deny rules. **Removed again on 2026-11-09:** the setting also
+  made Claude Code ask before every shell command whose reads it can't check
+  (`sed -i`, `cd`+`git` chains), even in `bypassPermissions` mode, so the
+  maintainer's unattended sessions kept stopping for approval. The later
+  notes below that say "this repo sets" it describe the repo as it was then. The setting is scoped to auto mode, so it changes
   nothing for interactive (non-auto) sessions — which are not thereby
   protected: this repo's own allow list already covers `Read(*)`, `Edit(*)`,
   `Write(*)`, `Glob(*)`, `Grep(*)` and a set of Bash commands, and a matching

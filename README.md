@@ -21,7 +21,7 @@
 
 Production Master is a thin client for the Production Master hosted service. You point it at an incident, it starts an investigation on the service, and the results stream back into your IDE in real time. When the investigation proposes an action that changes something, you approve or reject it — nothing runs without your sign-off.
 
-The investigation itself runs entirely on the hosted service. This repository is the thin client: it handles device-code login, starts a run, streams live progress, renders the report, and relays your approve/reject decisions. No investigation logic, model provider SDKs, or credentials for the analysis live here.
+The investigation itself runs entirely on the hosted service. This repository is the thin client: it handles sign-in (a device-code login in Cursor, Codex, OpenCode and `pmctl`; an access token you configure in Claude Code), starts a run, streams live progress, renders the report, and relays your approve/reject decisions. No investigation logic, model provider SDKs, or credentials for the analysis live here.
 
 ## Features
 
@@ -32,7 +32,7 @@ The investigation itself runs entirely on the hosted service. This repository is
 
 ## Data flow
 
-- **From the plugin:** the plugin sends data to exactly one place, the Production Master hosted service (`PM_SERVICE_URL`, default `https://api.productionmaster.dev`), over HTTPS and authenticated by the device-code login. Everything you enter in `/investigate`, `/connect` and `/update`, and the run's progress and report, goes through that service. The plugin stores only your login token locally.
+- **From the plugin:** the Claude Code plugin sends data to exactly one place, the Production Master hosted service (`https://api.productionmaster.dev`), over HTTPS and authenticated by the access token you configure when you install it. Everything you enter in `/production-master:investigate`, `/production-master:connect` and `/production-master:update`, and the run's progress and report, goes through that service. Claude Code keeps the token in your OS credential store. The Cursor, Codex and OpenCode adapters send to the same service (`PM_SERVICE_URL`, default `https://api.productionmaster.dev`), authenticated by the device-code login, and store only your login token locally.
 - **On the hosted service:** an investigation (a) reads evidence from the connectors your workspace admin configured on the service side, for example Jira, GitHub, Slack, Grafana, PagerDuty and Prometheus; (b) sends that evidence and prompts to Google Vertex AI (Gemini), in Production Master's own Google Cloud project, to reason over them; and (c) stores the run, its evidence and report, and an audit trail in Production Master's database (Supabase Postgres) and evidence store (Google Cloud Storage). Proposed actions that would change a system run only after a person approves them in the plugin.
 - **Retention:** evidence is kept for 365 days by default, configurable per workspace; evidence classified as PII is capped at 30 days. Run reports and audit records are kept for the life of the account.
 - **Self-hosted (Enterprise edition):** deployments can point the service at other model providers. The hosted service uses Google Vertex AI only.
@@ -41,15 +41,15 @@ See the [privacy policy](https://productionmaster.dev/privacy) for details.
 
 ## Prerequisites
 
-- **Node.js 22** (pinned in [`.nvmrc`](.nvmrc))
-- **An account on the Production Master hosted service** — the client authenticates to it via device-code login.
+- **Node.js 22** (pinned in [`.nvmrc`](.nvmrc)) — for Cursor, Codex, OpenCode and `pmctl`; the Claude Code plugin needs no Node.js
+- **An account on the Production Master hosted service** — Claude Code authenticates with an access token created in the console (Settings, then Access tokens); the other editors use device-code login.
 - One of the supported editors: Claude Code, Cursor, Codex, or OpenCode.
 
 ## Quick Start
 
-Across every editor the flow is the same: **register the client → log in with a device code → start an investigation.** Point the client at your service with `PM_SERVICE_URL` (default `https://api.productionmaster.dev`).
+Claude Code uses an access token (see below). For Cursor, Codex and OpenCode the flow is: **register the client → log in with a device code → start an investigation.** Point the client at your service with `PM_SERVICE_URL` (default `https://api.productionmaster.dev`).
 
-Build the client first (workspaces compile the host-neutral core and each adapter):
+For Cursor, Codex, OpenCode and `pmctl`, build the client first (workspaces compile the host-neutral core and each adapter); Claude Code needs no build:
 
 ```bash
 nvm use && npm ci && npm run build
@@ -57,16 +57,20 @@ nvm use && npm ci && npm run build
 
 ### Claude Code
 
-Claude Code is wired end-to-end. This repo is its own plugin marketplace (`.claude-plugin/marketplace.json`), so a fresh clone or a bare `owner/repo` reference is all `/plugin marketplace add` needs — no separate marketplace repo to find first. Add the marketplace, install the plugin (the self-contained [`plugin/`](plugin/) folder — manifest, [`commands/`](plugin/commands/), and a generated, readable bundle of [`packages/adapter-claude-code`](packages/adapter-claude-code) at [`plugin/bin/production-master.mjs`](plugin/bin/production-master.mjs)), then use the slash commands:
+Claude Code is wired end-to-end. This repo is its own plugin marketplace (`.claude-plugin/marketplace.json`), so a fresh clone or a bare `owner/repo` reference is all `/plugin marketplace add` needs. The plugin (the self-contained [`plugin/`](plugin/) folder — a manifest and prompt-only [`commands/`](plugin/commands/)) runs nothing on your machine: it connects Claude Code to the hosted service as a remote MCP server, so it needs no Node.js and no build step.
 
 ```
 /plugin marketplace add ProductionMasterAI/production-master
 /plugin install production-master@production-master
-/login
-/investigate PROJ-1234
 ```
 
-`/connect <id>`, `/update <id> <tool> [jsonArgs]`, and `/logout` are also available. Each command runs the bundled thin-client binary with Node.js 22+ and pre-approves only its own subcommand; the plugin installs no packages, and nothing about the investigation runs locally. After changing `packages/adapter-claude-code` or `packages/plugin-core`, run `npm run build:plugin` and commit the regenerated bundle — CI (`npm run check:plugin`) fails when it drifts.
+Claude Code asks for a **Production Master access token** when you install or enable the plugin. Create one in the console under Settings, then Access tokens; Claude Code keeps it in your OS credential store. Then use the slash commands:
+
+```
+/production-master:investigate PROJ-1234
+```
+
+The full set is `/production-master:setup` (set up, change or remove your access token), `/production-master:investigate <ticket>`, `/production-master:connect <id>` and `/production-master:update <id> <what to do>`. The commands pre-approve no tools, so Claude asks before each call.
 
 On Claude Code 2.1.224+, the plugin can also be installed from an `archive` source — a zip fetched over HTTPS, with optional SHA-256 pinning — for machines without git or npm; see the note in the [quick start](docs/user/quick-start.md#claude-code).
 
@@ -134,12 +138,12 @@ flowchart LR
     end
     S["Production Master<br/>hosted service"]
 
-    C -- "device-code login (HTTPS)" --> S
+    C -- "sign-in (HTTPS)" --> S
     C -- "start / approve / reject (HTTPS)" --> S
     S -- "live progress + report (SSE)" --> C
 ```
 
-The client owns four concerns: **auth** (device-code login + token storage), **MCP transport** (exposing thin-client commands to the editor), **streaming** (consuming SSE and rendering progress), and **render adapters** (per-IDE presentation). It owns none of the analysis.
+The client owns four concerns: **auth** (device-code login + token storage in the Cursor, Codex and OpenCode adapters and `pmctl`; in Claude Code, an access token you configure), **MCP transport** (exposing thin-client commands to the editor), **streaming** (consuming SSE and rendering progress), and **render adapters** (per-IDE presentation). It owns none of the analysis.
 
 ## Documentation
 

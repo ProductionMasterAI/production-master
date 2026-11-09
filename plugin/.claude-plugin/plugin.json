@@ -1,7 +1,7 @@
 {
   "name": "production-master",
-  "version": "0.1.2",
-  "description": "Thin client for the Production Master hosted incident-investigation service — device-code login, trigger a run, stream live progress, and approve/reject proposed actions from inside Claude Code. No investigation logic runs locally.",
+  "version": "0.2.0",
+  "description": "Thin client for the Production Master hosted incident-investigation service — start a run, follow its progress, read the report, and act on proposed changes from inside Claude Code. Connects to the hosted service's MCP endpoint; nothing runs on your machine.",
   "icon": "./assets/icon.png",
   "author": {
     "name": "ProductionMasterAI",
@@ -10,11 +10,30 @@
   "homepage": "https://github.com/ProductionMasterAI/production-master#readme",
   "repository": "https://github.com/ProductionMasterAI/production-master",
   "license": "MIT",
+  "privacyPolicyUrl": "https://productionmaster.dev/privacy",
   "keywords": [
     "observability",
     "debugging",
     "incident-response",
     "thin-client",
-    "sse"
-  ]
+    "mcp"
+  ],
+  "userConfig": {
+    "api_token": {
+      "type": "string",
+      "title": "Production Master access token",
+      "description": "A personal access token from the Production Master console (Settings, then Access tokens). It is stored in your OS credential store and sent only to the Production Master service.",
+      "sensitive": true,
+      "required": true
+    }
+  },
+  "mcpServers": {
+    "production-master": {
+      "type": "http",
+      "url": "https://api.productionmaster.dev/v1/mcp",
+      "headers": {
+        "Authorization": "Bearer ${user_config.api_token}"
+      }
+    }
+  }
 }

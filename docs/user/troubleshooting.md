@@ -4,6 +4,8 @@ If something isn't working, find your symptom below. Most issues fall into one o
 
 ## Auth failures
 
+> **Claude Code uses an access token, not a device-code login.** The Claude Code plugin has no `/login` or `/logout`. It asks for a Production Master access token when you install or enable it, and `/production-master:setup` walks you through creating, changing or removing it. The sections below about device codes and `/login` apply to Cursor, Codex, OpenCode and `pmctl`; for Claude Code see [The plugin's access token](#claude-code-the-plugins-access-token).
+
 ### The device code is rejected or expired
 
 Device codes are short-lived. If you waited too long before approving in the browser, run `/login` again to get a fresh code, and approve it promptly.
@@ -49,7 +51,7 @@ for how to build it):
 }
 ```
 
-Then reload the editor and run `/login` again so the device-code session is created against the correct service.
+Then reload the editor and run `/login` again so the device-code session is created against the correct service. (The Claude Code plugin always talks to the hosted service and has no service-URL setting.)
 
 Common mistakes:
 
@@ -59,9 +61,17 @@ Common mistakes:
 
 ## Sandboxed commands (Claude Code)
 
+> **Not for the Claude Code plugin since v0.2.0.** The plugin's slash commands no
+> longer run anything through the Bash tool: they call the plugin's remote MCP
+> server, and Claude Code makes that connection itself, outside the command
+> sandbox. If the plugin cannot reach the service, see
+> [Claude Code: the plugin's access token](#claude-code-the-plugins-access-token)
+> and check the server's status with `/mcp`. The rest of this section applies only
+> when you run the `pmctl` CLI through Claude Code's Bash tool.
+
 ### Investigations fail with connection errors only inside Claude Code
 
-The slash commands run the thin client through the Bash tool, so they are subject
+When you run `pmctl` through the Bash tool, it is subject
 to Claude Code's command sandbox and its network egress rules. Since Claude Code
 2.1.219, the `sandbox.network.strictAllowlist` setting makes sandboxed commands
 **fail on non-allowlisted hosts without ever prompting** — so under a strict
@@ -241,23 +251,29 @@ Related notes for recent Claude Code versions:
   #2](../../.claude/rules/constraints.md)). Update to 2.1.289+; the deny
   entries themselves need no change.
 
+## Claude Code: the plugin's access token
+
+### An auth error from the Production Master MCP server
+
+The access token is missing, expired or revoked. Run `/production-master:setup`: create a new token in the Production Master console under Settings, then Access tokens, and enter it via `/plugin` → Installed → Configure (or `claude plugin configure production-master`). Run `/mcp` to see the status of the `production-master` server; it should show as connected once the token is accepted. If the server shows as unavailable rather than unauthorized, check your network and try again later.
+
+### Claude asks before every tool call
+
+This is expected. The plugin's commands pre-approve nothing, so Claude Code asks before each Production Master tool call; approve them as usual, or add your own allow rules in your Claude Code permission settings. Because nothing is pre-approved, an organization's managed permission policy does not change this behavior.
+
 ## Command arguments (Claude Code)
 
 ### A description or payload with `$`-looking text behaves oddly
 
-Every command in `plugin/commands/` (`/login`, `/investigate`, `/connect`,
-`/update`) interpolates the argument text as `$ARGUMENTS` — both in the
-command's prose and in the Bash line that runs the CLI (`node
-"${CLAUDE_PLUGIN_ROOT}/bin/production-master.mjs" investigate --input
-"$ARGUMENTS"`, and similarly for the others). Before Claude Code 2.1.233, an
+Every command in `plugin/commands/` (`/setup`, `/investigate`, `/connect`,
+`/update`) is prompt-only Markdown that interpolates the argument text as
+`$ARGUMENTS` into its instructions to Claude. Before Claude Code 2.1.233, an
 argument value that itself contained something shaped like a template marker
-— for instance an incident description pasted from another prompt, or a raw
-JSON `update` payload with an unlucky substring — could be re-expanded a
-second time instead of passed through as literal text, producing a mangled
-CLI invocation. Fixed in 2.1.233: argument values are no longer re-expanded.
-On older versions, if `/investigate` or `/update` behaves unexpectedly on a
-particular input, try rephrasing the argument to avoid `$`-prefixed tokens or
-update Claude Code.
+— for instance an incident description pasted from another prompt — could be
+re-expanded a second time instead of passed through as literal text. Fixed
+in 2.1.233: argument values are no longer re-expanded. On older versions, if
+`/investigate` or `/update` behaves unexpectedly on a particular input, try
+rephrasing the argument to avoid `$`-prefixed tokens or update Claude Code.
 
 ## MCP registration issues
 
@@ -305,30 +321,7 @@ Related Claude Code notes:
   reinstall needed, and no change to
   [`.claude-plugin/marketplace.json`](../../.claude-plugin/marketplace.json)
   is required.
-- **A Bash approval prompt appears on every `/investigate`, `/connect`,
-  `/update`, `/login`, or `/logout` in a managed organization, where it
-  didn't before.** Each command in [`plugin/commands/`](../../plugin/commands)
-  declares `allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/bin/production-master.mjs <command>:*)`
-  to pre-approve only its own subcommand of the bundled CLI. As of Claude
-  Code 2.1.284, that pre-approval is no longer honored under an
-  organization's managed `allowManagedPermissionRulesOnly` policy unless
-  the plugin comes from an official Anthropic source or one the
-  organization's managed settings explicitly vouch for — this repo's
-  marketplace is neither by default. This isn't a bug in the plugin or a
-  regression to fix here: if your organization runs
-  `allowManagedPermissionRulesOnly` and you want the pre-approval back, ask
-  your Claude Code admin to vouch for
-  `ProductionMasterAI/production-master` in managed settings; otherwise,
-  approve the Bash prompt once per command as usual.
-
-### The client registers but fails to start
-
-Look at your editor's MCP/extension logs for the `production-master` entry. A non-zero exit usually means Node.js is the wrong version (needs 22) or the package couldn't be fetched — check network access to the npm registry.
-
-### Streaming stalls or disconnects
-
-Live progress uses SSE over HTTPS. A proxy or firewall that buffers or drops long-lived connections can stall the stream. Reconnect with `/connect <run-id>`; if it still stalls, check whether an outbound proxy is interfering with SSE.
-
-## Still stuck?
-
-Open a GitHub issue with your editor and version, the client version, and the redacted output or log excerpt. Never include tokens or service credentials.
+- **Approval prompts for each command.** The plugin's commands declare no
+  `allowed-tools` and pre-approve nothing, so Claude asks before each tool
+  call regardless of your organization's managed permission policy. See
+  [Claude asks before every tool call](#claude-asks-before-every-tool-call).

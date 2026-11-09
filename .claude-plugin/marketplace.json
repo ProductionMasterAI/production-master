@@ -11,7 +11,7 @@
     {
       "name": "production-master",
       "source": "./plugin",
-      "description": "Thin client for the Production Master hosted incident-investigation service — device-code login, trigger a run, stream live progress, and approve/reject proposed actions from inside Claude Code. No investigation logic runs locally."
+      "description": "Thin client for the Production Master hosted incident-investigation service — start a run, follow its progress, read the report, and act on proposed changes from inside Claude Code. Connects to the hosted service's MCP endpoint; nothing runs on your machine."
     }
   ]
 }

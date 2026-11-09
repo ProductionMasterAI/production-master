@@ -105,9 +105,8 @@ mods, subagents, or MCP server of this repo's own for Claude Code) or
 - **Reviewed, not applicable: `permissions.blockWritesOutsideWorkingDirectories`
   and the Agent SDK `onFailure: "block"` hook option (2.1.314, 2.1.317).**
   Both are host-side settings/mod surfaces for sessions and hooks this repo
-  defines none of — it registers for Claude Code as five plain
-  `Bash(node ${CLAUDE_PLUGIN_ROOT}/bin/production-master.mjs <command>:*)`
-  slash commands, nothing deeper.
+  defines none of — it registers for Claude Code as four plain
+  prompt-only slash commands plus a remote MCP server, nothing deeper.
 - **Reviewed, not applicable: the `claude plugin validate` custom-named
   marketplace file fix (2.1.318).** This repo's marketplace manifest is
   already named `marketplace.json` — the standard name the fix was about
@@ -227,7 +226,7 @@ closes a real gap in this repo's own rules; reviewed line by line regardless:
   filter for a `managed-mcp.json` stdio server — this repo defines no hooks,
   mods, subagents, or managed settings of its own
   [constraint #4](../../.claude/rules/constraints.md); for Claude Code it
-  registers only as five plain Bash-only slash commands under
+  registers only as four plain prompt-only slash commands under
   [`commands/`](../../commands), nothing deeper.
 - **Reviewed, not applicable: the stdio MCP protocol-2026-07-28 "no tools"
   display fix (2.1.301/2.1.302).** Same reasoning — this plugin defines no
@@ -273,7 +272,7 @@ fix directly relevant to how this plugin is installed, one is a required
 managed-org/gateway/model/mods/hooks/OTel/Workflow/self-hosted-runner/Cowork/
 Artifact/Claude-Tag surface [constraint #4](../../.claude/rules/constraints.md)
 (or [constraint #5](../../.claude/rules/constraints.md)) rules out, or
-host-side UI/reliability work with no hook into this repo's five Bash-only
+host-side UI/reliability work with no hook into this repo's four prompt-only
 commands:
 
 - **Documented: Bash permission checks could auto-approve a command prefixed
@@ -302,8 +301,8 @@ commands:
   public, fork-PR-driven repo, a malicious contribution could previously add
   a file under [`commands/`](../../commands) or
   [`.claude/skills/`](../../.claude/skills) whose display name used one of
-  these characters to visually spoof one of this plugin's five genuine slash
-  commands (`/investigate`, `/connect`, `/update`, `/login`, `/logout`) or
+  these characters to visually spoof one of this plugin's four genuine slash
+  commands (`/investigate`, `/connect`, `/update`, `/setup`) or
   its two skills. Update Claude Code; none of this repo's own file or folder
   names use any of the now-rejected characters, so nothing here needs
   renaming — the fix only closes the door on a future malicious addition.
@@ -380,7 +379,7 @@ relies on, one is a required `claude plugin validate` re-check, one is a
 genuinely new surface not yet adoptable, and everything else is either a
 managed-org/gateway/model/mods/self-hosted-runner surface
 [constraint #4](../../.claude/rules/constraints.md) rules out or host-side
-UI/reliability work with no hook into this repo's five Bash-only commands:
+UI/reliability work with no hook into this repo's four prompt-only commands:
 
 - **Adopted: the `claude plugin install <plugin> --marketplace <source>`
   CLI flag, now shown in [Quick Start](quick-start.md) (2.1.292).** This is a
@@ -428,7 +427,7 @@ UI/reliability work with no hook into this repo's five Bash-only commands:
   (2.1.287, extended through 2.1.292).** Plugins can now modify deeper Claude
   Code behavior — a new `$.tool.register`/`$.ui.*`/`$.model.complete` hook
   surface for a plugin's own live panes, status lines, toasts, and tool
-  schemas. This repo's single plugin is intentionally five Bash-only slash
+  schemas. This repo's single plugin is intentionally four prompt-only slash
   commands with no hooks or deeper behavior today; a mod could, say, surface
   this repo's own build/verify status in a status line, but that is a new
   plugin component with its own design and review surface, not a one-line
@@ -465,7 +464,7 @@ everything else is either a
 managed-org/gateway/Bedrock/Vertex/Foundry/Cowork/Artifact/self-hosted-runner
 surface [constraint #4](../../.claude/rules/constraints.md) rules out (or
 [constraint #5](../../.claude/rules/constraints.md)), or host-side UI/
-reliability work with no hook into this repo's five Bash-only commands:
+reliability work with no hook into this repo's four prompt-only commands:
 
 - **Adopted: a dedicated `verify` skill, so Claude Code's own commit
   guidance runs it automatically (2.1.286).** 2.1.286 changed Claude's
@@ -484,24 +483,15 @@ reliability work with no hook into this repo's five Bash-only commands:
   gate, or rely on [AGENTS.md](../../AGENTS.md) being read and followed —
   Claude Code 2.1.286+ invokes `verify` itself before committing anything
   that touches code.
-- **Documented: plugin `allowed-tools` pre-approval no longer applies under
-  managed `allowManagedPermissionRulesOnly` unless the source is official or
-  vouched for (2.1.284).** Before 2.1.284, a plugin's own `allowed-tools`
-  frontmatter — as in all five of this plugin's
-  [`commands/`](../../commands) (`allowed-tools: Bash`) — pre-approved that
-  tool even under an organization's `allowManagedPermissionRulesOnly`
-  policy. As of 2.1.284, that pre-approval only still applies to a plugin
-  from an official Anthropic source or one an organization's managed
-  settings explicitly vouch for; this repo's marketplace is neither by
-  default. Nothing here changes: the commands still declare
-  `allowed-tools: Bash` because that is correct for ordinary installs, and
-  there is no repo-side way to "vouch" for a marketplace — that is the
-  installing organization's managed-settings decision. Noted in
-  [Troubleshooting](troubleshooting.md#mcp-registration-issues) so a
-  contributor on a locked-down org who suddenly sees a Bash approval prompt
-  on every `/investigate`, `/connect`, `/update`, `/login`, or `/logout`
-  after updating Claude Code knows why, and who to ask (their org admin, to
-  vouch for this marketplace) rather than assuming the plugin regressed.
+- **Documented, no longer applicable: plugin `allowed-tools` pre-approval
+  under managed `allowManagedPermissionRulesOnly` (2.1.284).** As of 2.1.284,
+  a plugin's own `allowed-tools` pre-approval only applies under an
+  organization's `allowManagedPermissionRulesOnly` policy for a plugin from
+  an official Anthropic source or one the organization's managed settings
+  explicitly vouch for. This plugin's commands now declare no
+  `allowed-tools` at all and pre-approve nothing — Claude asks before each
+  tool call — so the policy changes nothing for them. Noted in
+  [Troubleshooting](troubleshooting.md#mcp-registration-issues).
 - **Reviewed, attempted but unavailable here: `/doctor prompt-audit`
   (2.1.283).** New in 2.1.283, it audits CLAUDE.md-equivalents, skills,
   agents, and commands for prompting patterns written for older models —
@@ -688,7 +678,7 @@ shape, and command-argument handling are unchanged. Three items are
 adopted, one is a required compatibility check, and everything else is
 either a managed-org/gateway/Bedrock/Vertex/Foundry/Enterprise surface
 [constraint #4](../../.claude/rules/constraints.md) rules out or host-side
-UI/reliability work with no hook into this repo's five Bash-only commands:
+UI/reliability work with no hook into this repo's four prompt-only commands:
 
 - **Adopted: `AGENTS.md` as this repo's auto-loaded project instructions
   (2.1.277).** Claude Code now reads `AGENTS.md` for project instructions in
@@ -730,9 +720,9 @@ UI/reliability work with no hook into this repo's five Bash-only commands:
   only.
 - **Reviewed, compatibility-required: the removed `TaskOutput` tool
   (2.1.277).** Searched `commands/`, `packages/`, and `.claude/` for any
-  reference — none exists. This repo's five slash commands
-  ([`commands/`](../../commands)) exec the thin-client binary over `Bash` and
-  never call `TaskOutput` (or any Task-family tool) directly, so the removal
+  reference — none exists. This repo's four slash commands
+  ([`commands/`](../../commands)) are prompt-only, run no local commands,
+  and never call `TaskOutput` (or any Task-family tool) directly, so the removal
   needs no migration here.
 - **Reviewed, not applicable: `CLAUDE_GATEWAY_PROXY_IS_EGRESS_BOUNDARY=1` and
   the gateway upstream `headers:` map (2.1.277).** No Claude apps gateway of
@@ -756,7 +746,7 @@ UI/reliability work with no hook into this repo's five Bash-only commands:
 
 Everything else in 2.1.275–2.1.278 is either a managed-org/gateway/Bedrock/
 Vertex/Foundry/Enterprise surface constraint #4 rules out or host-side UI/
-reliability work with no hook into this repo's five Bash-only commands or its
+reliability work with no hook into this repo's four prompt-only commands or its
 [`.claude/settings.json`](../../.claude/settings.json). Nothing here changes
 registration, sandboxing shape, or command-argument handling beyond the two
 settings adopted above.
@@ -768,7 +758,7 @@ adopted — one bug fix is general reliability that benefits automatically,
 and everything else is either a managed-org/gateway/MCP-as-client/
 subagent/hook surface [constraint #4](../../.claude/rules/constraints.md)
 rules out or this repo doesn't exercise, or host-side UI/telemetry work
-with no hook into this repo's five Bash-only commands:
+with no hook into this repo's four prompt-only commands:
 
 - **Reviewed, benefits automatically: the fix for stuck retry loops on
   `tool_use_id` errors (2.1.274).** General session reliability with no
@@ -822,7 +812,7 @@ with no hook into this repo's five Bash-only commands:
 Everything else in 2.1.274 is either a managed-org/gateway/MCP-as-client/
 subagent/hook surface constraint #4 rules out or this repo doesn't
 exercise, or host-side UI/reliability work with no hook into this repo's
-five Bash-only commands or its
+four prompt-only commands or its
 [`.claude/settings.json`](../../.claude/settings.json). Nothing here
 changes registration, sandboxing shape, or command-argument handling.
 
@@ -836,7 +826,7 @@ most of 2.1.273's published "New Features" list is a verbatim republish of
 2.1.271's — already reviewed and ruled not applicable in the note below —
 and everything genuinely new this release is either a gateway/MCP-server/
 Remote-Control surface constraint #4 rules out or host-side UI/reliability
-work with no hook into this repo's five Bash-only commands:
+work with no hook into this repo's four prompt-only commands:
 
 - **Documented: a Bash command the permission checker can't fully analyze
   could still skip the `permissions.blockReadsOutsideWorkingDirectories`
@@ -903,7 +893,7 @@ work with no hook into this repo's five Bash-only commands:
   Claude Code on the web, Claude in Slack, or the separate auto-PR "Code
   Review" product those sections describe) — is either a managed-org/
   gateway/model-calling surface constraint #4 rules out or host-side UI/
-  reliability work with no hook into this repo's five Bash-only commands or
+  reliability work with no hook into this repo's four prompt-only commands or
   its [`.claude/settings.json`](../../.claude/settings.json). Nothing here
   changes registration, sandboxing shape, or command-argument handling.
 
@@ -917,7 +907,7 @@ a managed-org/gateway/Remote-Control/Workflow/Artifact/MCP-as-client surface
 [constraint #4](../../.claude/rules/constraints.md) rules out, a
 self-hosted-runner surface [constraint #5](../../.claude/rules/constraints.md)
 rules out, or host-side terminal/UI/reliability work with no hook into this
-repo's five Bash-only commands:
+repo's four prompt-only commands:
 
 - **Documented: a stale `.git/config.lock` breaking `git checkout -b`,
   `git push -u`, and `git config` for the rest of a session after a
@@ -1007,7 +997,7 @@ repo's five Bash-only commands:
   Cowork/dynamic-workflow items — is either a managed-org/model-calling/
   Cowork/Workflow/self-hosted-runner surface constraints #4/#5 rule out or
   this repo doesn't exercise, or host-side UI/reliability work with no hook
-  into this repo's five Bash-only commands or its
+  into this repo's four prompt-only commands or its
   [`.claude/settings.json`](../../.claude/settings.json). Nothing here
   changes registration, sandboxing shape, or command-argument handling.
 
@@ -1018,7 +1008,7 @@ adopted, one closes a loop directly relevant to this repo's read-only-git
 Bash allow rules, one is called out as a genuine (but not yet taken) option
 for this repo's single plugin, and everything else is either a managed-org/
 gateway/OTEL/Workflow/Cowork surface constraint #4 rules out or host-side
-reliability work with no hook into this repo's five Bash-only commands:
+reliability work with no hook into this repo's four prompt-only commands:
 
 - **Adopted: `bashEditDiffEnabled` (2.1.269).** When the Bash tool itself
   edits a file, Claude Code can now attach a diff of what changed to the
@@ -1060,9 +1050,9 @@ reliability work with no hook into this repo's five Bash-only commands:
   changelog-structure guards, `secret-scan` and `ip-guard` — but nothing in CI
   or in the test suite reads `.claude-plugin/plugin.json` or the `commands/`
   manifests at all, so a malformed manifest passes CI today, and nothing
-  exercises the five slash commands as Claude Code itself would invoke them. Not adopted here because an eval suite worth committing to
+  exercises the four slash commands as Claude Code itself would invoke them. Not adopted here because an eval suite worth committing to
   needs deciding what a fixture-backed `PM_SERVICE_URL` for
-  `/login`/`/investigate`/`/connect`/`/update`/`/logout` looks like and what
+  `/setup`/`/investigate`/`/connect`/`/update` looks like and what
   "correct" scores as, which is a design decision, not a config flip — see
   Future opportunities in the tracking PR for a concrete starting shape.
 - **Reviewed, not applicable: `/output-style` (2.1.269).** Lets an
@@ -1127,7 +1117,7 @@ reliability work with no hook into this repo's five Bash-only commands:
   skill is project-local, checked into this repo, never claude.ai-synced) —
   is either a managed-org/model-calling/Cowork/Workflow surface constraint
   #4 rules out or this repo doesn't exercise, or host-side reliability/UI
-  work with no hook into this repo's five Bash-only commands or its
+  work with no hook into this repo's four prompt-only commands or its
   [`.claude/settings.json`](../../.claude/settings.json). Nothing here
   changes registration, sandboxing shape, or command-argument handling.
 
@@ -1208,7 +1198,7 @@ adopted:
   terminal/UI cosmetics — is either a managed-org/subagent/Cowork/Workflow/
   self-hosted-runner surface constraints #4/#5 rule out or this repo doesn't
   exercise, or terminal/UI/reliability work with no hook into this repo's
-  five Bash-only commands or its
+  four prompt-only commands or its
   [`.claude/settings.json`](../../.claude/settings.json). Nothing here
   changes registration, sandboxing shape, or command-argument handling.
 
@@ -1269,7 +1259,7 @@ not adopted with a config change:
   matching, and the plugin-display-metadata (marketplace-over-`plugin.json`)
   change — is either a managed-org/subagent/Cowork/Workflow/self-hosted-runner
   surface constraints #4/#5 rule out or this repo doesn't exercise, or
-  terminal/UI/reliability work with no hook into this repo's five Bash-only
+  terminal/UI/reliability work with no hook into this repo's four prompt-only
   commands or its [`.claude/settings.json`](../../.claude/settings.json).
   Nothing here changes registration, sandboxing shape, or command-argument
   handling.
@@ -1342,7 +1332,7 @@ client-relevant hit:
   (the diff panel, text-form `/advisor`, streaming performance, the `rm -rf`
   safety-prompt coverage, word-editing keybindings, `/context` token
   counting, `/reload-plugins` in headless sessions, and the full VS Code
-  list) with no hook into this repo's five Bash-only commands or its
+  list) with no hook into this repo's four prompt-only commands or its
   [`.claude/settings.json`](../../.claude/settings.json). 2.1.263 itself
   shipped only "bug fixes and reliability improvements," with no further
   detail published. Nothing else here changes registration, sandboxing
@@ -1372,7 +1362,7 @@ constraints rule out, or a fix with no client-relevant hit:
   Troubleshooting so an unattended `/investigate`, `/connect`, or `/update`
   run fails cleanly on an unexpected prompt rather than hanging the job; no
   change to `.claude/settings.json` itself, since its allow list already
-  covers this repo's five Bash-only commands.
+  covers this repo's four prompt-only commands.
 - **Reviewed, not applicable: `managedMcpServers`, `managed
   forceRemoteSettingsRefresh`, and the "managed settings refuses to start
   when unparseable" hardening.** `managedMcpServers` lets an organization
@@ -1412,7 +1402,7 @@ constraints rule out, or a fix with no client-relevant hit:
   `--worktree`); the terminal-resize, `/workflows`, headless/SDK-start-latency,
   `/install-github-app`, nested-subagent-transcript, `allowedMcpServers`, and
   VS Code session-list fixes — is host session, UI, telemetry, or
-  managed-settings machinery this repo's five Bash-only commands never
+  managed-settings machinery this repo's four prompt-only commands never
   exercise (constraint #4), or (the self-hosted-runner and worktree items)
   ruled out by constraints #4/#5 directly. Nothing else here changes
   registration, sandboxing shape, or command-argument handling.
@@ -1426,7 +1416,7 @@ Claude Code failing to launch on macOS 12 (Monterey) — a regression from
 `commands/` or `.claude/` config can affect — and a fix for remote and
 scheduled sessions failing with "user messages must have non-empty content"
 after a re-sent permission approval couldn't be applied, which is Remote
-Control / scheduled-session machinery this repo's five Bash-only commands
+Control / scheduled-session machinery this repo's four prompt-only commands
 never exercise (no hooks, no background sessions, no scheduled triggers
 defined under `.claude/` — [constraint #4](../../.claude/rules/constraints.md)).
 Nothing to adopt or change.
@@ -1524,7 +1514,7 @@ worktree-isolated-session Bash-loop and linked-worktree `.git`-write fixes
 GitHub-hosted `ubuntu-latest` only, never `self-hosted`); and every other
 listed background-session, Remote Control, MCP-as-client, terminal-rendering,
 managed-settings, Bedrock/Vertex/Foundry/Bedrock-Mantle, and VS Code fix —
-host session/UI/billing machinery this repo's five Bash-only commands never
+host session/UI/billing machinery this repo's four prompt-only commands never
 exercise. Nothing else here changes registration, sandboxing shape, or
 command-argument handling.
 
@@ -1548,9 +1538,8 @@ with no further detail published — nothing to review there.
 
 Reviewed and not applicable from 2.1.248: `--restricted` /
 `CLAUDE_CODE_RESTRICTED` (every command in [`commands/`](../../commands/)
-declares `allowed-tools: Bash` to exec the thin-client binary, so a
-restricted session that strips command-execution tools couldn't run any of
-them — this repo can't adopt it without dropping Bash entirely; see Future
+is prompt-only and calls the hosted service's remote MCP server, so it runs
+no local commands for a restricted session to strip; see Future
 opportunities below); `experimental.cacheTtl` agent frontmatter and
 `self-hosted-runner --client-label` (no agents, no self-hosted runners — see
 [constraints #4/#5](../../.claude/rules/constraints.md)); server-managed-
@@ -1559,7 +1548,7 @@ settings load diagnostics, the `/web-setup` GitHub-token-scope warning,
 messaging on Bedrock/Vertex/Foundry (host session/billing surface, no model
 calls here); and every listed background-session, Remote Control, `claude
 agents`, MCP-as-client, and terminal fix — all host session machinery this
-repo's five Bash-only commands never exercise.
+repo's four prompt-only commands never exercise.
 
 Reviewed and not applicable from 2.1.251: the new `PreModelSwitch`/
 `PostModelSwitch` hooks and `SessionStart` staleness fields, foreground-

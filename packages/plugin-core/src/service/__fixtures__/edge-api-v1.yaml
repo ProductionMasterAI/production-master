@@ -1,7 +1,7 @@
 # VENDORED SUBSET of ProductionMasterAI/production-master-service tools/openapi/edge-api-v1.yaml.
 # Do not edit by hand. Every path/component here must deep-equal the service's (its CI job
 # "Plugin spec sync" fails otherwise); internal /admin and /operator surfaces are deliberately
-# omitted (Hard rule 15). Regenerate from the service spec when it changes.
+# omitted (they are not part of the public surface). Regenerate from the service spec when it changes.
 openapi: 3.1.0
 info:
   title: Production Master Edge API
@@ -108,7 +108,7 @@ paths:
         "202":
           description: Accepted
         "403":
-          description: "Refused at the write boundary. `SOURCE_NOT_APPROVED` (source gate, dev#1350): the run would read a CONFIGURED connector, or a resource in it (a repository, a Jira project), that the org has not approved. A connector the org has not configured is not checked. Nothing is queued. Approve the source with `PUT /v1/admin/workspace-config/tools/{toolName}/instances/{instance}` (`approvedResources`; approval is per instance, and the body carries `instance`) and retry; the idempotency key is not consumed by this refusal. `RESIDENCY_REGION_BLOCKED` is the other 403 this route returns."
+          description: "Refused at the write boundary. `SOURCE_NOT_APPROVED` (source gate): the run would read a CONFIGURED connector, or a resource in it (a repository, a Jira project), that the org has not approved. A connector the org has not configured is not checked. Nothing is queued. Approve the source with `PUT /v1/admin/workspace-config/tools/{toolName}/instances/{instance}` (`approvedResources`; approval is per instance, and the body carries `instance`) and retry; the idempotency key is not consumed by this refusal. `RESIDENCY_REGION_BLOCKED` is the other 403 this route returns."
           content:
             application/json:
               schema:
@@ -304,14 +304,14 @@ paths:
                   type: string
                   description: >-
                     One-time secret issued by POST /v1/admin/mcp-callers. Required to
-                    invoke execute-capability tools (fork / rerun_from_phase / resume);
-                    AD-10 Amendment 1. An unregistered key fails the mint outright.
+                    invoke execute-capability tools (fork / rerun_from_phase / resume).
+                    An unregistered key fails the mint outright.
       responses:
         "201":
           description: Session created
         "403":
           description: >-
-            insufficient_scope — a requested session scope needs an AD-29 scope the caller does not
+            insufficient_scope — a requested session scope needs a permission the caller does not
             hold (`mutate` needs `runs:write`, `read` needs `runs:read`); the missing scope is
             returned as `requiredScope`
         "401":
@@ -414,7 +414,7 @@ paths:
       summary: Device-code poll (RFC 8628 §3.4) or refresh (RFC 6749 §6)
       description: >-
         Two grants, told apart by `grant_type`. The device-code grant polls an
-        approved login; the refresh grant (service#1691) exchanges a refresh
+        approved login; the refresh grant exchanges a refresh
         token for a new access token. Both answer with a short-lived access
         token (900 s) and a NEW refresh token: refresh tokens rotate on every
         use, and presenting one that was already used revokes the whole login

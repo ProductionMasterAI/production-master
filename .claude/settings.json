@@ -4,7 +4,6 @@
   "syncClaudeAiSkills": false,
   "syncClaudeAiPlugins": false,
   "permissions": {
-    "blockReadsOutsideWorkingDirectories": true,
     "allow": [
       "Bash(npm ci)",
       "Bash(npm install)",

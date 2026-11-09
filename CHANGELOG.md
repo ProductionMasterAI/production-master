@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- **`permissions.blockReadsOutsideWorkingDirectories` is no longer set in
+  `.claude/settings.json`.** It made Claude Code ask before every shell
+  command whose reads it can't check (`sed -i`, `cd`+`git` chains, `xargs`),
+  even in `bypassPermissions` mode, so unattended sessions kept stopping for
+  approval. Set it in your user or `.claude/settings.local.json` settings if
+  you want the guard for your own sessions.
+
+### Changed
+
+- **Cursor 3.11 (+2026-11-06 / desktop 3.29.9):** advance pins; document Voice Chat (≠ dictation) and Live Apps as orthogonal to the thin-client IP boundary. Feature pin remains **3.11**. Cursor-only.
+
 ### Added
 
 - **Stricter plugin-folder guard.** `npm run check:plugin` now fails on any

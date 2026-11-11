@@ -6,11 +6,11 @@ The editor and agent platforms this client is validated against.
 |---|---|---|
 | Claude Code | pending | 2.1.318 |
 | Cursor | pending | 3.11 (+ changelog 2026-11-06) |
-| Codex | pending | 0.167.0 |
+| Codex | pending | 0.167.1 |
 | OpenCode | pending | pending |
 
 All four adapter packages now ship a runnable `dist/cli.js`, so each client is
-usable today. The Codex release this repo targets is **0.167.0** and the Cursor
+usable today. The Codex release this repo targets is **0.167.1** and the Cursor
 release is **3.11** (changelog covered through 2026-11-06; desktop CLI observed at **3.29.9**): for each, the
 compatibility delta was reviewed against the existing adapter and its registration
 shape (`.codex/config.toml` for Codex, `.cursor/mcp.json` for Cursor), and nothing
@@ -1926,3 +1926,5 @@ wired into that editor's native registration:
 
 
 Codex 0.167.0 (2026-11-06) adds `codex agents --no-daemon`, backend switching in the session picker, local image previews, optional OS proxy settings, and a Vertex AI setup wizard. Managed `[permissions.network]` and fresh-approval `prompt-user` rules, improved MCP session leases, cancellation, token-refresh recovery, provider switching and context compaction are host-side. No adapter configuration migration is needed. Prefer native Codex functionality; optional proxy and GCP setup remain opt-in. This is changelog review only, not direct CLI validation.
+
+Codex 0.167.1 (2026-11-10) is a patch release with no separately enumerated feature or migration notes in the official GitHub release entry. This adapter's local stdio MCP registration remains unchanged. The 0.167.1 pin is reviewed against the upstream release; direct CLI validation is still pending.

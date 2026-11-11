@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Claude Code 2.1.318 → 2.1.322:** `.claude-code-version` advances to **2.1.322** (covers 2.1.319, 2.1.321, 2.1.322 — 2.1.320 was never published). Reviewed line by line against this repo's scope boundary; nothing adopted or required — see [Platform support](docs/user/platform-support.md) for the full note.
 - **Cursor 3.11 (+2026-11-06 / desktop 3.29.9):** advance pins; document Voice Chat (≠ dictation) and Live Apps as orthogonal to the thin-client IP boundary. Feature pin remains **3.11**. Cursor-only.
 
 ### Added

@@ -4,7 +4,7 @@ The editor and agent platforms this client is validated against.
 
 | Platform | Validated against | Latest known |
 |---|---|---|
-| Claude Code | pending | 2.1.318 |
+| Claude Code | pending | 2.1.322 |
 | Cursor | pending | 3.11 (+ changelog 2026-11-06) |
 | Codex | pending | 0.167.0 |
 | OpenCode | pending | pending |
@@ -87,6 +87,58 @@ stdio server intentionally continues to advertise its older supported MCP
 protocol; changing only the protocol string would be unsafe. A future SDK-backed
 upgrade should adopt the newer protocol when paginated discovery, multi-round
 requests, and non-blocking startup can be implemented and tested together.
+
+**Claude Code notes (2.1.318 → 2.1.322).** `.claude-code-version` advances to
+**2.1.322**, covering 2.1.319, 2.1.321, and 2.1.322 (2.1.320 was never
+published as a separate entry). Registration, sandboxing configuration
+shape, and command-argument handling are unchanged. Nothing in this delta is
+adopted or closes a real gap in this repo's own rules; every item is
+reviewed line by line and ruled not applicable by [constraint
+#4](../../.claude/rules/constraints.md) (no pipeline/agent logic, no hooks,
+mods, subagents, or MCP server of this repo's own for Claude Code) or
+[constraint #5](../../.claude/rules/constraints.md) (no self-hosted
+runner):
+
+- **Version-check note:** this run's installed `claude` CLI reports `claude
+  --version` → `2.1.322 (Claude Code)`, matching the newest entry published
+  on the official changelog.
+- **Reviewed, not applicable: the MCP OAuth redirect secret-leak fix and
+  the Bash sandbox-escape-on-worktree-create fix (2.1.321).** This repo's
+  `production-master` MCP server authenticates with a plain `Authorization:
+  Bearer ${user_config.api_token}` header declared in
+  [`plugin/.claude-plugin/plugin.json`](../../plugin/.claude-plugin/plugin.json)
+  — never Claude Code's own `claude mcp login` OAuth flow — so there is no
+  OAuth redirect of this repo's own for the fix to touch; and this repo's
+  contributor workflow is fork-and-branch per
+  [CONTRIBUTING.md](../CONTRIBUTING.md), never `claude agents`
+  teleport/worktrees (same reasoning as the 2.1.309 worktree note above).
+- **Reviewed, not applicable: Claude Fable 5.2 becoming the default Fable
+  model, and fast mode on Vertex (2.1.321, 2.1.322).** Both are model-call
+  surface this repo defines none of — constraint #4, no LLM/model-provider
+  SDK import of any kind.
+- **Reviewed, not applicable: MCP tasks in the terminal,
+  `permissions.denyInsteadOfPrompting`, and `--settings <file>` for `claude
+  remote-control` (2.1.319, 2.1.321).** MCP task backgrounding is something
+  an MCP *server* opts into; the hosted Production Master service owns that
+  surface, not this thin client (constraint #4). The other two are
+  session/host settings this repo declares no opinion on in
+  [`.claude/settings.json`](../../.claude/settings.json).
+- **Reviewed, benefits automatically / no action: slash commands typed
+  after a leading space, tab, or newline now run instead of being sent as
+  text, and `/context`'s token-usage estimate no longer overcounts tool
+  definitions (2.1.319, 2.1.322).** General CLI correctness fixes; this
+  repo's four commands and one MCP server benefit with no config change.
+- **Reviewed, not applicable: plugin dependency installs on `claude plugin
+  update`/"Update now", and `${CLAUDE_PLUGIN_ROOT}` substitution in a
+  plugin's `subagentStatusLine` (2.1.319).** This repo's
+  [`marketplace.json`](../../.claude-plugin/marketplace.json) ships exactly
+  one plugin with no declared dependencies, and defines no
+  `subagentStatusLine` (constraint #4, no subagents).
+- This repo's own `claude plugin validate .` and `claude plugin validate
+  plugin/.claude-plugin/plugin.json` were re-run on the installed 2.1.322
+  CLI: both still pass (the one pre-existing, unrelated `ICON_MISSING`
+  directory warning is unchanged from prior passes). `npm run build`,
+  `npm test`, and `npm run lint` all ran clean on this pass.
 
 **Claude Code notes (2.1.312 → 2.1.318).** `.claude-code-version` advances to
 **2.1.318**, covering 2.1.314, 2.1.316, 2.1.317, and 2.1.318 (2.1.313 and

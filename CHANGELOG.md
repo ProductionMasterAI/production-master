@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- **Cursor 3.11 (+2026-11-06 / desktop 3.30.14):** desktop CLI **3.29.9 → 3.30.14** (stable download API 2026-11-15). Feature pin remains **3.11** / changelog through **2026-11-06**. Document 3.30 Agents Window usage-panel + chat text-size + EOL-nag fixes; no adapter / MCP registration change. Cursor-only; other platform nightlies untouched.
+
 
 ### Removed
 

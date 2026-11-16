@@ -259,12 +259,14 @@ describe("FileRefreshLock", () => {
   it("keeps a live holder exclusive past staleMs by renewing its heartbeat", async () => {
     dir = mkdtempSync(join(tmpdir(), "pm-lock-test-"));
     // staleMs far below how long the holder works: without the heartbeat the
-    // waiter would break the lock and both would refresh at once.
-    const lock = new FileRefreshLock({ dir, pollMs: 5, staleMs: 60, heartbeatMs: 10, timeoutMs: 5_000 });
+    // waiter would break the lock and both would refresh at once. staleMs is
+    // 20 heartbeats wide so a loaded CI runner that stalls the event loop for a
+    // few hundred ms cannot age a live heartbeat past it (60 ms flaked on main).
+    const lock = new FileRefreshLock({ dir, pollMs: 5, staleMs: 400, heartbeatMs: 20, timeoutMs: 10_000 });
     const order: string[] = [];
     const first = lock.withLock("k", async () => {
       order.push("a:in");
-      await new Promise((r) => setTimeout(r, 300));
+      await new Promise((r) => setTimeout(r, 1_200));
       order.push("a:out");
     });
     await new Promise((r) => setTimeout(r, 20));

@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Cursor 3.11 (+2026-11-06 / desktop 3.30.14):** desktop CLI **3.29.9 → 3.30.14** (stable download API 2026-11-15). Feature pin remains **3.11** / changelog through **2026-11-06**. Document 3.30 Agents Window usage-panel + chat text-size + EOL-nag fixes; no adapter / MCP registration change. Cursor-only; other platform nightlies untouched.
+- **Claude Code 2.1.318 → 2.1.322:** `.claude-code-version` advances to **2.1.322** (covers 2.1.319, 2.1.321, 2.1.322 — 2.1.320 was never published). Reviewed line by line against this repo's scope boundary; nothing adopted or required — see [Platform support](docs/user/platform-support.md) for the full note.
 - **CI: the Python SDK tests run on `ubuntu-24.04`.** `ubuntu-latest` moved to Ubuntu 26.04,
   where `actions/setup-python` has no Python 3.9 build, so the `python-sdk (3.9)` leg failed on
   every pull request. Pinning the job to 24.04 keeps testing the SDK's declared floor

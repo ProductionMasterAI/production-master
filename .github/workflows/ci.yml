@@ -168,7 +168,11 @@ jobs:
           echo "no-llm-sdk: clean"
 
   python-sdk:
-    runs-on: ubuntu-latest
+    # Pinned, not ubuntu-latest: ubuntu-latest is Ubuntu 26.04, and actions/setup-python has no
+    # Python 3.9 build for it (3.9.25 ships for 22.04 and 24.04 only), so the 3.9 leg failed with
+    # "version '3.9' ... was not found for Ubuntu 26.04". 24.04 is still GitHub-hosted (AGENTS.md
+    # rule 5). Move off it only together with a decision to raise the SDK's `requires-python` floor.
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:

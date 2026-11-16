@@ -6,11 +6,11 @@ The editor and agent platforms this client is validated against.
 |---|---|---|
 | Claude Code | pending | 2.1.322 |
 | Cursor | pending | 3.11 (+ changelog 2026-11-06) |
-| Codex | pending | 0.167.0 |
+| Codex | pending | 0.169.0 |
 | OpenCode | pending | pending |
 
 All four adapter packages now ship a runnable `dist/cli.js`, so each client is
-usable today. The Codex release this repo targets is **0.167.0** and the Cursor
+usable today. The Codex release this repo targets is **0.169.0** and the Cursor
 release is **3.11** (changelog covered through 2026-11-06; desktop CLI observed at **3.30.14**): for each, the
 compatibility delta was reviewed against the existing adapter and its registration
 shape (`.codex/config.toml` for Codex, `.cursor/mcp.json` for Cursor), and nothing
@@ -60,6 +60,8 @@ Codex 0.160.0 through 0.164.0 were reviewed for compatibility and useful low-ris
 Codex 0.164.0 adds native `/presets`, inline `/model` and `/permissions` arguments, enterprise MCP account-grant/OAuth sign-in and credential masking for remote commands. It improves session compaction/recovery, Windows proxy authentication and macOS sandbox path protections. This adapter's local stdio MCP registration and device-code login do not require a migration; no new configuration or wrapper is introduced. Prefer native Codex authentication and session recovery if a future Codex-only integration needs them. This is a changelog review, not direct CLI validation.
 
 Codex 0.167.0 (2026-11-06) adds `codex doctor --network-only` and `codex queue --resume`; the first is the preferred native network/WebSocket diagnostic and the second is a host-native unloaded-thread recovery path. Keyboard transcript selection, Markdown in async questions, Terra catalog expansion and safer follow-up prompts are host-only. Approval/permission persistence across resume/fork, app-server lifecycle, reasoning-token accounting and reconnection fixes require no change to this adapter's local stdio MCP registration. No new config keys, SDK/protocol claims or cross-platform changes were introduced. Direct validation remains pending.
+
+**Codex 0.168.0–0.169.0 (2026-11-13).** Native provider discovery/configuration and custom gateway onboarding now cover more terminal and app-server workflows. Codex 0.168.0 warns about legacy `features.multi_agent` configuration and points to `agents.enabled` to disable subagents; this thin MCP client does not configure either. Codex 0.169.0 keeps project configuration and MCP servers disabled in untrusted directories even under `codex exec --sandbox workspace-write`; use explicit `--trust` only for repositories that are actually trusted. The local stdio MCP registration and Node CLI contract remain unchanged. Native provider selection and gateway authentication should be preferred over custom wrappers. No direct Codex 0.169.0 host test has been run.
 
 Codex 0.165.0 (2026-10-27) adds built-in Google Cloud Vertex AI provider support, GPT-6.1 Terra catalog entries, session repository filtering and agent directory grouping, in-conversation reasoning-effort changes, and memory v2 defaults for new profiles. Experimental app-server attached thread forks are not used by this thin client. Dropped remote MCP requests now cancel, queued agent messages no longer restart work after interruption or Plan-mode switching, provider model-not-found errors stop retrying, default approval-reviewer behavior is corrected, and marketplace URL validation is tightened. These changes are host-side: this adapter's existing local stdio MCP registration, Node CLI command and device-code login remain unchanged. Prefer native provider/session/MCP handling instead of custom wrappers. No speculative config or protocol migration is needed; direct Codex CLI validation is still pending.
 
@@ -1978,3 +1980,5 @@ wired into that editor's native registration:
 
 
 Codex 0.167.0 (2026-11-06) adds `codex agents --no-daemon`, backend switching in the session picker, local image previews, optional OS proxy settings, and a Vertex AI setup wizard. Managed `[permissions.network]` and fresh-approval `prompt-user` rules, improved MCP session leases, cancellation, token-refresh recovery, provider switching and context compaction are host-side. No adapter configuration migration is needed. Prefer native Codex functionality; optional proxy and GCP setup remain opt-in. This is changelog review only, not direct CLI validation.
+
+Codex 0.169.0 (2026-11-10) is a patch release with no separately enumerated feature or migration notes in the official GitHub release entry. This adapter's local stdio MCP registration remains unchanged. The 0.169.0 pin is reviewed against the upstream release; direct CLI validation is still pending.

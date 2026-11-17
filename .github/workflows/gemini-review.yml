@@ -52,12 +52,16 @@ jobs:
     # PRs only (fork PRs can't get the OIDC token anyway, and must never reach it),
     # never drafts, and on `synchronize` only when explicitly asked via the
     # `re-review` label.
+    # PM_GCP_ENABLED=false skips this while GCP billing is off (2026-11-17).
+    # (Vertex AI is a billed API; unset means enabled. Restore: set the org variable
+    # PM_GCP_ENABLED=true or delete it.)
     if: >-
-      github.event_name == 'workflow_dispatch' ||
-      ( github.event.pull_request.head.repo.full_name == github.repository &&
-        github.event.pull_request.draft == false &&
-        ( github.event.action != 'synchronize' ||
-          contains(github.event.pull_request.labels.*.name, 're-review') ) )
+      vars.PM_GCP_ENABLED != 'false' &&
+      ( github.event_name == 'workflow_dispatch' ||
+        ( github.event.pull_request.head.repo.full_name == github.repository &&
+          github.event.pull_request.draft == false &&
+          ( github.event.action != 'synchronize' ||
+            contains(github.event.pull_request.labels.*.name, 're-review') ) ) )
     steps:
       - name: Checkout
         uses: actions/checkout@v7

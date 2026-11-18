@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and not a required check, so skipping it does not block merges. CI only.
 - **Cursor 3.11 (+2026-11-06 / desktop 3.30.14):** desktop CLI **3.29.9 → 3.30.14** (stable download API 2026-11-15). Feature pin remains **3.11** / changelog through **2026-11-06**. Document 3.30 Agents Window usage-panel + chat text-size + EOL-nag fixes; no adapter / MCP registration change. Cursor-only; other platform nightlies untouched.
 - **Claude Code 2.1.318 → 2.1.322:** `.claude-code-version` advances to **2.1.322** (covers 2.1.319, 2.1.321, 2.1.322 — 2.1.320 was never published). Reviewed line by line against this repo's scope boundary; nothing adopted or required — see [Platform support](docs/user/platform-support.md) for the full note.
+- **Claude Code 2.1.322 → 2.1.327:** `.claude-code-version` advances to **2.1.327** (covers 2.1.323, 2.1.325, 2.1.326, 2.1.327 — 2.1.324 was never published). Adopts `engines["claude-code"]` in `plugin.json` (see Added, below); everything else in the delta is reviewed and ruled not applicable or already covered automatically — see [Platform support](docs/user/platform-support.md) for the full note.
 - **CI: the Python SDK tests run on `ubuntu-24.04`.** `ubuntu-latest` moved to Ubuntu 26.04,
   where `actions/setup-python` has no Python 3.9 build, so the `python-sdk (3.9)` leg failed on
   every pull request. Pinning the job to 24.04 keeps testing the SDK's declared floor
@@ -32,6 +33,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`plugin.json` declares `engines.claude-code` (Claude Code 2.1.323).**
+  Claude Code 2.1.323 added `engines["claude-code"]` to the plugin manifest
+  schema: a plugin outside its stated range is not installed, updated, or
+  loaded, and install/update pick the newest version that fits. This
+  plugin had declared no floor; [`plugin/.claude-plugin/plugin.json`](plugin/.claude-plugin/plugin.json)
+  now sets `"engines": {"claude-code": ">=2.1.83"}` — the version that
+  added external, keychain-backed prompting for `sensitive: true`
+  `userConfig` values, which this plugin's `api_token` setting and its
+  `http` MCP server's templated `Authorization` header both depend on.
+  `plugin.json` version bumps to **0.2.1**. See [Platform
+  support](docs/user/platform-support.md) for the full note.
 - **Stricter plugin-folder guard.** `npm run check:plugin` now fails on any
   local code in `plugin/` and on missing directory-readiness metadata, with
   these rule codes: `LOCAL_CODE_BIN`, `LOCAL_CODE_FILE_TYPE`,

@@ -27,5 +27,8 @@
     "typescript": "^5.9.2",
     "vitest": "^3.2.4",
     "yaml": "2.9.1"
+  },
+  "overrides": {
+    "tinypool": "^2.1.2"
   }
 }

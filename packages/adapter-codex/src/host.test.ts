@@ -62,4 +62,11 @@ describe('CodexHostAdapter', () => {
     host.emitUi({ type: 'open-report' });
     expect(seen).toEqual(['refresh']);
   });
+
+  it('openExternalUrl forwards the URL to the host sink', async () => {
+    const sinks = new CapturingCodexSinks();
+    const host = new CodexHostAdapter(sinks);
+    await host.openExternalUrl('https://device.example/verify');
+    expect(sinks.openedUrls).toEqual(['https://device.example/verify']);
+  });
 });

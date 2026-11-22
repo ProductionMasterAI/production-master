@@ -28,19 +28,11 @@ export default defineConfig({
       ],
       // Rise-only ratchet: floors sit a few points below the measured baseline
       // so the gate is meaningful without a backfill. When coverage climbs,
-      // raise these — never lower them for a code or test change.
-      //
-      // Re-baselined once for the Vitest 3 -> 4 upgrade, whose V8 provider
-      // switched to AST-aware remapping and so counts statements and
-      // functions differently for the same code and tests (functions went
-      // from 340/395 to 364/454). Baseline under Vitest 4: stmts 78.81%,
-      // branches 69.32%, functions 80.17%, lines 81.42%. Only the functions
-      // floor moved (84 -> 77, the same ~3-point margin); the others still
-      // hold under the new counter and are unchanged.
+      // raise these — never lower them.
       thresholds: {
         statements: 78,
         branches: 68,
-        functions: 77,
+        functions: 84,
         lines: 78,
       },
     },

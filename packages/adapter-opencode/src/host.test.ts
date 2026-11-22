@@ -55,4 +55,33 @@ describe('OpenCodeHostAdapter', () => {
     await host.openExternalUrl('https://device.example/verify');
     expect(sinks.openedUrls).toEqual(['https://device.example/verify']);
   });
+
+  it('fans UI events out to every subscriber; unsubscribing detaches only that one', () => {
+    const host = new OpenCodeHostAdapter(new CapturingOpenCodeSinks());
+    const first: unknown[] = [];
+    const second: unknown[] = [];
+    const unsubFirst = host.subscribeUi((e) => first.push(e));
+    host.subscribeUi((e) => second.push(e));
+
+    host.emitUi({ type: 'approve-action', actionId: 'act1' });
+    unsubFirst();
+    host.emitUi({ type: 'reject-action', actionId: 'act2' });
+
+    expect(first).toEqual([{ type: 'approve-action', actionId: 'act1' }]);
+    expect(second).toEqual([
+      { type: 'approve-action', actionId: 'act1' },
+      { type: 'reject-action', actionId: 'act2' },
+    ]);
+  });
+
+  it('emitUi with no subscribers is a no-op, and a repeat unsubscribe is harmless', () => {
+    const host = new OpenCodeHostAdapter(new CapturingOpenCodeSinks());
+    host.emitUi({ type: 'refresh' });
+    const seen: string[] = [];
+    const unsub = host.subscribeUi((e) => seen.push(e.type));
+    unsub();
+    unsub();
+    host.emitUi({ type: 'open-report' });
+    expect(seen).toEqual([]);
+  });
 });

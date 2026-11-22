@@ -16,10 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `minimatch`, which vitest 4's coverage provider no longer pulls in at all.
   The `tinypool` `overrides` entry is removed — vitest 4 doesn't depend on
   it. `npm audit` goes from 9 vulnerabilities (3 high) to 0. Vitest 4's V8
-  coverage counts functions differently (AST-aware remapping), so the
-  coverage functions floor is re-baselined from 84% to 77% for the same code
-  and tests; the other floors are unchanged. Development tooling only;
-  nothing shipped in the plugin changes.
+  coverage counts functions differently (AST-aware remapping), which dropped
+  measured function coverage to 80.17% for the same code; the floors stay
+  where they were (functions 84%) and new unit tests cover the Linux and
+  Windows keychain backends, the Node SSE connector, and the Cursor/OpenCode/
+  Codex host adapters' UI-event and URL wiring, bringing functions to 84.8%.
+  Development tooling only; nothing shipped in the plugin changes.
 - **`tinypool` (dev dependency, via `vitest`) 1.1.1 → 2.2.0.** Fixes the
   critical advisories GHSA-5gmw-xhrv-c9v3 and GHSA-85c8-ppgw-ccpr. Every
   `vitest` 3.x release pins `tinypool@^1.1.1`, so the fix is an npm

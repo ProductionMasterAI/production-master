@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- **Major dev-tooling upgrade: `vitest` and `@vitest/coverage-v8` 3.2.7 → 4.1.12.**
+  Clears every open development-scope Dependabot alert: `@vitest/mocker`
+  (GHSA-82fw-gwwq-j7x9, GHSA-qxg6-89mg-rqv8), `vite` 7.3.6 → 8.3.8 (via
+  vitest), `source-map-js` 1.2.1 → 1.2.4, and `brace-expansion`, `glob` and
+  `minimatch`, which vitest 4's coverage provider no longer pulls in at all.
+  The `tinypool` `overrides` entry is removed — vitest 4 doesn't depend on
+  it. `npm audit` goes from 9 vulnerabilities (3 high) to 0. Vitest 4's V8
+  coverage counts functions differently (AST-aware remapping), so the
+  coverage functions floor is re-baselined from 84% to 77% for the same code
+  and tests; the other floors are unchanged. Development tooling only;
+  nothing shipped in the plugin changes.
 - **`tinypool` (dev dependency, via `vitest`) 1.1.1 → 2.2.0.** Fixes the
   critical advisories GHSA-5gmw-xhrv-c9v3 and GHSA-85c8-ppgw-ccpr. Every
   `vitest` 3.x release pins `tinypool@^1.1.1`, so the fix is an npm

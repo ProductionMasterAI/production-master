@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **`tinypool` (dev dependency, via `vitest`) 1.1.1 → 2.2.0.** Fixes the
+  critical advisories GHSA-5gmw-xhrv-c9v3 and GHSA-85c8-ppgw-ccpr. Every
+  `vitest` 3.x release pins `tinypool@^1.1.1`, so the fix is an npm
+  `overrides` entry (`"tinypool": "^2.1.2"`) rather than a vitest major
+  bump. Development tooling only; nothing shipped in the plugin changes.
+
 ### Removed
 
 - **`permissions.blockReadsOutsideWorkingDirectories` is no longer set in

@@ -4,7 +4,7 @@ The editor and agent platforms this client is validated against.
 
 | Platform | Validated against | Latest known |
 |---|---|---|
-| Claude Code | pending | 2.1.322 |
+| Claude Code | pending | 2.1.327 |
 | Cursor | pending | 3.11 (+ changelog 2026-11-06) |
 | Codex | pending | 0.169.1 |
 | OpenCode | pending | pending |
@@ -89,6 +89,87 @@ stdio server intentionally continues to advertise its older supported MCP
 protocol; changing only the protocol string would be unsafe. A future SDK-backed
 upgrade should adopt the newer protocol when paginated discovery, multi-round
 requests, and non-blocking startup can be implemented and tested together.
+
+**Claude Code notes (2.1.322 → 2.1.327).** `.claude-code-version` advances to
+**2.1.327**, covering 2.1.323, 2.1.325, 2.1.326, and 2.1.327 (2.1.324 was
+never published as a separate entry). Registration, sandboxing
+configuration shape, and command-argument handling are unchanged.
+
+- **Adopted: `engines["claude-code"]` in `plugin.json` (added 2.1.323).**
+  Claude Code now refuses to install, update, or load a plugin outside the
+  Claude Code version range its manifest states, and picks the newest
+  version that fits on install/update. This plugin had declared no floor at
+  all, so [`plugin/.claude-plugin/plugin.json`](../../plugin/.claude-plugin/plugin.json)
+  now sets `"engines": {"claude-code": ">=2.1.83"}`. That floor is not
+  arbitrary: this plugin's manifest depends on `userConfig` with external,
+  keychain-backed `sensitive: true` storage (`api_token`) and on an `http`
+  MCP server entry whose `headers.Authorization` is templated from
+  `${user_config.api_token}` — both of which this repo's own
+  [`check-plugin-folder.mjs`](../../scripts/check-plugin-folder.mjs) guard
+  (`USER_CONFIG`, `LOCAL_CODE_MCP`) requires. `userConfig` with external
+  prompting and keychain/credential-file storage for `sensitive: true`
+  values shipped in 2.1.83 (confirmed against the official
+  `anthropics/claude-code` `CHANGELOG.md`, not guessed); the `http` MCP
+  transport this plugin's one server uses has been supported since 1.0.27
+  and is not the binding constraint. `plugin.json` version bumps to
+  **0.2.1** for this manifest change. `claude plugin validate .` and `claude
+  plugin validate plugin/.claude-plugin/plugin.json` both still pass with
+  the new field present, and `npm run check:plugin` is unaffected (it does
+  not inspect `engines`).
+- **Version-check note:** this run's installed `claude` CLI reports `claude
+  --version` → `2.1.327 (Claude Code)`, matching the newest entry published
+  on the official changelog.
+- **Reviewed, not applicable: Code Mode, an experimental opt-in where
+  Claude writes JavaScript to call its tools (2.1.323).** Code Mode is a
+  session/host opt-in, not something a plugin manifest declares or needs to
+  support; this repo's plugin remains a manifest, prompt-only commands, and
+  one remote MCP server (constraint #4 — no pipeline/agent logic of this
+  repo's own either way).
+- **Reviewed, not applicable: type checking of a plugin's TypeScript hooks
+  module in `claude plugin validate`, and the `$` nouns a mod's
+  `engine.create` hook adds, shown in `claude plugin validate` (2.1.323).**
+  This plugin declares no hooks and is not a mod — [constraint
+  #4](../../.claude/rules/constraints.md) (no hooks of this repo's own) and
+  the directory's own `LOCAL_CODE_HOOK` guard in
+  [`check-plugin-folder.mjs`](../../scripts/check-plugin-folder.mjs).
+- **Reviewed, not applicable: a startup warning when a plugin's language
+  server can't start (2.1.323), and plugin MCP bundles (`.mcpb`, `.dxt`)
+  unpacking under the plugins directory instead of `.mcpb-cache` (2.1.325).**
+  This plugin declares no `lspServers` and ships no MCP bundle — its one
+  server is a remote `http` endpoint declared inline in `plugin.json`
+  (`LOCAL_CODE_LSP` / `LOCAL_CODE_MCP` guards, same constraint).
+- **Reviewed, not applicable: `claude plugin install` and `/plugin` warning
+  instead of reporting success when a plugin's install command writes to
+  stderr (2.1.323).** This plugin has no install command — it is a remote
+  MCP registration plus prompt-only commands; Claude Code needs no Node.js
+  to use it (see the Quick Start section of the [README](../../README.md)).
+- **Reviewed, not applicable: `CLAUDE_CODE_AUTO_MODE_MODEL` support for
+  Claude Desktop sessions on third-party providers (2.1.323); a managed
+  `strictPluginOnlyCustomization` lock on agents and skills taking effect in
+  already-running sessions (2.1.325); and marketplace `ref` accepting the
+  full commit ID of any branch or tag commit (2.1.325).** The first two are
+  session/organization settings this repo's own `.claude/settings.json` and
+  manifests declare no opinion on; the third is a marketplace-pinning
+  feature this repo's
+  [`marketplace.json`](../../.claude-plugin/marketplace.json) does not use
+  (its one entry pins no `ref` at all).
+- **Reviewed, benefits automatically / no action: plugins with a malformed
+  `plugin.json` display field (such as `author` or `homepage`) now load,
+  with their hooks and MCP servers, instead of being refused (2.1.325); a
+  note in `/plugin` and `claude plugin list` when such a field is ignored
+  (2.1.326); and a sandboxed `git checkout`/`stash`/autostash pull now
+  warning Claude when it cannot update protected files such as those in
+  `.claude` (2.1.325).** Checked this plugin's `author` and `homepage`
+  fields against the schema — both are well-formed, so the first two are
+  defensive fixes for a case this repo doesn't hit. The sandbox note
+  benefits any contributor session running a sandboxed git pull/checkout
+  against this repo's own `.claude/` with no config change needed here.
+- This repo's own `claude plugin validate .` and `claude plugin validate
+  plugin/.claude-plugin/plugin.json` were re-run on the installed 2.1.327
+  CLI after adding `engines`: both still pass with no findings.
+  `npm run check:plugin` stays clean (8 files, no directory findings).
+  `npm run build`, `npm test` (440 passed, 1 pre-existing skip), and `npm
+  run lint` all ran clean on this pass.
 
 **Claude Code notes (2.1.318 → 2.1.322).** `.claude-code-version` advances to
 **2.1.322**, covering 2.1.319, 2.1.321, and 2.1.322 (2.1.320 was never

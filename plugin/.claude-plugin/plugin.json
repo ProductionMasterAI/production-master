@@ -1,8 +1,11 @@
 {
   "name": "production-master",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Thin client for the Production Master hosted incident-investigation service — start a run, follow its progress, read the report, and act on proposed changes from inside Claude Code. Connects to the hosted service's MCP endpoint; nothing runs on your machine.",
   "icon": "./assets/icon.png",
+  "engines": {
+    "claude-code": ">=2.1.83"
+  },
   "author": {
     "name": "ProductionMasterAI",
     "url": "https://github.com/ProductionMasterAI"

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Linux: saving a token to the keychain no longer hangs.** `secret-tool store` reads the secret from stdin, but `linuxStore` used async `execFile` with an `input` option, which async `execFile` ignores (only the `*Sync` variants honour it). `secret-tool` therefore waited forever for a secret that never arrived. `plugin-core`'s keychain now spawns `secret-tool` and writes the secret to its stdin, which still keeps it off argv and out of `ps`. A failed store now rejects with `secret-tool`'s stderr. Tests check that the secret reaches stdin and that the error path rejects.
+
 ### Security
 
 - **Major dev-tooling upgrade: `vitest` and `@vitest/coverage-v8` 3.2.7 → 4.1.12.**

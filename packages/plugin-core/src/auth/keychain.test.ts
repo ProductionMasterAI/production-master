@@ -4,13 +4,34 @@ import { KeychainSecretBackend } from "./keychain.js";
 // Mock execFile so tests never touch a real OS keychain.
 vi.mock("node:child_process", () => ({
   execFile: vi.fn(),
+  spawn: vi.fn(),
 }));
 vi.mock("node:util", () => ({
   promisify: (fn: unknown) => fn,
 }));
 
-import { execFile } from "node:child_process";
+import { EventEmitter } from "node:events";
+import { execFile, spawn } from "node:child_process";
 const mockExec = vi.mocked(execFile);
+const mockSpawn = vi.mocked(spawn);
+
+/** A fake spawned child: records what is written to stdin, then exits with `code`. */
+function fakeChild(code: number, stderr = "") {
+  const child = new EventEmitter() as EventEmitter & {
+    stdin: { end: ReturnType<typeof vi.fn> };
+    stderr: EventEmitter;
+  };
+  child.stderr = new EventEmitter();
+  child.stdin = {
+    end: vi.fn(() => {
+      queueMicrotask(() => {
+        if (stderr) child.stderr.emit("data", stderr);
+        child.emit("close", code);
+      });
+    }),
+  };
+  return child;
+}
 
 const PROBE_RESULT = { stdout: "security-2.0\n", stderr: "" };
 
@@ -163,18 +184,21 @@ const OK = { stdout: "", stderr: "" };
 describe("KeychainSecretBackend (Linux / secret-tool mock)", () => {
   usePlatform("linux");
 
-  it("probes secret-tool, then stores under service/account attributes without the secret on argv", async () => {
+  it("probes secret-tool, then stores under service/account attributes with the secret on stdin, not argv", async () => {
     const backend = new KeychainSecretBackend("test-service");
     mockExec.mockResolvedValueOnce(OK as never); // probe
-    mockExec.mockResolvedValueOnce(OK as never); // store
+    const child = fakeChild(0);
+    mockSpawn.mockReturnValueOnce(child as never); // store
 
     await backend.set("pm-session:acct1", "ciphertext-blob");
 
-    const calls = mockExec.mock.calls;
-    expect(calls[0][0]).toBe("secret-tool");
-    expect(calls[0][1]).toEqual(["--version"]);
-    expect(calls[1][0]).toBe("secret-tool");
-    expect(calls[1][1]).toEqual([
+    expect(mockExec.mock.calls[0][0]).toBe("secret-tool");
+    expect(mockExec.mock.calls[0][1]).toEqual(["--version"]);
+    const [cmd, args] = mockSpawn.mock.calls[0];
+    expect(cmd).toBe("secret-tool");
+    // secret-tool reads the secret from stdin; it must actually be written there.
+    expect(child.stdin.end).toHaveBeenCalledWith("ciphertext-blob");
+    expect(args).toEqual([
       "store",
       "--label",
       "test-service:pm-session:acct1",
@@ -184,7 +208,17 @@ describe("KeychainSecretBackend (Linux / secret-tool mock)", () => {
       "pm-session:acct1",
     ]);
     // The secret must never appear in the process argument list (visible in ps).
-    expect(calls[1][1]).not.toContain("ciphertext-blob");
+    expect(args).not.toContain("ciphertext-blob");
+  });
+
+  it("set() rejects with secret-tool's stderr when the store fails", async () => {
+    const backend = new KeychainSecretBackend("test-service");
+    mockExec.mockResolvedValueOnce(OK as never); // probe
+    mockSpawn.mockReturnValueOnce(fakeChild(1, "Cannot create an item in a locked collection") as never);
+
+    await expect(backend.set("pm-session:acct1", "ciphertext-blob")).rejects.toThrow(
+      /secret-tool exited with code 1: Cannot create an item in a locked collection/,
+    );
   });
 
   it("get() looks up by attributes and trims the stored value", async () => {

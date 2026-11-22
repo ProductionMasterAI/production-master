@@ -7,9 +7,10 @@ export default defineConfig({
     coverage: {
       // v8 provider — no source instrumentation, matches the Node 22 runtime.
       provider: 'v8',
-      // Count every source file in the denominator, not just imported ones, so
-      // an untested new file lowers coverage and trips the gate.
-      all: true,
+      // Vitest 4 counts every file matched by `include` below in the
+      // denominator, not just imported ones (the old `all: true` option was
+      // removed and is now the behaviour), so an untested new file lowers
+      // coverage and trips the gate.
       reporter: ['text', 'text-summary', 'html', 'lcov'],
       reportsDirectory: './coverage',
       // Only first-party workspace source counts toward the gate.
@@ -26,9 +27,8 @@ export default defineConfig({
         '**/*.d.ts',
       ],
       // Rise-only ratchet: floors sit a few points below the measured baseline
-      // (stmts/lines 80.97%, branches 71.52%, functions 87.54% as of this
-      // commit) so the gate is meaningful without a backfill. When coverage
-      // climbs, raise these — never lower them.
+      // so the gate is meaningful without a backfill. When coverage climbs,
+      // raise these — never lower them.
       thresholds: {
         statements: 78,
         branches: 68,

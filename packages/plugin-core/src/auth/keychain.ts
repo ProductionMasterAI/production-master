@@ -10,12 +10,39 @@
  * The service name is "production-master" by default; callers may override via
  * the constructor for tests or multi-tenant setups.
  */
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import type { SecretBackend } from "./token-store.js";
 import { InMemorySecretBackend } from "./token-store.js";
 
 const exec = promisify(execFile);
+
+/**
+ * Run `cmd args`, writing `input` to its stdin, and resolve when it exits 0.
+ * Needed because the async `execFile` (promisified or not) ignores the `input`
+ * option, which only the *Sync variants honour: `secret-tool store` reads the
+ * secret from stdin, so it waited forever for input that never came. The secret
+ * goes over stdin, never argv, so it is not visible in `ps`.
+ */
+function execWithStdin(
+  cmd: string,
+  args: string[],
+  input: string,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(cmd, args, { stdio: ["pipe", "ignore", "pipe"] });
+    let stderr = "";
+    child.stderr?.on("data", (chunk: Buffer | string) => {
+      stderr += String(chunk);
+    });
+    child.on("error", reject);
+    child.on("close", (code: number | null) => {
+      if (code === 0) resolve();
+      else reject(new Error(`${cmd} exited with code ${code}: ${stderr.trim()}`));
+    });
+    child.stdin?.end(input);
+  });
+}
 
 function warn(msg: string): void {
   // eslint-disable-next-line no-console
@@ -103,7 +130,7 @@ async function linuxStore(
   account: string,
   value: string,
 ): Promise<void> {
-  await exec(
+  await execWithStdin(
     "secret-tool",
     [
       "store",
@@ -114,7 +141,7 @@ async function linuxStore(
       "account",
       account,
     ],
-    { input: value } as Parameters<typeof exec>[2],
+    value,
   );
 }
 

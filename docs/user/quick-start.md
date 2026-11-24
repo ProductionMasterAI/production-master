@@ -144,7 +144,7 @@ manual `/plugin marketplace update`.)
 
 ## 2. Log in
 
-**Claude Code** uses an access token instead of a device-code login. Claude Code asks for it when you install or enable the plugin; create one in the Production Master console under Settings, then Access tokens. Claude Code stores it in your OS credential store. To set up, change or remove the token later, run `/production-master:setup`. Then skip ahead to your first investigation.
+**Claude Code** uses an access token instead of a device-code login. Claude Code asks for it when you install or enable the plugin; create one in the Production Master console under Settings, then API Tokens. Claude Code stores it in your OS credential store. To set up, change or remove the token later, run `/production-master:setup`. Then skip ahead to your first investigation.
 
 **Cursor, Codex and OpenCode:** run the login command in your editor:
 

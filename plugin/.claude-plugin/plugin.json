@@ -25,7 +25,7 @@
     "api_token": {
       "type": "string",
       "title": "Production Master access token",
-      "description": "A personal access token from the Production Master console (Settings, then Access tokens). It is stored in your OS credential store and sent only to the Production Master service.",
+      "description": "A personal access token from the Production Master console (Settings, then API Tokens). It is stored in your OS credential store and sent only to the Production Master service.",
       "sensitive": true,
       "required": true
     }

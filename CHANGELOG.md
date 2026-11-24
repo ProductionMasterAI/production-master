@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Docs name the console's real token page: Settings, then API Tokens.** The Claude Code token instructions (README, quick start, troubleshooting, `plugin/README.md`, `/production-master:setup` and the plugin's install prompt in `plugin.json`) sent users to "Settings, then Access tokens", but the console's Settings tab is labelled "API Tokens" (and its user menu says "API tokens"). Wording only; no behaviour change.
 - **Linux: saving a token to the keychain no longer hangs.** `secret-tool store` reads the secret from stdin, but `linuxStore` used async `execFile` with an `input` option, which async `execFile` ignores (only the `*Sync` variants honour it). `secret-tool` therefore waited forever for a secret that never arrived. `plugin-core`'s keychain now spawns `secret-tool` and writes the secret to its stdin, which still keeps it off argv and out of `ps`. A failed store now rejects with `secret-tool`'s stderr. Tests check that the secret reaches stdin and that the error path rejects.
 
 ### Security

@@ -42,7 +42,7 @@ See the [privacy policy](https://productionmaster.dev/privacy) for details.
 ## Prerequisites
 
 - **Node.js 22** (pinned in [`.nvmrc`](.nvmrc)) — for Cursor, Codex, OpenCode and `pmctl`; the Claude Code plugin needs no Node.js
-- **An account on the Production Master hosted service** — Claude Code authenticates with an access token created in the console (Settings, then Access tokens); the other editors use device-code login.
+- **An account on the Production Master hosted service** — Claude Code authenticates with an access token created in the console (Settings, then API Tokens); the other editors use device-code login.
 - One of the supported editors: Claude Code, Cursor, Codex, or OpenCode.
 
 ## Quick Start
@@ -64,7 +64,7 @@ Claude Code is wired end-to-end. This repo is its own plugin marketplace (`.clau
 /plugin install production-master@production-master
 ```
 
-Claude Code asks for a **Production Master access token** when you install or enable the plugin. Create one in the console under Settings, then Access tokens; Claude Code keeps it in your OS credential store. Then use the slash commands:
+Claude Code asks for a **Production Master access token** when you install or enable the plugin. Create one in the console under Settings, then API Tokens; Claude Code keeps it in your OS credential store. Then use the slash commands:
 
 ```
 /production-master:investigate PROJ-1234

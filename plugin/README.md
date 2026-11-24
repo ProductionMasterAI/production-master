@@ -15,7 +15,7 @@ service, and this plugin only connects Claude Code to it.
 
 Claude Code asks for a **Production Master access token** when you install or
 enable the plugin. Create one in the Production Master console under Settings,
-then Access tokens. Claude Code keeps it in your OS credential store and sends
+then API Tokens. Claude Code keeps it in your OS credential store and sends
 it only to the Production Master service. Run `/production-master:setup` for
 step-by-step help.
 

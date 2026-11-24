@@ -12,7 +12,7 @@ authenticated with a personal access token kept in the plugin's settings
 Walk the user through it:
 
 1. **Create a token.** In the Production Master console, open Settings, then
-   Access tokens, and create one. A viewer role can open investigations;
+   API Tokens, and create one. A viewer role can open investigations;
    starting runs and acting on them needs the engineer role or above.
 2. **Store it.** Run `/plugin`, open the Installed tab, select
    `production-master`, and choose Configure. Paste the token into

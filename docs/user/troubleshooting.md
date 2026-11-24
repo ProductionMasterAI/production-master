@@ -255,7 +255,7 @@ Related notes for recent Claude Code versions:
 
 ### An auth error from the Production Master MCP server
 
-The access token is missing, expired or revoked. Run `/production-master:setup`: create a new token in the Production Master console under Settings, then Access tokens, and enter it via `/plugin` → Installed → Configure (or `claude plugin configure production-master`). Run `/mcp` to see the status of the `production-master` server; it should show as connected once the token is accepted. If the server shows as unavailable rather than unauthorized, check your network and try again later.
+The access token is missing, expired or revoked. Run `/production-master:setup`: create a new token in the Production Master console under Settings, then API Tokens, and enter it via `/plugin` → Installed → Configure (or `claude plugin configure production-master`). Run `/mcp` to see the status of the `production-master` server; it should show as connected once the token is accepted. If the server shows as unavailable rather than unauthorized, check your network and try again later.
 
 ### Claude asks before every tool call
 

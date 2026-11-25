@@ -51,6 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Cursor 3.11 (+2026-11-06 / desktop 3.31.15):** desktop CLI **3.30.14 → 3.31.15** (download API 2026-11-22); `cli_changelog_date` **2026-08-26 → 2026-11-17**. Feature pin **3.11** / **2026-11-06**. Document IDE notes through **3.30** and CLI delta (prompt hooks, `privateTmp`, MCP description search). No adapter / MCP registration change. Cursor-only.
 - **Claude Code 2.1.318 → 2.1.322:** `.claude-code-version` advances to **2.1.322** (covers 2.1.319, 2.1.321, 2.1.322 — 2.1.320 was never published). Reviewed line by line against this repo's scope boundary; nothing adopted or required — see [Platform support](docs/user/platform-support.md) for the full note.
 - **Claude Code 2.1.322 → 2.1.327:** `.claude-code-version` advances to **2.1.327** (covers 2.1.323, 2.1.325, 2.1.326, 2.1.327 — 2.1.324 was never published). Adopts `engines["claude-code"]` in `plugin.json` (see Added, below); everything else in the delta is reviewed and ruled not applicable or already covered automatically — see [Platform support](docs/user/platform-support.md) for the full note.
+- **Claude Code 2.1.327 → 2.1.332:** `.claude-code-version` advances to **2.1.332** (covers 2.1.328, 2.1.329, 2.1.330, 2.1.331, 2.1.332 — all five published). Reviewed line by line against this repo's scope boundary; nothing adopted or required — see [Platform support](docs/user/platform-support.md) for the full note.
 - **CI: the Python SDK tests run on `ubuntu-24.04`.** `ubuntu-latest` moved to Ubuntu 26.04,
   where `actions/setup-python` has no Python 3.9 build, so the `python-sdk (3.9)` leg failed on
   every pull request. Pinning the job to 24.04 keeps testing the SDK's declared floor
@@ -732,16 +733,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   federation CI fix for `claude-code-action` (this repo's `.github/workflows/
   claude.yml` authenticates with `anthropic_api_key: ${{ secrets.
   ANTHROPIC_API_KEY }}`, not WIF — `id-token: write` is granted but unused by
-  that step); the hook `if`-condition and
-  `/reload-plugins` LSP fixes (no hooks, no LSP plugin here); and the
-  `--agents` JSON-validation fix (no command launches with `--agents`). One
-  item updates existing guidance: 2.1.243 changed the sandboxed Bash tool to
-  stop listing allowed network hosts in non-`strictAllowlist` mode, so
-  Claude now attempts and prompts for approval on `api.productionmaster.dev`
-  instead of assuming it's blocked — noted in
+  that step); the hook `if`-condition command-substitution fix and the
+  `/reload-plugins` LSP-tool fix (this repo defines no hooks and no LSP
+  plugin); and the `--agents` JSON-validation fix (no command here launches
+  Claude Code with `--agents`). One item refines existing guidance rather than
+  requiring a change: 2.1.243 changed the sandboxed Bash tool's prompt to stop
+  listing allowed network hosts, so in the default (non-`strictAllowlist`)
+  sandbox mode Claude now attempts a request to `api.productionmaster.dev` and
+  lets you approve it, instead of assuming an unlisted host is blocked —
   [Troubleshooting](docs/user/troubleshooting.md#investigations-fail-with-connection-errors-only-inside-claude-code)
-  so the `strictAllowlist`-only hard-block guidance isn't misread as
-  covering every sandbox mode.
+  now notes this so the `strictAllowlist`-only guidance already there isn't
+  misread as covering every sandbox mode. Everything else in the 2.1.242–
+  2.1.245 range is host-side UI/perf/reliability work (auto mode, Remote
+  Control, `/resume`, cross-session messaging, VS Code) with no surface in
+  this thin client.
 
 - **Claude Code currency (2.1.238 → 2.1.241).** `.claude-code-version`
   advances to **2.1.241**. Registration, sandboxing configuration shape, and

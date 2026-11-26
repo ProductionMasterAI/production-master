@@ -1,0 +1,84 @@
+**Claude Code notes (2.1.286 → 2.1.293).** `.claude-code-version` advances to
+**2.1.293**, covering 2.1.287 through 2.1.293 — all seven published as their
+own entries, no gap. Registration, sandboxing configuration shape, and
+command-argument handling are unchanged. One item is adopted, two are
+documented because they close real gaps in protections this repo already
+relies on, one is a required `claude plugin validate` re-check, one is a
+genuinely new surface not yet adoptable, and everything else is either a
+managed-org/gateway/model/mods/self-hosted-runner surface
+[constraint #4](../../.claude/rules/constraints.md) rules out or host-side
+UI/reliability work with no hook into this repo's four prompt-only commands:
+
+- **Adopted: the `claude plugin install <plugin> --marketplace <source>`
+  CLI flag, now shown in [Quick Start](quick-start.md) (2.1.292).** This is a
+  new flag on the `claude` binary itself, distinct from the already-adopted
+  2.1.275 `/plugin install <plugin> --marketplace <source>` *slash command*
+  run inside a session. `claude plugin install production-master
+  --marketplace ProductionMasterAI/production-master` adds the marketplace
+  and installs the plugin from a plain shell before a Claude Code session
+  even starts — useful for scripting a contributor's environment setup.
+  [Quick Start](quick-start.md#1-install-the-client-in-your-editor) now shows
+  it as a terminal alternative alongside the existing in-session one-liner
+  and the archive-source note.
+- **Documented: a shell write through a repo-committed symlink onto a
+  sensitive file now prompts instead of writing through it silently
+  (2.1.287).** Before 2.1.287, a sandboxed session whose Bash tool wrote
+  through a tracked symlink resolving outside the expected write area could
+  modify the symlink's target with no permission prompt. On a public,
+  fork-PR-driven repo this matters: a malicious contribution could commit a
+  symlink inside the checkout pointing at a path meant to stay protected —
+  the same class of file the 2.1.247 symlink-deletion fix and
+  `blockReadsOutsideWorkingDirectories` (below) already guard, such as a
+  `PM_ACCESS_TOKEN` credentials file living outside the checkout. Update
+  Claude Code; [`.claude/settings.json`](../../.claude/settings.json)'s
+  existing rules need no change — this closes a gap in enforcement, not a
+  rule to rewrite. Noted in
+  [Troubleshooting](troubleshooting.md#sandboxed-commands-claude-code).
+- **Documented: sandboxed Bash deny/ask rules could miss a command prefixed
+  with an environment-variable assignment under auto-mode's sandbox
+  auto-allow (2.1.289).** Before 2.1.289, a command shaped like `FOO=bar git
+  push --force origin main` could evade a deny rule written as `Bash(git
+  push --force *)` — exactly one of this repo's two
+  [`.claude/settings.json`](../../.claude/settings.json) deny entries
+  (`Bash(git push --force *)`, `Bash(git push -f *)`), there specifically so
+  an auto-mode session can never force-push to `main` per
+  [constraint #2](../../.claude/rules/constraints.md). Fixed in 2.1.289;
+  update Claude Code, the deny entries themselves need no change. Noted in
+  [Troubleshooting](troubleshooting.md#sandboxed-commands-claude-code).
+- **Reviewed, re-verified: `claude plugin validate`'s 2.1.290 additions
+  (reporting of gating hooks and `.catch` presence under `--json`, as
+  `gatingHooks`).** Re-ran `claude plugin validate .` and `claude plugin
+  validate .claude-plugin/plugin.json` on 2.1.293 itself: both still pass.
+  This repo's manifests define no hooks of their own, so there is nothing for
+  the new check to report on.
+- **Reviewed, a genuinely new surface but not adoptable yet: Claude Mods
+  (2.1.287, extended through 2.1.292).** Plugins can now modify deeper Claude
+  Code behavior — a new `$.tool.register`/`$.ui.*`/`$.model.complete` hook
+  surface for a plugin's own live panes, status lines, toasts, and tool
+  schemas. This repo's single plugin is intentionally four prompt-only slash
+  commands with no hooks or deeper behavior today; a mod could, say, surface
+  this repo's own build/verify status in a status line, but that is a new
+  plugin component with its own design and review surface, not a one-line
+  config change — tracked in Future opportunities rather than added here.
+- **Reviewed, not applicable: Claude Haiku 5.5 and the new default Haiku
+  model, `agentType`/`isDeferred` mod fields, the `Agent` tool `effort`
+  parameter, `agent.spawn` workflow-agent support, prompt caching in
+  `$.model.complete`, and the Claude apps gateway/OTel additions across
+  2.1.287–2.1.293 (local-stdio MCP protocol-negotiation default,
+  `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`/
+  `CLAUDE_CODE_OVERLOADED_RETRY_BASE_DELAY_MS`, the `WebSearch` refill rate,
+  the `at_mention` OTel event cap, `managed-agents-onboard`).** This repo
+  makes no model calls, defines no subagents, hooks, or mods, registers no
+  MCP server or gateway, and sets no OpenTelemetry exporter of its own
+  (constraint #4) — none of these has a hook here.
+- **Reviewed, benefits automatically / no action: the rest of 2.1.287–
+  2.1.293.** General session reliability and correctness fixes (the
+  `NO_PROXY`/`HTTPS_PROXY` precedence fix, the HTTP MCP connection memory
+  leak, the `CLAUDE_CODE_USER_DIALOG_TIMEOUT_MS` unit-parsing fix, the
+  MCP-tool-name length-limit fix, sandbox read-deny hardening, the UNC
+  network-path approval-bypass security fix, and the reverted 2.1.281
+  auto-mode denial-message change and 2.1.290 cloud-session-wakeup fix) and
+  terminal/plugin-CLI/agents-view UI work (the `--marketplace` CLI flag
+  aside, already adopted above) apply to any session on this repo the next
+  time it pulls a newer Claude Code, with no config change needed.
+

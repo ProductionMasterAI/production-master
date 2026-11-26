@@ -4,7 +4,7 @@ The editor and agent platforms this client is validated against.
 
 | Platform | Validated against | Latest known |
 |---|---|---|
-| Claude Code | pending | 2.1.327 |
+| Claude Code | pending | 2.1.332 |
 | Cursor | pending | 3.11 (+ changelog 2026-11-06) |
 | Codex | pending | 0.169.1 |
 | OpenCode | pending | pending |
@@ -89,6 +89,95 @@ stdio server intentionally continues to advertise its older supported MCP
 protocol; changing only the protocol string would be unsafe. A future SDK-backed
 upgrade should adopt the newer protocol when paginated discovery, multi-round
 requests, and non-blocking startup can be implemented and tested together.
+
+**Claude Code notes (2.1.327 → 2.1.332).** `.claude-code-version` advances to
+**2.1.332**, covering 2.1.328 through 2.1.332. Registration, sandboxing
+configuration shape, and command-argument handling are unchanged.
+
+- **Adopted: documented the one-sided MCP background-task fix for servers
+  that set headers (2.1.330).** 2.1.330 lets a backgrounded session keep
+  following a running MCP task after you move it behind — "but not if its
+  server uses stdio or sets headers." This plugin's one `mcpServers` entry
+  is `type: "http"` with a templated `headers.Authorization`, so it does
+  not get the improved tracking: an investigation started with
+  `/production-master:investigate` and then backgrounded can still show as
+  stopped even though it is still running on the hosted service. Documented
+  as a known limitation in
+  [`docs/user/troubleshooting.md`](../../docs/user/troubleshooting.md)
+  under "Claude Code: the plugin's access token," where users already look
+  for this server's connection behavior. No manifest change fixes this —
+  the `Authorization` header is required by the hosted service, not
+  optional.
+- **Adopted: documented the new `/mcp` "Server message" row for remote HTTP
+  MCP servers (2.1.329).** `/mcp` now shows a "Server message" row with the
+  JSON-RPC error text a remote HTTP MCP server sends back when it refuses
+  the connection. For this plugin's `production-master` server, that
+  surfaces the hosted service's own wording for an expired or revoked
+  token directly in `/mcp`, instead of only Claude Code's generic
+  "unauthorized." Added a pointer to this in
+  [`docs/user/troubleshooting.md`](../../docs/user/troubleshooting.md)'s
+  auth-error entry.
+- **Reviewed, flag for future action: managed `extraKnownMarketplaces`
+  auto-update defaulting to on, effective on or after November 30, 2026
+  (2.1.331).** This repo is its own marketplace
+  ([`.claude-plugin/marketplace.json`](../../.claude-plugin/marketplace.json));
+  an organization that adds it via managed settings'
+  `extraKnownMarketplaces` will start auto-updating by default once that
+  change ships, unless the admin sets `"autoUpdate": false` on the entry.
+  This is an admin-side managed-settings choice, not something this repo's
+  manifest controls — no action here, but worth surfacing if a team that
+  pins this marketplace by commit for review purposes is ever identified.
+- **Version-check note:** this run's installed `claude` CLI reports `claude
+  --version` → `2.1.332 (Claude Code)`, matching the newest entry published
+  on the official changelog.
+- **Reviewed, not applicable: `optionalDependencies` for plugin manifests
+  (2.1.331).**
+  [`plugin/.claude-plugin/plugin.json`](../../plugin/.claude-plugin/plugin.json)
+  declares no `dependencies` of any kind for Claude Code to mark optional —
+  this plugin's one MCP server is declared inline, not installed as a
+  dependency.
+- **Reviewed, not applicable: skills from MCP servers shown as
+  `server:skill` in the `/` menu, and a new `PreSkillShellCommand` hook
+  event (2.1.332).** This plugin defines no skills of its own and no hooks
+  — [constraint #4](../../.claude/rules/constraints.md) and the
+  `LOCAL_CODE_HOOK` guard in
+  [`check-plugin-folder.mjs`](../../scripts/check-plugin-folder.mjs). Its
+  one MCP server is a remote `http` endpoint, not a source Claude Code
+  would list skills from here. Confirmed against `claude plugin validate
+  plugin/.claude-plugin/plugin.json`'s own "Provides" listing, which shows
+  only the one `mcpServers` entry and four prompt-only commands.
+- **Reviewed, not applicable: fixes scoped to local, stdio, WebSocket, or
+  SSE MCP servers (2.1.328–2.1.332), and to Claude Code's own `claude mcp
+  login`/OAuth device-code MCP sign-in (2.1.329–2.1.330).** This plugin's
+  one server is a remote `http` endpoint authenticated with a static
+  bearer token templated from `userConfig.api_token`, not Claude Code's own
+  OAuth MCP login flow, and it is registered inline in `plugin.json`, not
+  run as a local or stdio process.
+- **Reviewed, not applicable: self-hosted-runner-specific fixes and
+  additions across 2.1.328–2.1.330.** [Constraint
+  #5](../../.claude/rules/constraints.md) keeps this repo on GitHub-hosted
+  `ubuntu-latest` runners only; none of this plugin's own CI or docs
+  reference the self-hosted runner.
+- **Reviewed, benefits automatically / no action: HTTP MCP servers
+  reconnecting by themselves after a slow or stalled reconnect (2.1.329);
+  Claude being told when a connected server's tools fail to load instead
+  of assuming it has none (2.1.329); the "JSON schema is invalid" failure
+  fixed for sessions with many MCP tools (2.1.330); `/mcp` now listing
+  plugin-registered servers under "Plugin MCPs" rather than alongside
+  built-ins (2.1.330); a server's `/mcp` page staying open with the
+  failure cause in view on Reconnect (2.1.330); and freezes/runaway memory
+  fixed for long permission-rule and hook-output checks (2.1.331).** All
+  six describe the client-side MCP connection and permission-rule
+  machinery this plugin relies on (one `http` server, a sizeable
+  [`.claude/settings.json`](../../.claude/settings.json) allow/deny list)
+  without needing any manifest, settings, or docs change beyond the two
+  items adopted above — upgrading Claude Code is the only action.
+- This repo's own `claude plugin validate .` and `claude plugin validate
+  plugin/.claude-plugin/plugin.json` were re-run on the installed 2.1.332
+  CLI: both still pass with no findings. `npm run check:plugin` stays
+  clean (8 files, no directory findings). `npm run build`, `npm test` (460
+  passed, 1 pre-existing skip), and `npm run lint` all ran clean on this
+  pass.
 
 **Claude Code notes (2.1.322 → 2.1.327).** `.claude-code-version` advances to
 **2.1.327**, covering 2.1.323, 2.1.325, 2.1.326, and 2.1.327 (2.1.324 was
@@ -1653,82 +1742,6 @@ host session/UI/billing machinery this repo's four prompt-only commands never
 exercise. Nothing else here changes registration, sandboxing shape, or
 command-argument handling.
 
-**Claude Code notes (2.1.251 → 2.1.252).** Registration, sandboxing
-configuration shape, and command-argument handling are unchanged. 2.1.252's
-published delta is four host-side fixes, none with a surface in this thin
-client: a macOS Bash "task output swap refused" fix, a fix for "always
-allow" not persisting in a project with no `.claude/settings.local.json`
-yet (this repo's [`.claude/settings.json`](../../.claude/settings.json)
-already checks in its allow/deny rules explicitly, so no interactive
-"always allow" write is needed here), a Remote Control stall-after-tool
-fix for Claude Desktop/VS Code hosts, and a fix for oversized background-task
-failure output overflowing the request size limit (this repo defines no
-hooks or background tasks under `.claude/` — constraint #4). Nothing to
-adopt or change.
-
-**Claude Code notes (2.1.247 → 2.1.251).** Registration, sandboxing
-configuration shape, and command-argument handling are unchanged across the
-whole range. 2.1.250 shipped only "bug fixes and reliability improvements,"
-with no further detail published — nothing to review there.
-
-Reviewed and not applicable from 2.1.248: `--restricted` /
-`CLAUDE_CODE_RESTRICTED` (every command in [`commands/`](../../commands/)
-is prompt-only and calls the hosted service's remote MCP server, so it runs
-no local commands for a restricted session to strip; see Future
-opportunities below); `experimental.cacheTtl` agent frontmatter and
-`self-hosted-runner --client-label` (no agents, no self-hosted runners — see
-[constraints #4/#5](../../.claude/rules/constraints.md)); server-managed-
-settings load diagnostics, the `/web-setup` GitHub-token-scope warning,
-`/usage-credits` for AWS-Marketplace/self-serve Enterprise, and cross-session
-messaging on Bedrock/Vertex/Foundry (host session/billing surface, no model
-calls here); and every listed background-session, Remote Control, `claude
-agents`, MCP-as-client, and terminal fix — all host session machinery this
-repo's four prompt-only commands never exercise.
-
-Reviewed and not applicable from 2.1.251: the new `PreModelSwitch`/
-`PostModelSwitch` hooks and `SessionStart` staleness fields, foreground-
-subagent Remote Control streaming, the `/usage` spend-limit bar and `/cost`
-prompt-cache line, and `claude --help attach/logs/stop/respawn/rm` (no
-hooks, no subagents, no model calls, no background-session management from
-this repo's commands — constraint #4); `CLAUDE_CODE_SUBAGENT_MODEL`'s
-changed precedence and the default-commit-trailer change for unrecognized
-models (this repo's [`.claude/settings.json`](../../.claude/settings.json)
-already pins `attribution.commit` explicitly, so neither change alters it);
-and the `env` change dropping `CLAUDE_CONFIG_DIR`/`CLAUDE_CODE_TMPDIR`/
-`TMPDIR` support from project settings (this repo's `.claude/settings.json`
-sets no `env` block to begin with). Two 2.1.251 fixes are worth naming
-individually because they're adjacent to, but distinct from, guidance
-already in this repo's docs:
-
-- **Plugin commands pointing outside the plugin directory are now
-  rejected.** Every command in [`commands/`](../../commands/) already
-  resolves its binary strictly inside the plugin root
-  (`${CLAUDE_PLUGIN_ROOT}/packages/adapter-claude-code/dist/cli.js`, falling
-  back to `${CLAUDE_PLUGIN_ROOT}/dist/cli.js` — never a path that escapes
-  `CLAUDE_PLUGIN_ROOT`), so this hardening changes nothing here; confirmed
-  by inspection of all five command files, not just by absence of an
-  obvious hit.
-- **File tools (Read/Write/Edit) no longer follow a symlink swapped in
-  after the permission check, and Grep/Glob now apply `Read(...)` deny
-  rules through a symlinked search path.** This is a different protection
-  layer from the sandbox `denyRead`/`denyWrite`/masking entries this repo's
-  docs already track for a `PM_ACCESS_TOKEN` credentials file
-  ([Troubleshooting → Sandboxed
-  commands](troubleshooting.md#sandboxed-commands-claude-code)) — those
-  guard the *Bash tool's* sandbox, while this fix guards the *file tools'*
-  own permission checks. This repo's
-  [`.claude/settings.json`](../../.claude/settings.json) sets no
-  `Read(...)`/`Grep(...)`/`Glob(...)` deny rules of its own, so nothing here
-  changes, but a user layering file-tool-level `deny` rules on top of (or
-  instead of) the sandbox entries now gets the same TOCTOU-symlink
-  hardening the sandbox side already had.
-
-Everything else in 2.1.248–2.1.251 — spend-limit and prompt-cache/usage UI,
-self-hosted-runner and Remote Control changes, terminal/keyboard fixes,
-managed-settings and gateway sign-in changes, and the VS Code Remote Control
-footer pill — is host-side UI, billing, or session-management work with no
-surface in this thin client.
-
 **Claude Code notes (2.1.246 → 2.1.247).** Registration, sandboxing
 configuration shape, and command-argument handling are unchanged. One
 2.1.247 fix touches guidance already in this repo's docs: the command
@@ -1879,189 +1892,3 @@ add-ons of its own; and the usage-limit reset-time message wording.
 Everything else in the 2.1.239–2.1.241 range is host-side UI/billing/
 reliability work with no client-relevant surface.
 
-**Claude Code notes (2.1.236 → 2.1.238).** Registration, sandboxing
-configuration shape, and command-argument handling are unchanged across
-2.1.237 and 2.1.238. Reviewed and not applicable: 2.1.237's built-in
-**"Concise" output style** (opt-in under `/config`) and its prompt-caching
-fix for gateway/custom-base-URL sessions — this repo ships no output-style
-file, and the client never calls a model directly (see [constraint
-#4](../../.claude/rules/constraints.md)), so neither surface exists here.
-2.1.238's plugin-marketplace **`headersHelper`** (mints auth headers for
-catalog/archive fetches on install/update) is also not applicable: this
-repo's Claude Code install path is `/plugin install` from a marketplace
-hosted elsewhere, or the SHA-256-pinned `archive` source documented in
-[Quick Start](quick-start.md#claude-code) — no marketplace or catalog entry
-lives in this repo for a `headersHelper` to attach to. Also reviewed and not
-applicable: the new `self-hosted-runner --defer-shutdown-max-min` /
-`--proxy-authorization-command`/`--proxy-authorization-file` flags — this
-repo's CI runs GitHub-hosted `ubuntu-latest` only, never `self-hosted` (see
-[constraint #5](../../.claude/rules/constraints.md)); the subagent-tool-result
-memory-growth fix and the custom/project/plugin output-style-drift fix — this
-client's commands run no subagents and define no output style; and the fix
-for stdio MCP servers receiving `server/discover` before `initialize` — this
-client's Claude Code path registers via `/plugin install`, not MCP, so Claude
-Code is never this thin client's MCP client (the `.cursor/mcp.json`/
-`.codex/config.toml`/`opencode.json` registrations talk to Cursor/Codex/
-OpenCode's own MCP clients, not Claude Code's). Everything else in the
-2.1.237–2.1.238 range is host-side UI/perf/reliability work — Remote Control
-and cross-session-messaging fixes, the `keybindingFlavor` readline setting,
-permission-prompt and MCP-elicitation-dialog rendering, startup
-responsiveness — with no client-relevant surface.
-
-**Claude Code notes (2.1.234 → 2.1.236).** Registration, sandboxing
-configuration shape, and command-argument handling are unchanged. The one
-2.1.236 item that touches this client directly: **macOS sandbox wildcard
-`denyRead` rules are now hardened** — they take precedence inside allowed
-read regions, cover a matched directory's contents, and can no longer be
-bypassed by renaming the denied file. This closes the same
-sandboxed-file-protection bypass family as the Linux/macOS trailing-slash
-`denyRead` fix in 2.1.224 and the Windows NT-namespace-path fix in 2.1.234
-(see
-[Troubleshooting → Sandboxed commands](troubleshooting.md#sandboxed-commands-claude-code)):
-macOS users protecting a `PM_ACCESS_TOKEN` credentials file with a wildcard
-sandbox deny entry now get the same guarantee Linux already had, and — since
-credential masking falls back to plain `deny` on macOS anyway — this is now
-the strongest protection macOS users have for that file. Everything else in
-2.1.235 and 2.1.236 is host-side UI/perf/reliability work with no
-client-relevant surface: the optional prompt `spellcheck` setting,
-`/ultrareview`/`/autofix-pr` background memory/CPU improvements, permission-
-dialog consistency and embedded-`grep` hardening, `SendMessage` size limits
-and the new `notify_when_idle` option, the `ANTHROPIC_DEFAULT_MODEL`
-environment variable, and auto-mode classifier parity on Bedrock/Vertex/
-Foundry — none of it touches this client's registration, commands, or
-manifests.
-
-**Claude Code notes (2.1.233 → 2.1.234).** Registration, sandboxing, and
-command argument handling are unchanged. This release's hardening against
-Windows NT-namespace path reads closes another instance of the same
-sandboxed-file-protection bypass family as the Linux/macOS trailing-slash
-`denyRead` bypass fixed in 2.1.224 (see
-[Troubleshooting → Sandboxed commands](troubleshooting.md#sandboxed-commands-claude-code)):
-Windows users who protect a credentials file seeding `PM_ACCESS_TOKEN` with a
-sandbox filesystem deny entry now get the same guarantee Linux/macOS already
-had. The rest of the delta is host-side session/UI work with no client
-change: auto-continue on usage-limit reset, GitLab MR badges in the
-footer/statusline, account-email-only identification, Remote Control
-cross-session/org-switch sync, `/permissions` and `/add-dir` usable while
-Claude is working, `/goal` improvements, and transcript-rendering fixes —
-none of it touches this client's registration, commands, or manifests.
-
-**Claude Code notes (2.1.232 → 2.1.233).** Registration is unchanged. One
-2.1.233 fix touches this client directly: **skill/command argument
-substitution no longer re-expands argument values as template markers.**
-Every command in `commands/` (`login.md`, `investigate.md`, `connect.md`,
-`update.md`) interpolates `$ARGUMENTS` both in its prose and in the Bash
-block that execs the CLI; before 2.1.233, an argument value that itself
-looked like a template marker (for example an incident description or JSON
-payload copied from another prompt) could be re-expanded a second time
-instead of passed through literally. Fixed host-side — no command-file
-change needed, but see
-[Troubleshooting → Command arguments](troubleshooting.md#command-arguments-claude-code)
-for the versions affected. Also relevant to this repo:
-**`claude plugin validate` now checks a bare `.claude/skills` directory**
-and reports any `SKILL.md` whose frontmatter fails to parse — a free extra
-check on this repo's [`run-production-master`
-skill](../../.claude/skills/run-production-master/SKILL.md), which already
-parses cleanly. The rest of the delta is host-side and needs no client
-change: GitLab merge-request URLs in `--worktree`/`claude agents`, the
-`forward_user_identity` apps-gateway setting, opt-in Bash memory-cgroup
-limits and the WebFetch cache-TTL env var, notification-hook and idle-CPU
-fixes, the Windows NT-path and self-hosted-runner fixes, and the todo/task
-tracking tools being off by default on newer models (`CLAUDE_CODE_ENABLE_TODO_TOOLS=1`
-restores them) — this client's commands never invoke those tools.
-
-**Claude Code notes (2.1.231 → 2.1.232).** Registration is unchanged. Two
-2.1.232 entries improve this plugin's install story with no client change:
-`/plugin install production-master@<marketplace>` now **refreshes the
-marketplace first**, so a just-published plugin version installs without a
-manual `marketplace update` (quick-start and troubleshooting note the
-version-scoped behavior), and a startup race that could silently unregister a
-plugin marketplace (concurrent `known_marketplaces.json` writes) is fixed — a
-"marketplace disappeared" symptom on older versions is a host bug, not a
-registration mistake. For managed environments, `allowedMarketplaces` /
-`additionalMarketplaces` are accepted as friendlier aliases for
-`strictKnownMarketplaces` / `extraKnownMarketplaces`, and marketplaces can now
-be hosted on GitLab (bare `gitlab.com` repo URLs). The rest of the delta is
-host-side and needs no client change: session `@`-mentions and subagent
-forking defaults, GitLab token redaction, Remote Control and gateway fixes,
-and the MCP protocol-version-probe fix (this client's Claude Code path
-registers via `/plugin install`, not MCP; the other editors' MCP registrations
-talk to their own hosts, not Claude Code's MCP client).
-
-**Claude Code notes (2.1.229 → 2.1.231).** Registration remains
-`.claude-plugin/plugin.json` + `commands/` (see the table below). Since Claude
-Code 2.1.229, plugin marketplaces also support **`command` sources**: a local
-command prints the plugin directory, the result is re-resolved each session and
-applied without a restart, and `mode: "link"` uses the directory in place. For
-contributors hacking on `adapter-claude-code`, that is the cleanest local-dev
-install — register the dev checkout through a command-source marketplace entry
-and each new session picks up the checkout as it stands (the slash commands
-still exec the built `dist/cli.js`, so run `npm run build` after edits). The
-rest of the 2.1.229 + 2.1.231 delta is host-side and needs no client change:
-both releases' MCP OAuth fixes concern OAuth-flow MCP servers, while this
-client's device-code + bearer design never touches MCP OAuth.
-
-**Cursor notes (3.11 → 2026-10-20).** Registration remains `.cursor/mcp.json` →
-`mcpServers.production-master` (see [Quick Start](quick-start.md)). Cursor 3.9+'s
-Customize page is the preferred place to manage that MCP entry alongside plugins,
-skills, and hooks. Team admins on 3.10+ can also distribute an approved MCP via
-**Team MCPs in team marketplaces** (Dashboard → Integrations & MCP) so members
-install the same server without hand-editing JSON. Optional Google Workspace
-marketplace plugins (2026-08-03) are unrelated to this thin client and are not
-required for investigations. **Origin (2026-08-17, early beta):** Cursor's git
-forge ([docs](https://cursor.com/docs/origin)) can host or **mirror this public
-GitHub repo** for browse/PR review inside Cursor; use the [Origin CLI](https://cursor.com/docs/origin/cli) for clone/push/pull; agents can [create Origin repos](https://cursor.com/docs/origin/create-repository); connect [Automations / Cloud Agents](https://cursor.com/docs/origin/integrations) and apps (Vercel / Depot / Buildkite) from repo settings. GitHub remains the source of
-truth for installs and CI (`ubuntu-latest` only — public repo). Do not treat
-Origin-only hosting as a replacement for the GitHub remote users clone. **Cloud
-Agent Builds (2026-08-13; default as of 2026-08-17):** when validating adapters
-in Cloud Agents, Builds is now the default — confirm a recent successful Build,
-`Update stale builds` on (Staleness threshold default 24h), and install
-credentials as team/environment secrets. Sessions boot from a warm install
-snapshot (~hourly refresh). Put durable deps in `install` and fresh services in
-`start`; use **team/environment secrets** for private-registry install
-credentials (user secrets are not available during Builds). Recurring Builds
-**Skip** when nothing changed since the last completed Build (no new
-default-branch commits / config / secret changes) — a Skipped stream is healthy.
-Enable **Update stale builds** and set the **Staleness threshold** (default
-**24 hours**; `0` = always pull latest default-branch at agent start). Phase
-split: durable work in `install` (Build-time), fresh services in `start`, shared
-app processes in `terminals` (both at agent start). Desktop download line
-**3.31.15** (stable download API **2026-11-15**; IDE 3.26/3.27 notes above; desktop 3.23 added MCP allowlists / service tokens; public feature changelog through 2026-11-06).
-([announcement](https://cursor.com/blog/builds) · [Builds docs](https://cursor.com/docs/cloud-agent/builds)).
-
-**Cursor working tips.** **Desktop 3.23.12:** confirm Team MCP allowlists; prefer service tokens for Automations. **Security Review + Rollouts (2026-09-23):** enable from Automations when on Teams/Enterprise; `/review-security` for local pre-push. **Projects (2026-09-10):** use Cursor **Projects** (left nav) for multi-week / multi-agent work — a **coordinator** plans and delegates (does not write code); **shared context** syncs across cloud and local agents; **subscriptions** can watch Slack, schedules, or all PRs. Keep one-shot adapter fixes in ordinary Agent / Cloud Agent chats. Desktop CLI observed **3.23.12** (feature changelog still **3.11**). **Self-Hosted Machines (2026-09-02):** Cursor can run Cloud Agent tool execution on **My Machines**, **Team Pools** (dynamic scale + hibernation), or partner sandboxes (AWS Lambda, Coder, Cloudflare, Daytona, Modal, Namespace, Vercel, E2B), with **computer use** on Linux/Mac ([docs](https://cursor.com/docs/cloud-agent/self-hosted)). This is **not** GitHub Actions `runs-on: [self-hosted]` — this **public** thin-client repo stays on `ubuntu-latest` only (Hard rule 4 / fork-PR RCE). Prefer Cursor-managed Cloud Agents for day-to-day plugin work; use self-hosted only for private-network or custom-hardware constraints. **Start from scratch / Origin without SCM (2026-08-27):** Cloud Agents no longer need a connected GitHub (or other SCM) to begin — pick **Start from scratch**, prompt immediately, then **Create repo** to save into an Origin repo (private/internal). Live **browser port-forward preview** (incl. design mode) and optional **Vercel publish** for a live URL are available from the agent session. GitHub remains canonical for this public thin client's installs/CI. **Subscriptions / Custom Modes / isolated-VM subagents / `/goal` (+ CreateGoal/UpdateGoal) + steering (2026-08-19):** Cloud Agents can wake on PR/Slack/schedule and auto-subscribe to PRs they open; pin any skill as a Custom Mode via ⌥⏎ / Alt+Enter from `/`; cloud subagents can run on their own VMs; use `/goal` or native **CreateGoal** / **UpdateGoal**; follow-ups wait for the next tool call. Cursor CLI **Aug 11** adds sticky skills (Option+Enter),
-steer-while-running (Enter queues guidance; Enter again interrupts), optional
-durable `/goal` (gated), and runs hooks from installed plugins once a Cursor-native
-hooks bundle exists — irrelevant to this thin-client adapter beyond local CLI
-debugging.  Desktop CLI may report **3.16.29** while the public feature
-changelog stays on **3.11** — this repo pins the feature/date in `.cursor-version`
-and records `desktop_cli` separately. Newest covered changelog date is **2026-11-06** (Voice Chat; prior Live Apps **2026-11-05**, Agent SDK GA **2026-10-20**, Cloud Agent canvases **2026-10-16**, Origin App Marketplace **2026-10-13**, Remote Control **2026-10-06**, Security Review + Rollouts **2026-09-23**, Projects **2026-09-10**). Desktop CLI **3.31.15**. Cursor also loads the open
-[Agent Plugins](https://agent-plugins.org) standard alongside `.cursor-plugin`
-manifests. The desktop/CLI `workspaceOpen` hook can return `pluginPaths` for
-workspace-specific plugins (not available on Cloud Agents). Use a **side chat**
-(`/side`, `/btw`, 3.11) to debug MCP registration or compare adapter shapes without
-interrupting an in-flight investigation. **Cursor Automations** (3.8, `/automate`)
-can **delete memory files** from the UI (or when prompted) and can watch **Workflow run completed** on this repo's CI and open a fix PR; enable
-computer use when you want a demo artifact attached. Prefer **Balance** Auto /
-Cursor Router mode for routine adapter work. **Grok 4.6 (2026-08-14):** prefer for long-running adapter validation and visual/interactive demos ([announcement](https://cursor.com/blog/grok-4-6)); Router Balance remains the default for routine work. **Inbox multi-PR sessions
-(2026-07-29):** when one chat opens several adapter/docs PRs, open every PR from
-the session — not only the last.
-
-**Runnable status (all four adapters).** Each adapter ships direct dispatch
-(`login`/`investigate`/`connect`/`update`/`logout`, the same CLI shape across
-adapters) and a persistent `mcp` subcommand — a JSON-RPC/stdio MCP tool server —
-wired into that editor's native registration:
-
-| Adapter | Registration file | `mcp` entry point |
-|---|---|---|
-| `adapter-claude-code` | `.claude-plugin/plugin.json` + `commands/` | wired end-to-end (slash commands) |
-| `adapter-cursor` | `.cursor/mcp.json` → `mcpServers.production-master` | `dist/cli.js mcp` |
-| `adapter-codex` | `.codex/config.toml` → `[mcp_servers.production-master]` | `dist/cli.js mcp` |
-| `adapter-opencode` | `opencode.json` → `mcp.production-master` | `dist/cli.js mcp` |
-
-
-Codex 0.167.0 (2026-11-06) adds `codex agents --no-daemon`, backend switching in the session picker, local image previews, optional OS proxy settings, and a Vertex AI setup wizard. Managed `[permissions.network]` and fresh-approval `prompt-user` rules, improved MCP session leases, cancellation, token-refresh recovery, provider switching and context compaction are host-side. No adapter configuration migration is needed. Prefer native Codex functionality; optional proxy and GCP setup remain opt-in. This is changelog review only, not direct CLI validation.
-
-Codex 0.169.0 (2026-11-10) is a patch release with no separately enumerated feature or migration notes in the official GitHub release entry. This adapter's local stdio MCP registration remains unchanged. The 0.169.0 pin is reviewed against the upstream release; direct CLI validation is still pending.
-
-**Codex 0.169.1 (2026-11-17).** Official release notes list no verified feature or breaking-change highlights. The thin-client MCP registration is unchanged; this is a changelog review only, not host validation.

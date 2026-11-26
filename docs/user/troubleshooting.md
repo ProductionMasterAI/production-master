@@ -257,6 +257,25 @@ Related notes for recent Claude Code versions:
 
 The access token is missing, expired or revoked. Run `/production-master:setup`: create a new token in the Production Master console under Settings, then API Tokens, and enter it via `/plugin` → Installed → Configure (or `claude plugin configure production-master`). Run `/mcp` to see the status of the `production-master` server; it should show as connected once the token is accepted. If the server shows as unavailable rather than unauthorized, check your network and try again later.
 
+> **Claude Code 2.1.329+:** the server's page in `/mcp` now has a "Server
+> message" row that shows the JSON-RPC error text the `production-master`
+> server itself sent back when it refused the connection — for example its
+> own wording for an expired or revoked token — rather than only Claude
+> Code's generic "unauthorized." Check that row first on an auth failure.
+
+### An in-progress investigation shows as stopped after backgrounding the session
+
+Claude Code 2.1.330 lets a backgrounded session keep following a running MCP
+task, but the fix explicitly does not cover an MCP server that uses stdio or
+sets headers — and the `production-master` server is an `http` server that
+sets an `Authorization` header on every request (required by the hosted
+service; it cannot be removed). So moving a session to the background while
+`/production-master:investigate` or `/production-master:update` is still
+running can show the task as stopped even though it is still running on the
+hosted service. This is a known limitation, not a sign that the investigation
+failed — reopen the session (or wait and check back) rather than re-running
+the command.
+
 ### Claude asks before every tool call
 
 This is expected. The plugin's commands pre-approve nothing, so Claude Code asks before each Production Master tool call; approve them as usual, or add your own allow rules in your Claude Code permission settings. Because nothing is pre-approved, an organization's managed permission policy does not change this behavior.

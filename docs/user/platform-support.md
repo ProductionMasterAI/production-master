@@ -4,7 +4,7 @@ The editor and agent platforms this client is validated against.
 
 | Platform | Validated against | Latest known |
 |---|---|---|
-| Claude Code | pending | 2.1.327 |
+| Claude Code | pending | 2.1.332 |
 | Cursor | pending | 3.11 (+ changelog 2026-11-06) |
 | Codex | pending | 0.169.1 |
 | OpenCode | pending | pending |
@@ -89,6 +89,58 @@ stdio server intentionally continues to advertise its older supported MCP
 protocol; changing only the protocol string would be unsafe. A future SDK-backed
 upgrade should adopt the newer protocol when paginated discovery, multi-round
 requests, and non-blocking startup can be implemented and tested together.
+
+**Claude Code notes (2.1.327 → 2.1.332).** `.claude-code-version` advances to
+**2.1.332**, covering 2.1.328 through 2.1.332 (all five published). Registration,
+sandboxing configuration shape, and command-argument handling are unchanged.
+Nothing in this delta is adopted or closes a real gap in this repo's own
+rules; every item is reviewed line by line and ruled not applicable by
+[constraint #4](../../.claude/rules/constraints.md) (no pipeline/agent logic,
+no hooks, mods, subagents, or MCP server of this repo's own beyond the one
+plain `http` registration in `plugin.json`) or [constraint
+#5](../../.claude/rules/constraints.md) (no self-hosted runner):
+
+- **Version-check note:** this run's installed `claude` CLI reports `claude
+  --version` → `2.1.332 (Claude Code)`, matching the newest entry published
+  on the official changelog.
+- **Reviewed, not applicable: `optionalDependencies` in plugin manifests,
+  letting a plugin list dependency plugins that install alongside it and can
+  be disabled or uninstalled on their own (2.1.331).**
+  [`.claude-plugin/marketplace.json`](../../.claude-plugin/marketplace.json)
+  ships exactly one plugin, and
+  [`plugin/.claude-plugin/plugin.json`](../../plugin/.claude-plugin/plugin.json)
+  declares no dependencies for it to list.
+- **Reviewed, not applicable: `onFailure: "block"` extended to `mcp_tool`
+  hooks (2.1.328), and a new `PreSkillShellCommand` hook event that can
+  refuse a skill or command's inline shell commands as it loads (2.1.332).**
+  Constraint #4 — this repo's plugin declares no hooks of its own
+  (`LOCAL_CODE_HOOK` in
+  [`check-plugin-folder.mjs`](../../scripts/check-plugin-folder.mjs)).
+- **Reviewed, not applicable: easel, a built-in mod that draws charts under
+  MCP metrics results (2.1.330); sign-in to organizations managed in
+  Anthropic's Enterprise Admin Console (2.1.330); and auto mode for Opus 4.6
+  and Sonnet 4.6 on Bedrock, Google Cloud's Agent Platform, Microsoft Foundry
+  and the Claude apps gateway (2.1.328).** This repo's plugin is not a mod
+  and declares no hooks (constraint #4); it also owns no gateway, Bedrock,
+  Agent Platform or Foundry routing of its own — the hosted service is
+  reached over one plain `http` MCP registration, authenticated by the
+  user's own access token, not a model-provider call this repo makes
+  (constraint #4, no LLM/model-provider SDK import).
+- **Reviewed, benefits automatically / no action: skills served from MCP
+  servers (beta), shown as `server:skill` in the `/` menu instead of a
+  plugin-bundled command (2.1.332).** This repo's four Claude Code commands
+  ([`plugin/commands/`](../../plugin/commands/)) are static, plugin-bundled
+  prompt-only files today, not skills the `production-master` MCP server
+  serves itself — the hosted service would need to start serving skills over
+  MCP for this to apply, which is a server-side product decision, not a
+  one-line client change — tracked in Future opportunities rather than added
+  here.
+- This repo's own `claude plugin validate .` and `claude plugin validate
+  plugin/.claude-plugin/plugin.json` were re-run on the installed 2.1.332
+  CLI: both still pass with no findings. `npm run check:plugin` stays clean
+  (8 files, no directory findings). `npm run build`, `npm test` (460
+  passed, 1 pre-existing skip), and `npm run lint` all ran clean on this
+  pass.
 
 **Claude Code notes (2.1.322 → 2.1.327).** `.claude-code-version` advances to
 **2.1.327**, covering 2.1.323, 2.1.325, 2.1.326, and 2.1.327 (2.1.324 was

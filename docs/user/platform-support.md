@@ -1121,3 +1121,444 @@ work with no hook into this repo's four prompt-only commands:
   its [`.claude/settings.json`](../../.claude/settings.json). Nothing here
   changes registration, sandboxing shape, or command-argument handling.
 
+**Claude Code notes (2.1.270 → 2.1.272).** `.claude-code-version` advances to
+**2.1.272**, covering 2.1.271 and 2.1.272. Registration, sandboxing
+configuration shape, and command-argument handling are unchanged. Two 2.1.271
+fixes touch this repo's own surface directly enough to document (both added
+to [Troubleshooting](troubleshooting.md#sandboxed-commands-claude-code)
+above); one 2.1.271 feature is informational only; everything else is either
+a managed-org/gateway/Remote-Control/Workflow/Artifact/MCP-as-client surface
+[constraint #4](../../.claude/rules/constraints.md) rules out, a
+self-hosted-runner surface [constraint #5](../../.claude/rules/constraints.md)
+rules out, or host-side terminal/UI/reliability work with no hook into this
+repo's four prompt-only commands:
+
+- **Documented: a stale `.git/config.lock` breaking `git checkout -b`,
+  `git push -u`, and `git config` for the rest of a session after a
+  sandboxed command failed to start (2.1.271, Linux).** This repo's
+  allow-listed `Bash(git checkout *)`, `Bash(git branch *)`, and
+  `Bash(git push origin *)` entries in
+  [`.claude/settings.json`](../../.claude/settings.json) are exactly the
+  commands this bug could break for the rest of an affected session. Update
+  Claude Code; no allow-list change needed.
+- **Documented: `Bash` commands with two directory changes, a subshell, or a
+  `cd`+`git` chain could skip the `permissions.blockReadsOutsideWorkingDirectories`
+  prompt in bypass and auto mode (2.1.271).** This repo sets
+  `blockReadsOutsideWorkingDirectories: true` in
+  [`.claude/settings.json`](../../.claude/settings.json) (adopted in the
+  2.1.257 note below) specifically so a stray auto-mode read can't reach a
+  `PM_ACCESS_TOKEN` credentials file living outside the checkout; this fix
+  closes a bypass of that same guarantee reachable through a compound Bash
+  command rather than a single one. Update Claude Code; the setting itself
+  needs no change.
+- **Reviewed, informational only: per-command `allowed_domains` for `Bash`
+  in auto mode with sandboxing (2.1.271).** Lets a single sandboxed Bash
+  invocation be scoped to only the network hosts that one command needs,
+  reviewed and opened for it alone, narrower than the session-wide
+  `sandbox.network.strictAllowlist` entry this repo's docs already recommend
+  for `api.productionmaster.dev` (or a custom `PM_SERVICE_URL` host — see
+  [Troubleshooting](troubleshooting.md#sandboxed-commands-claude-code)).
+  Each of this repo's five commands makes exactly one such Bash call, so an
+  auto-mode session can now grant that call network access without a
+  broader Bash network allowlist. This is host-side, per-invocation
+  behavior — no `.claude/settings.json` field to set — so it is documented
+  in Troubleshooting rather than adopted as a config change here.
+- **Reviewed, not applicable: `omitClaudeMd` agent frontmatter and
+  `--agents` JSON (2.1.271).** Lets a custom or plugin subagent run without
+  inheriting CLAUDE.md files. This repo defines no subagents of its own —
+  constraint #4, no pipeline/agent logic — so there is no agent frontmatter
+  for the new field to appear in.
+- **Reviewed, not applicable: `--accept-command <sha256>` on `claude plugin
+  install`/`update` (2.1.271).** As with the 2.1.268 `--json` note above,
+  this repo's single plugin is installed by the end user with `/plugin
+  install production-master`; no script in this repo shells out to `claude
+  plugin install`/`update` for there to be a displayed command to accept.
+- **Reviewed, not applicable: the Claude apps gateway `modelPricing`
+  `multiplier` (2.1.271) and the Bedrock/Vertex/Foundry desktop-app spinner
+  tip (2.1.271).** This repo makes no model calls of its own (constraint
+  #4) — no gateway pricing to mark up, no Bedrock/Vertex/Foundry session of
+  this repo's own for the tip to appear in.
+- **Reviewed, not applicable: Claude Code Remote fast mode (2.1.271) and the
+  `Workflow` tool's fixed watch deadline (2.1.271).** This repo runs no
+  Remote sessions and uses no `Workflow` tool script or `Monitor` watch of
+  its own — constraint #4, no pipeline/agent logic.
+- **Reviewed, benefits automatically: the settings-file-change polling
+  fallback on saturated macOS systems (2.1.271); the Bash permission-check
+  hardening for wildcard-expanded file arguments and shell-variable
+  declaration flags (2.1.271); and terminal-rendering/startup-time
+  improvements (2.1.271).**
+  [`.claude/settings.json`](../../.claude/settings.json) is watched for
+  external changes like any other project settings file, and this repo's
+  Bash allow list is exercised by contributors and by
+  [`.github/workflows/claude.yml`](../../.github/workflows/claude.yml) — none
+  of these had a repo-specific failure mode to reproduce, but the general
+  reliability and performance work applies to any session on this repo with
+  no config change.
+- **2.1.272 shipped only "bug fixes and reliability improvements," with no
+  further detail published — nothing to review there.**
+- Everything else in the 2.1.271/2.1.272 delta — the `/config` panel mouse
+  support, `claude self-hosted-runner --drain-marker-file` (constraint #5,
+  GitHub-hosted `ubuntu-latest` runners only), the cached-org-policy and
+  tool-list-refresh fixes (no managed settings here), the `managed-mcp.json`
+  exclusive-control fix and the `ANTHROPIC_UNIX_SOCKET` org-policy fix (no
+  managed MCP config or custom local proxy in this repo's path), the cloud
+  subagent-tool-call schema-validation fix (no subagents), `/fast off` and
+  the `CLAUDE_CODE_RETRY_WATCHDOG` fast-mode fixes (no fast-mode
+  configuration of this repo's own), the resumed `claude -p`
+  MCP-only-tools fix and the MCP `list_changed`/OAuth/tool-search fixes (no
+  `.mcp.json` of this repo's own for Claude Code, per the 2.1.268 MCP note
+  below), cross-session-message delivery notices, background-command
+  double-start-after-compaction, `/model`/`/reload-skills`/`/resume`/
+  `/teleport`/`--resume` UI and state fixes (this repo's contributor
+  workflow is fork-and-branch, never `--worktree`/`claude agents` teleport),
+  Artifact-publish/watch fixes (no Artifact usage — constraint #4), the
+  virtual-drive-inode-0 component-loading fix (this repo's `commands/` and
+  `.claude/` load from a normal checkout, not an encrypted vault), the
+  synced-skill-cleanup-after-sign-out fix (the
+  [`run-production-master`](../../.claude/skills/run-production-master/SKILL.md)
+  skill is project-local, checked into this repo, never claude.ai-synced),
+  and the remaining terminal-input/UI cosmetics and Foundry/Remote-Control/
+  Cowork/dynamic-workflow items — is either a managed-org/model-calling/
+  Cowork/Workflow/self-hosted-runner surface constraints #4/#5 rule out or
+  this repo doesn't exercise, or host-side UI/reliability work with no hook
+  into this repo's four prompt-only commands or its
+  [`.claude/settings.json`](../../.claude/settings.json). Nothing here
+  changes registration, sandboxing shape, or command-argument handling.
+
+**Claude Code notes (2.1.268 → 2.1.270).** `.claude-code-version` advances to
+**2.1.270**, covering 2.1.269 and 2.1.270. Registration, sandboxing
+configuration shape, and command-argument handling are unchanged. One item is
+adopted, one closes a loop directly relevant to this repo's read-only-git
+Bash allow rules, one is called out as a genuine (but not yet taken) option
+for this repo's single plugin, and everything else is either a managed-org/
+gateway/OTEL/Workflow/Cowork surface constraint #4 rules out or host-side
+reliability work with no hook into this repo's four prompt-only commands:
+
+- **Adopted: `bashEditDiffEnabled` (2.1.269).** When the Bash tool itself
+  edits a file, Claude Code can now attach a diff of what changed to the
+  Bash tool result instead of only the command's stdout/stderr. This repo's
+  [`.claude/settings.json`](../../.claude/settings.json) allow-lists
+  `Bash(npx prettier --write *)` — a Bash-tool-driven file edit, not an
+  `Edit()`/`Write()` call — so before 2.1.269 a reformat run this way showed
+  no diff at all in the transcript, only the (silent, on success) prettier
+  exit. Set `bashEditDiffEnabled: true` in
+  [`.claude/settings.json`](../../.claude/settings.json) so that reformat
+  shows what it actually changed, the same visibility an `Edit()` call
+  already gets. It is not limited to that one command: the allow list also
+  carries `Bash(git checkout *)` and `Bash(git switch *)`, both of which can
+  replace tracked working-tree files, so a Bash-driven checkout will now
+  attach a diff too. The remaining Bash-only entries (`npm`, `make`,
+  `node scripts/*`, and the read-only `git status`/`diff`/`log` probes) do not
+  write files, and are unaffected.
+- **Reviewed, notable but not newly adopted: the read-only-git
+  permission-prompt regression (2.1.269) and its fix (2.1.270).** 2.1.269
+  introduced a regression where read-only Bash git commands could
+  unexpectedly ask for permission again after a session had been running for
+  a while; 2.1.270 fixes it. This repo's
+  [`.claude/settings.json`](../../.claude/settings.json) allow-lists exactly
+  the commands this regression affects — `Bash(git status)`,
+  `Bash(git diff *)`, and `Bash(git log *)` — used throughout the contributor
+  workflow in [CONTRIBUTING.md](../CONTRIBUTING.md) and by the
+  [`run-production-master`](../../.claude/skills/run-production-master/SKILL.md)
+  skill's verification steps. Nothing to change in the allow list itself —
+  the rules were always correct — but this is why the version pin advances
+  straight from 2.1.268 to 2.1.270 rather than stopping at 2.1.269: taking
+  2.1.269 alone would have reintroduced spurious prompts on exactly the
+  Bash commands this repo relies on running unattended in a long session.
+- **Reviewed, a real option not taken yet: `claude plugin eval` (2.1.269).**
+  Runs a plugin's eval suite against Claude Code and produces scored,
+  reproducible JSON/HTML results. This repo's single plugin
+  ([`.claude-plugin/plugin.json`](../../.claude-plugin/plugin.json) +
+  [`commands/`](../../commands/)) has no automated eval or smoke-test suite
+  today. CI runs the adapter's unit tests with coverage, the version-pin and
+  changelog-structure guards, `secret-scan` and `ip-guard` — but nothing in CI
+  or in the test suite reads `.claude-plugin/plugin.json` or the `commands/`
+  manifests at all, so a malformed manifest passes CI today, and nothing
+  exercises the four slash commands as Claude Code itself would invoke them. Not adopted here because an eval suite worth committing to
+  needs deciding what a fixture-backed `PM_SERVICE_URL` for
+  `/setup`/`/investigate`/`/connect`/`/update` looks like and what
+  "correct" scores as, which is a design decision, not a config flip — see
+  Future opportunities in the tracking PR for a concrete starting shape.
+- **Reviewed, not applicable: `/output-style` (2.1.269).** Lets an
+  interactive, Remote Control, or cloud/headless session list and switch
+  output styles. This repo ships no output-style file of its own (per the
+  2.1.238 note below) and defines no output-style guidance for any of its
+  five commands — there is nothing here for `/output-style` to switch
+  between beyond Claude Code's own built-ins.
+- **Reviewed, not applicable: `OTEL_METRICS_INCLUDE_REPOSITORY` (2.1.269).**
+  Tags a Claude Code session's own OpenTelemetry metrics/events with
+  `vcs.*` repository attributes. This repo configures no OpenTelemetry
+  exporter of Claude Code's own — constraint #4, no model-provider or
+  telemetry surface of this repo's own to tag. (Unrelated to this thin
+  client's own product terminology: `PM_MCP_GATEWAY_URL`/`--gateway` name a
+  Production-Master-service concept, not a Claude Code OTEL/gateway
+  setting.)
+- **Reviewed, not applicable:
+  `CLAUDE_CODE_GATEWAY_MODEL_DISCOVERY_TIMEOUT_MS` (2.1.269).** Extends the
+  Claude-apps-gateway's `/v1/models` discovery timeout. As with the 2.1.266
+  and 2.1.268 gateway notes above,
+  [`claude.yml`](../../.github/workflows/claude.yml) authenticates
+  `anthropics/claude-code-action@v1` with a plain `ANTHROPIC_API_KEY`
+  secret — no Claude-apps gateway sits in front of it, so there is no
+  model-discovery timeout of this kind to extend.
+- **Reviewed, not applicable: `CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS`
+  (2.1.269).** Raises the `Workflow` tool's per-run concurrent-agent limit.
+  This repo uses no `Workflow` tool script of its own (constraint #4).
+- **Reviewed, benefits automatically, and worth naming for this repo's own
+  attribution setting: the attribution-reminder-override fix (2.1.269,
+  SECURITY-adjacent).** Before 2.1.269, a session-level attribution reminder
+  could override a repo's own CLAUDE.md/memory rule against commit/PR
+  attribution. This repo's
+  [`.claude/settings.json`](../../.claude/settings.json) does the opposite —
+  it explicitly *sets* `attribution.commit` rather than disabling it — so
+  the bug's failure direction (an unwanted override winning) was never
+  visible here, but the fix confirms this repo's own explicit setting is now
+  the one that wins over any external attribution reminder, short of a
+  managed-settings override.
+- Everything else in the 2.1.269/2.1.270 delta — the `claude plugin eval`
+  and `/output-style` availability over Remote Control/cloud sessions
+  themselves (constraint #4, no model calls of this repo's own); prompt-cache
+  partial-invalidation and terminal-keybinding fixes (general reliability,
+  benefits automatically); the remote/headless "waiting for your input"
+  background-agent fix and its `CLAUDE_CODE_BG_TASKS_REPORT_RUNNING` revert
+  flag (this repo's five commands spawn no background agents — constraint
+  #4); `git status` after compaction now current (general reliability); the
+  synced-plugin-MCP-servers-not-reconnecting fix (this repo's Claude Code
+  path registers via `/plugin install` and execs a binary from `commands/`,
+  never MCP — see the 2.1.229 note below); the SECURITY plugin-archive
+  extraction permissions/world-writable/stale-file fixes (host-side plugin
+  cache hardening, no repo-specific plugin archive of this repo's own beyond
+  the one it ships); the SECURITY `Edit()`-deny/write-path and
+  `Bash(tee:*)`-allow-rule fixes (this repo's
+  [`.claude/settings.json`](../../.claude/settings.json) sets no `tee`
+  allow rule and no `Edit()` deny rules of its own); organization plugins
+  via managed settings not loading in headless sessions (no managed
+  settings here); `/ultrareview --post` no longer spinning up a second
+  cloud session (this repo uses no `/ultrareview` workflow); the Artifact
+  database scratchpad-read approval change (constraint #4, no Artifact
+  usage); and `anthropic-skills:<name>`-prefixed cloud-synced skills (the
+  [`run-production-master`](../../.claude/skills/run-production-master/SKILL.md)
+  skill is project-local, checked into this repo, never claude.ai-synced) —
+  is either a managed-org/model-calling/Cowork/Workflow surface constraint
+  #4 rules out or this repo doesn't exercise, or host-side reliability/UI
+  work with no hook into this repo's four prompt-only commands or its
+  [`.claude/settings.json`](../../.claude/settings.json). Nothing here
+  changes registration, sandboxing shape, or command-argument handling.
+
+**Claude Code notes (2.1.267 → 2.1.268).** `.claude-code-version` advances to
+**2.1.268**, a single release. Registration, sandboxing configuration shape,
+and command-argument handling are unchanged. Nothing in this delta is
+adopted:
+
+- **Reviewed, not applicable: `--json` on `claude plugin
+  install/uninstall/update/enable/disable`, plus `errorDetails`/
+  `noteDetails` on `plugin list --json` rows (2.1.268).** This repo's single
+  plugin — [`.claude-plugin/plugin.json`](../../.claude-plugin/plugin.json)
+  — is installed by the end user with `/plugin install production-master`;
+  no script or CI step in this repo shells out to `claude plugin` at all, so
+  there is no output to reparse against the new JSON shape. Revisit only if
+  a script here ever needs to script plugin lifecycle management itself.
+- **Reviewed, not applicable: `claude self-hosted-runner
+  --remove-session-state` (2.1.268).** Ruled out outright by constraint #5:
+  this repo's CI runs on GitHub-hosted `ubuntu-latest` runners only, never a
+  self-hosted runner, so there is no `_sessions/` state of this repo's own
+  for the flag to clean up.
+- **Reviewed, not applicable: the Claude-apps-gateway `pricing:` setting,
+  its CIDR-allowlist startup warnings, and the `gatewayInternalNetworks`
+  managed setting (2.1.268).** As with the 2.1.266
+  `CLAUDE_CODE_USE_GATEWAY` note above,
+  [`claude.yml`](../../.github/workflows/claude.yml) authenticates
+  `anthropics/claude-code-action@v1` with a plain `ANTHROPIC_API_KEY`
+  secret — no gateway sits in front of it, so gateway pricing, CIDR
+  allowlisting, and gateway login all have no repo surface.
+- **Reviewed, not applicable: task-tracking-tool model gating
+  (`CLAUDE_CODE_ENABLE_TODO_TOOLS`) and the Artifact-tool permission-prompt/
+  `WebFetch`-rule changes (2.1.268).** This repo makes no model calls of its
+  own (constraint #4), and
+  [`.claude/settings.json`](../../.claude/settings.json) sets neither a
+  `WebFetch` nor an `Artifact` permission rule for the changed default
+  scoping to affect.
+- **Reviewed, not applicable: Bedrock/Vertex/Foundry system-prompt-as-
+  attachments and tool-list-stability changes (2.1.268).** No Bedrock,
+  Vertex, or Foundry usage here — constraint #4, no model-provider surface
+  of this repo's own.
+- **Reviewed, not applicable: MCP-secret-masking fixes across `/mcp`,
+  `/plugin`, `claude mcp list`/`get`, MCP login errors, and the
+  plugin/marketplace git-source-URL leak fix (2.1.268).** This repo defines
+  no `.mcp.json`/MCP server configuration of its own for Claude Code and
+  ships no marketplace catalog: as
+  [`cli.ts`](../../packages/adapter-claude-code/src/cli.ts) notes, this
+  binary *is* the MCP client (plugin-core's `HttpMcpToolTransport`) calling
+  the hosted service's own MCP gateway — there is no separate host-side MCP
+  server registration or marketplace entry of this repo's own for either
+  fix to touch.
+- **Reviewed, not applicable: the plugin-root-`SKILL.md`-silently-skipped
+  fix (2.1.268).** This repo's skill lives at the standard nested
+  [`.claude/skills/run-production-master/SKILL.md`](../../.claude/skills/run-production-master/SKILL.md)
+  path, not a plugin-root `SKILL.md`, so the bug this fixes never applied
+  here.
+- **Reviewed, benefits automatically: the symlinked-directory (`/etc`,
+  `/tmp`, `/var` on macOS; `/bin` on Linux) permission-rule-bypass fix, the
+  `/compact`-summary and resumed-session note-ordering fixes, and the
+  Bash-sandbox-prompt-wording fix (2.1.268).**
+  [`.claude/settings.json`](../../.claude/settings.json) sets no deny/ask
+  rules on those symlinked paths and no hooks, so none of these had a
+  repo-specific failure mode — but general Claude Code
+  reliability/security hardening improves for any interactive session on
+  this repo with no config change needed, same pattern as prior currency
+  bumps.
+- Everything else in the 2.1.268 delta — `claude auth status --json`'s new
+  `configDirectory` field, published-artifact browser-tab icons, the
+  WebFetch timeout/`CLAUDE_CODE_WEBFETCH_DEADLINE_MS` addition, the
+  in-process-teammate untrusted-agent-file fix, the idle-session CPU fix,
+  the "message came through empty" post-MCP-tool-call fix (no `.mcp.json`
+  of this repo's own for Claude Code, per the MCP-secret-masking note
+  above), the SDK/`excludeDynamicSections` prompt-cache fix, stale
+  model-access-denial and long-context-429 fixes (constraint #4, no model
+  calls), the workload-identity-federation `jti reused` fix (`claude.yml`
+  uses a plain `ANTHROPIC_API_KEY` secret, not a WIF profile), the MCP
+  OAuth-redirect-port fix, `claude agents`/Remote Control/Slack/Chrome/
+  `/resume`/cloud-session-command UI and messaging fixes, and the remaining
+  terminal/UI cosmetics — is either a managed-org/subagent/Cowork/Workflow/
+  self-hosted-runner surface constraints #4/#5 rule out or this repo doesn't
+  exercise, or terminal/UI/reliability work with no hook into this repo's
+  four prompt-only commands or its
+  [`.claude/settings.json`](../../.claude/settings.json). Nothing here
+  changes registration, sandboxing shape, or command-argument handling.
+
+**Claude Code notes (2.1.263 → 2.1.267).** `.claude-code-version` advances to
+**2.1.267**, covering 2.1.265, 2.1.266 (a same-day regression fix for
+2.1.265's `CLAUDE_CODE_USE_GATEWAY` breaking API-key/custom-auth setups —
+[`claude.yml`](../../.github/workflows/claude.yml) authenticates
+`anthropics/claude-code-action@v1` with a plain `ANTHROPIC_API_KEY` secret,
+not the gateway, so both the regression and its fix pass through with no
+repo-visible effect), and 2.1.267. Registration, sandboxing configuration
+shape, and command-argument handling are unchanged. Nothing in this delta is
+adopted — the closest candidates are reviewed below and ruled out by
+constraint #4 or by this repo's existing single-plugin/no-`.mcp.json` shape,
+not adopted with a config change:
+
+- **Reviewed, not applicable: `--plugin-dir` pointing at a folder of
+  plugins (2.1.265).** This repo ships exactly one Claude Code plugin —
+  [`.claude-plugin/plugin.json`](../../.claude-plugin/plugin.json), installed
+  with `/plugin install production-master` — not several local plugins a
+  contributor loads together, so there is no folder of sibling plugin
+  directories for the new flag to point at. Revisit only if a second,
+  separate plugin is ever added to this repo.
+- **Reviewed, not applicable: `maxEffortLevel` (2.1.267).** An org/user
+  ceiling on `/effort`. This repo makes no model calls of its own (constraint
+  #4) and [`.claude/settings.json`](../../.claude/settings.json) sets no
+  effort-related guardrail for `maxEffortLevel` to replace or simplify —
+  there is nothing here in that category to begin with.
+- **Reviewed, not applicable: plugin-path and marketplace-entry backslash
+  symlink-containment fixes (2.1.265, 2.1.267, both SECURITY).** Host-side
+  hardening against a plugin or marketplace-catalog path crafted with a
+  backslash to escape its containment check. This repo ships a single
+  plugin manifest directly (no marketplace catalog of its own, per the
+  2.1.259→2.1.263 note below) and defines no plugin paths of its own for
+  either bypass to reach.
+- **Reviewed, benefits automatically: resume-after-crash prompt/tool-state
+  fixes; the many prompt-cache stability fixes (2.1.265, 2.1.267).** Fixing
+  resumed sessions rewriting the last prompt or mis-marking an interrupted
+  tool, and a long list of prompt-cache-reuse regressions tied to
+  subagent/MCP-tool-set churn on resume. This repo's five commands spawn no
+  subagents and register no `.mcp.json` of their own (constraint #4), so the
+  specific regressions never had a surface here — but the general
+  resume/crash-recovery reliability improves for any interactive session on
+  this repo regardless, with no config change needed.
+- **Reviewed, not applicable: Cowork scheduled-task sandboxing startup fix;
+  `Workflow` tool `agent()` large-output-schema fix (both 2.1.267).** This
+  repo uses neither Cowork nor the `Workflow` tool.
+- Everything else in the 2.1.265/2.1.267 delta — the `user.email`/
+  `user.groups` gateway telemetry addition, the 1 GB tool-result disk cap,
+  `--system-prompt-snapshot off`, the AWS/GCP credential-retry fix (no
+  Bedrock/Vertex here — constraint #4), the managed
+  `allowedHttpHookUrls`/`httpHookAllowedEnvVars`/`allowedChannelPlugins`
+  fix (no managed settings), the `effort:` frontmatter fix (the
+  [`run-production-master`](../../.claude/skills/run-production-master/SKILL.md)
+  skill's frontmatter sets no `effort:` field), VS Code/SDK re-login,
+  background-session retirement, the advisor-tool and Artifact-tool fixes,
+  `/add-dir` subdirectory, forked-skill streaming, legacy-SSE-only MCP
+  fallback, `--worktree` startup, `/workflows` agent detail, slash-command
+  matching, and the plugin-display-metadata (marketplace-over-`plugin.json`)
+  change — is either a managed-org/subagent/Cowork/Workflow/self-hosted-runner
+  surface constraints #4/#5 rule out or this repo doesn't exercise, or
+  terminal/UI/reliability work with no hook into this repo's four prompt-only
+  commands or its [`.claude/settings.json`](../../.claude/settings.json).
+  Nothing here changes registration, sandboxing shape, or command-argument
+  handling.
+
+**Claude Code notes (2.1.259 → 2.1.263).** `.claude-code-version` advances to
+**2.1.263**, covering 2.1.260, 2.1.261, and 2.1.263 (2.1.262 was never
+published as a separate release). Registration, sandboxing configuration
+shape, and command-argument handling are unchanged. Two fixes touch a
+setting this repo already sets, one closes a loop opened by the 2.1.259 note
+below, and one new setting is adopted; everything else is either a
+managed-org/model-calling/subagent/self-hosted-runner surface constraints
+#4/#5 rule out, or host session/UI/telemetry/Remote-Control work with no
+client-relevant hit:
+
+- **Fixed: `permissions.blockReadsOutsideWorkingDirectories` hiding the
+  user's git config from sandboxed git on macOS (2.1.260).** This repo sets
+  `blockReadsOutsideWorkingDirectories: true` in
+  [`.claude/settings.json`](../../.claude/settings.json) (adopted in the
+  2.1.257 note below). Before 2.1.260, the same setting could also block a
+  sandboxed `git` invocation from reading `~/.gitconfig` on macOS — separate
+  from this repo's own credentials, but worth knowing if a contributor's
+  sandboxed `git status`/`git diff` (allowed in this repo's Bash allow list)
+  behaved as if git had no user config on macOS. Update Claude Code; no
+  change to `.claude/settings.json` needed. The fix's other half — a
+  worktree-isolated sub-agent's own checkout no longer hidden from itself —
+  doesn't apply here: this repo's contributor workflow is fork-and-branch,
+  never `--worktree`, and its five commands spawn no sub-agents (constraint
+  #4).
+- **Closed loop: the 2.1.259 `Read()`-deny-rule-on-Bash-args change is
+  reverted (2.1.260).** The 2.1.259 note below reviewed that change as not
+  applicable because [`.claude/settings.json`](../../.claude/settings.json)
+  sets no `Read()` deny rules of its own. 2.1.260 reverted it host-side
+  after it denied plain commands like `npm run build` under an unrelated
+  `Read()` rule in every mode. Still nothing to change here — recorded only
+  so this repo's per-release history doesn't carry a live cross-reference to
+  a behavior that no longer exists.
+- **Adopted: `bashOutputMaxChars` in `.claude/settings.json` (2.1.261).**
+  The [`run-production-master`
+  skill](../../.claude/skills/run-production-master/SKILL.md) chains
+  `npm ci`, `npm run build --workspaces`, `npm run test --workspaces`, and
+  `npm run lint --workspaces` across this repo's workspaces in one sitting —
+  combined output that can exceed the inline budget a Claude Code session
+  gives a single Bash result before the rest is saved to a file and
+  summarized instead of shown. Set to `65536` (2.1.261 raises the settable
+  ceiling to 128K) so a full local verification run — in particular which
+  of the four gates failed and its full stack trace — stays inline for the
+  session instead of being truncated mid-skill. `taskOutputMaxChars` is not
+  set: this repo defines no hooks or background Bash tasks under `.claude/`
+  (constraint #4), so there is no background-task output for it to raise.
+- **Reviewed, no repo change: `/skill-doctor` (2.1.261).** Lists loaded
+  skills that go unused and what they cost in context — useful when
+  iterating on
+  [`run-production-master`](../../.claude/skills/run-production-master/SKILL.md),
+  in the same no-op-until-you-ask-for-it category as `/doctor`'s
+  stale-sandbox-mask-file warning noted in the 2.1.257 entry below. No
+  frontmatter or trigger-phrase change needed.
+- **Reviewed, benefits automatically: improved idle CPU usage of
+  non-interactive (`-p`/SDK) sessions (2.1.260).**
+  [`.github/workflows/claude.yml`](../../.github/workflows/claude.yml) runs
+  `anthropics/claude-code-action@v1` on GitHub-hosted `ubuntu-latest`
+  runners only (constraint #5) — a non-interactive session by construction.
+  No workflow change; the improvement applies the next time the action pulls
+  a newer Claude Code.
+- Everything else in the 2.1.260/2.1.261/2.1.263 delta is either a
+  managed-org, model-calling (`/model`, Fable 5.1, auto-compact, `/effort`,
+  gateway/Bedrock/Vertex), subagent/agent-team, Remote Control, cloud-session,
+  self-hosted-runner, or marketplace-catalog surface constraints #4/#5 rule
+  out or this repo doesn't exercise (no managed settings, no `.mcp.json`, no
+  hooks, no marketplace catalog of its own); or terminal/UI/reliability work
+  (the diff panel, text-form `/advisor`, streaming performance, the `rm -rf`
+  safety-prompt coverage, word-editing keybindings, `/context` token
+  counting, `/reload-plugins` in headless sessions, and the full VS Code
+  list) with no hook into this repo's four prompt-only commands or its
+  [`.claude/settings.json`](../../.claude/settings.json). 2.1.263 itself
+  shipped only "bug fixes and reliability improvements," with no further
+  detail published. Nothing else here changes registration, sandboxing
+  shape, or command-argument handling.
+
